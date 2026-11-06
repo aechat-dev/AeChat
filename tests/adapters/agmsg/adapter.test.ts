@@ -198,4 +198,31 @@ describe("AgmsgAdapter", () => {
       state: "dead",
     });
   });
+
+  it("notify sends a pull pointer without body or display name", async () => {
+    const cli = fakeCli();
+    const adapter = new AgmsgAdapter({ cli, team: "aechat-test" });
+    const binding = await adapter.register(SESSION, "aechat-cccccccccccc");
+
+    await adapter.notify(binding, {
+      messageId: "msg-1",
+      fromSession: "from-session",
+      toSession: "target-session",
+      fromAddress: "aechat-sender",
+    });
+
+    expect(cli.notify).toHaveBeenCalledWith({
+      team: "aechat-test",
+      from: "aechat-sender",
+      to: "aechat-cccccccccccc",
+      text:
+        "[AeChat] msg=msg-1 session=target-session " +
+        "action=aechat inbox --session target-session",
+    });
+    const call = (cli.notify as ReturnType<typeof vi.fn>).mock.calls[0]?.[0] as {
+      text: string;
+    };
+    expect(call.text).not.toContain("dev");
+    expect(call.text).not.toContain("body");
+  });
 });

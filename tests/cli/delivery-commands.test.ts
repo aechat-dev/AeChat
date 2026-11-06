@@ -5,6 +5,7 @@ import { sendCommand } from "../../src/cli/commands/send.js";
 import type { CommandContext } from "../../src/cli/commands/context.js";
 import type { CommandResult } from "../../src/cli/output.js";
 import { DeliveryService } from "../../src/core/services/delivery-service.js";
+import { RequestService } from "../../src/core/services/request-service.js";
 import { SessionService } from "../../src/core/services/session-service.js";
 import { openDatabase } from "../../src/core/store/db.js";
 import { EventRepository } from "../../src/core/store/events.js";
@@ -12,6 +13,7 @@ import {
   DeliveryRepository,
   MessageRepository,
 } from "../../src/core/store/messages.js";
+import { RequestRepository } from "../../src/core/store/requests.js";
 import { migrate } from "../../src/core/store/schema.js";
 import {
   SessionRepository,
@@ -37,6 +39,7 @@ function setup(): Setup {
   const messages = new MessageRepository(db);
   const deliveries = new DeliveryRepository(db);
   const events = new EventRepository(db);
+  const requests = new RequestRepository(db);
   const transport = new FakeTransportAdapter();
   const now = () => "2026-11-06T12:00:00.000Z";
   const service = new SessionService({ sessions, bindings, transport, now });
@@ -44,15 +47,26 @@ function setup(): Setup {
     db,
     messages,
     deliveries,
+    requests,
     sessions,
     bindings,
     transport,
     events,
     now,
   });
+  const request = new RequestService({
+    db,
+    messages,
+    deliveries,
+    requests,
+    delivery,
+    events,
+    now,
+  });
   const ctx: CommandContext = {
     service,
     delivery,
+    request,
     transport,
     now,
   };

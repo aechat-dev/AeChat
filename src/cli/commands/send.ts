@@ -1,30 +1,8 @@
-import { readFileSync } from "node:fs";
-
 import { AechatError } from "../../core/errors.js";
 import type { MessageKind } from "../../core/store/messages.js";
 import { optionalValue, parseArgs, requiredValue } from "../args.js";
+import { bodyFromArgs } from "../body.js";
 import type { CommandContext } from "./context.js";
-
-function bodyFromArgs(args: ReturnType<typeof parseArgs>): string {
-  const body = optionalValue(args, "body");
-  const bodyFile = optionalValue(args, "body-file");
-  if ((body === undefined) === (bodyFile === undefined)) {
-    throw new AechatError(
-      "invalid_input",
-      "send requires exactly one of --body or --body-file",
-    );
-  }
-  if (body !== undefined) {
-    return body;
-  }
-  try {
-    return readFileSync(bodyFile as string, "utf8");
-  } catch (error) {
-    throw new AechatError("invalid_input", `cannot read --body-file: ${bodyFile}`, {
-      cause: error instanceof Error ? error.message : String(error),
-    });
-  }
-}
 
 function targetFromArgs(
   args: ReturnType<typeof parseArgs>,
@@ -66,14 +44,16 @@ export async function sendCommand(
 ): Promise<Record<string, unknown>> {
   const args = parseArgs(argv);
   const fromSession = requiredValue(args, "session");
-  if (optionalValue(args, "deadline") !== undefined || args.flags.has("deadline")) {
-    throw new AechatError(
-      "invalid_input",
-      "--deadline is only valid with --request (not implemented yet)",
-    );
-  }
   const toSession = targetFromArgs(args, ctx);
-  const kind: MessageKind = args.flags.has("request") ? "request" : "notify";
+  const isRequest = args.flags.has("request");
+  const kind: MessageKind = isRequest ? "request" : "notify";
+  if (args.flags.has("deadline")) {
+    throw new AechatError("invalid_input", "--deadline requires a value");
+  }
+  if (!isRequest && optionalValue(args, "deadline") !== undefined) {
+    throw new AechatError("invalid_input", "--deadline is only valid with --request");
+  }
+  const deadlineSeconds = integerOption(args, "deadline");
   const dedupKey = optionalValue(args, "dedup-key");
   const ttlSeconds = integerOption(args, "ttl");
 
@@ -84,6 +64,7 @@ export async function sendCommand(
     body: bodyFromArgs(args),
     ...(dedupKey === undefined ? {} : { dedupKey }),
     ...(ttlSeconds === undefined ? {} : { ttlSeconds }),
+    ...(deadlineSeconds === undefined ? {} : { deadlineSeconds }),
   });
 
   return {

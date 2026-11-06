@@ -1,4 +1,5 @@
 import type { InboxItem } from "../core/services/delivery-service.js";
+import type { MessageRecord } from "../core/store/messages.js";
 
 export const MESSAGE_BEGIN = "---BEGIN AE CHAT MESSAGE";
 export const MESSAGE_END = "---END---";
@@ -53,4 +54,20 @@ export function formatInboxText(items: InboxItem[]): string {
     return "";
   }
   return `${items.map(formatInboxItem).join("\n\n")}\n`;
+}
+
+export function formatMessageText(message: MessageRecord): string {
+  return [
+    messageHeader(),
+    `${MESSAGE_BEGIN} ${message.messageId}---`,
+    `kind: ${message.kind}`,
+    `from-session: ${message.fromSession}`,
+    `to-session: ${message.toSession}`,
+    `request-id: ${message.requestId ?? "-"}`,
+    `created-at: ${message.createdAt}`,
+    "",
+    formatBody(message.body),
+    MESSAGE_END,
+    "",
+  ].join("\n");
 }

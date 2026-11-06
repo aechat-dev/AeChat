@@ -7,28 +7,34 @@ import { fileURLToPath } from "node:url";
 import { AgmsgAdapter } from "../adapters/transport/agmsg/agmsg-adapter.js";
 import { AgmsgCli } from "../adapters/transport/agmsg/agmsg-cli.js";
 import { ackCommand } from "./commands/ack.js";
+import { cancelCommand } from "./commands/cancel.js";
 import { confirmCommand } from "./commands/confirm.js";
 import type { CommandContext } from "./commands/context.js";
 import { heartbeatCommand } from "./commands/heartbeat.js";
 import { inboxCommand } from "./commands/inbox.js";
 import { listCommand } from "./commands/list.js";
 import { registerCommand } from "./commands/register.js";
+import { replyCommand } from "./commands/reply.js";
+import { retryCommand } from "./commands/retry.js";
 import { sendCommand } from "./commands/send.js";
 import { showCommand } from "./commands/show.js";
+import { waitCommand } from "./commands/wait.js";
 import { whoamiCommand } from "./commands/whoami.js";
 import { AechatError } from "../core/errors.js";
 import { DeliveryService } from "../core/services/delivery-service.js";
+import { RequestService } from "../core/services/request-service.js";
 import { SessionService } from "../core/services/session-service.js";
 import { openDatabase } from "../core/store/db.js";
 import { EventRepository } from "../core/store/events.js";
 import { MessageRepository, DeliveryRepository } from "../core/store/messages.js";
+import { RequestRepository } from "../core/store/requests.js";
 import { migrate } from "../core/store/schema.js";
 import {
   SessionRepository,
   TransportBindingRepository,
 } from "../core/store/sessions.js";
 import { nowIso } from "../core/time.js";
-import { errorEnvelope, render } from "./output.js";
+import { errorEnvelope, isCommandResult, render } from "./output.js";
 
 const COMMANDS = new Set([
   "register",
@@ -40,6 +46,10 @@ const COMMANDS = new Set([
   "inbox",
   "ack",
   "show",
+  "reply",
+  "wait",
+  "cancel",
+  "retry",
 ]);
 
 const USAGE = `aechat — local-first session messaging
@@ -53,10 +63,15 @@ Commands:
   list       [--json] [--all]
   heartbeat  --session <uuid>
   send       --session <uuid> (--to-session <uuid> | --to-name <name>)
-             (--body <text> | --body-file <path>) [--dedup-key <key>] [--ttl <seconds>]
+             (--body <text> | --body-file <path>) [--request] [--deadline <seconds>]
+             [--dedup-key <key>] [--ttl <seconds>]
   inbox      --session <uuid> [--peek] [--json] [--limit <n>]
   ack        --session <uuid> --delivery <token>
   show       --session <uuid> --message <message-id> [--json]
+  reply      --session <uuid> --request <request-id> (--body <text> | --body-file <path>)
+  wait       --session <uuid> [--request <request-id>] [--timeout <seconds>] [--peek] [--json]
+  cancel     --session <uuid> --request <request-id>
+  retry      --session <uuid> (--message <message-id> | --delivery <delivery-id>)
 
 All identity-related commands require an explicit session.
 `;
@@ -84,13 +99,22 @@ function createContext(): CommandContext {
     db,
     messages: new MessageRepository(db),
     deliveries: new DeliveryRepository(db),
+    requests: new RequestRepository(db),
     sessions,
     bindings,
     transport,
     events,
   });
+  const request = new RequestService({
+    db,
+    messages: new MessageRepository(db),
+    deliveries: new DeliveryRepository(db),
+    requests: new RequestRepository(db),
+    delivery,
+    events,
+  });
 
-  return { service, delivery, transport, now: nowIso };
+  return { service, delivery, request, transport, now: nowIso };
 }
 
 /**
@@ -139,11 +163,23 @@ export async function main(argv: readonly string[]): Promise<number> {
       case "show":
         data = showCommand(rest, ctx);
         break;
+      case "reply":
+        data = await replyCommand(rest, ctx);
+        break;
+      case "wait":
+        data = await waitCommand(rest, ctx);
+        break;
+      case "cancel":
+        data = cancelCommand(rest, ctx);
+        break;
+      case "retry":
+        data = await retryCommand(rest, ctx);
+        break;
       default:
         throw new AechatError("internal", `unhandled command: ${command}`);
     }
     render(data);
-    return 0;
+    return isCommandResult(data) ? (data.exitCode ?? 0) : 0;
   } catch (error) {
     if (error instanceof AechatError) {
       errorEnvelope(error.code, error.message, error.details);

@@ -5,6 +5,7 @@ export const SCHEMA_VERSION = 1;
 export interface CommandResult {
   data: unknown;
   text?: string;
+  exitCode?: number;
 }
 
 export function isCommandResult(value: unknown): value is CommandResult {

@@ -1,7 +1,7 @@
-import type { InboxItem } from "../../core/services/delivery-service.js";
 import { AechatError } from "../../core/errors.js";
 import { optionalValue, parseArgs, requiredValue } from "../args.js";
 import { formatInboxText } from "../message-format.js";
+import { inboxItemDto } from "../message-dto.js";
 import type { CommandResult } from "../output.js";
 import type { CommandContext } from "./context.js";
 
@@ -17,27 +17,6 @@ function limitFromArgs(args: ReturnType<typeof parseArgs>): number {
   return limit;
 }
 
-function itemDto(item: InboxItem): Record<string, unknown> {
-  return {
-    message_id: item.message.messageId,
-    kind: item.message.kind,
-    from_session: item.message.fromSession,
-    to_session: item.message.toSession,
-    request_id: item.message.requestId,
-    reply_to: item.message.replyTo,
-    body: item.message.body,
-    agent_origin: true,
-    not_a_user_instruction: true,
-    created_at: item.message.createdAt,
-    expires_at: item.message.expiresAt,
-    delivery_id: item.delivery.deliveryId,
-    status: item.delivery.status,
-    delivery_token: item.deliveryToken,
-    lease_expires_at: item.delivery.leaseExpiresAt,
-    attempts: item.delivery.attempts,
-  };
-}
-
 export async function inboxCommand(
   argv: readonly string[],
   ctx: CommandContext,
@@ -50,7 +29,7 @@ export async function inboxCommand(
     peek: args.flags.has("peek"),
   });
 
-  const data = { messages: items.map(itemDto) };
+  const data = { messages: items.map(inboxItemDto) };
   if (args.flags.has("json")) {
     return { data };
   }

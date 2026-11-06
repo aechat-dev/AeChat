@@ -1,6 +1,6 @@
 /**
- * AeChat 入口。
- *
- * 工程初始化阶段仅保留占位，服务实现将在设计方案确认后按步骤加入。
+ * Library entry point. The CLI lives at `src/cli/main.ts` (package bin).
  */
-export {};
+export { main } from "./cli/main.js";
+export * from "./core/types.js";
+export { AechatError } from "./core/errors.js";

@@ -15,6 +15,7 @@ export interface FakeTransportOptions {
   bindMode?: FakeBindMode;
   live?: boolean;
   registerFails?: boolean;
+  notifyFails?: boolean;
   mode?: string;
 }
 
@@ -29,6 +30,7 @@ export class FakeTransportAdapter implements TransportAdapter {
   private readonly bindMode: FakeBindMode;
   private readonly live: boolean;
   private readonly registerFails: boolean;
+  private readonly notifyFails: boolean;
   private readonly mode: string;
   private addressCounter = 0;
 
@@ -36,6 +38,7 @@ export class FakeTransportAdapter implements TransportAdapter {
     this.bindMode = options.bindMode ?? "host_role";
     this.live = options.live ?? true;
     this.registerFails = options.registerFails ?? false;
+    this.notifyFails = options.notifyFails ?? false;
     this.mode = options.mode ?? "test";
   }
 
@@ -94,7 +97,9 @@ export class FakeTransportAdapter implements TransportAdapter {
   }
 
   notify(): Promise<NotifyResult> {
-    return Promise.resolve({ ok: true });
+    return Promise.resolve(
+      this.notifyFails ? { ok: false, error: "fake notify failure" } : { ok: true },
+    );
   }
 
   inspect(): Promise<TransportStatus> {

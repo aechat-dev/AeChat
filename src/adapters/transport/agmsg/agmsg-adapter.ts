@@ -140,13 +140,23 @@ export class AgmsgAdapter implements TransportAdapter {
 
   async notify(
     binding: TransportBinding,
-    notification: { messageId: string; fromSession: string; toSession: string },
+    notification: {
+      messageId: string;
+      fromSession: string;
+      toSession: string;
+      fromAddress?: string;
+    },
   ): Promise<NotifyResult> {
     const result = await this.cli.notify({
       team: binding.team ?? this.team,
-      from: notification.fromSession,
+      from: notification.fromAddress ?? notification.fromSession,
       to: binding.address,
-      text: notification.messageId,
+      // Pointer only: the target pulls the body from AeChat. Never put the
+      // body or display name into transport text.
+      text:
+        `[AeChat] msg=${notification.messageId} ` +
+        `session=${notification.toSession} ` +
+        `action=aechat inbox --session ${notification.toSession}`,
     });
     return result.ok ? { ok: true } : { ok: false, error: result.stderr };
   }

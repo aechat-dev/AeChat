@@ -39,6 +39,8 @@ export interface PointerNotification {
   messageId: string;
   fromSession: SessionId;
   toSession: SessionId;
+  /** Sender's transport address, when the adapter needs it for routing. */
+  fromAddress?: string;
 }
 
 export interface NotifyResult {

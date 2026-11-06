@@ -6,23 +6,29 @@ import { fileURLToPath } from "node:url";
 
 import { AgmsgAdapter } from "../adapters/transport/agmsg/agmsg-adapter.js";
 import { AgmsgCli } from "../adapters/transport/agmsg/agmsg-cli.js";
+import { ackCommand } from "./commands/ack.js";
 import { confirmCommand } from "./commands/confirm.js";
 import type { CommandContext } from "./commands/context.js";
 import { heartbeatCommand } from "./commands/heartbeat.js";
+import { inboxCommand } from "./commands/inbox.js";
 import { listCommand } from "./commands/list.js";
 import { registerCommand } from "./commands/register.js";
+import { sendCommand } from "./commands/send.js";
+import { showCommand } from "./commands/show.js";
 import { whoamiCommand } from "./commands/whoami.js";
 import { AechatError } from "../core/errors.js";
+import { DeliveryService } from "../core/services/delivery-service.js";
 import { SessionService } from "../core/services/session-service.js";
 import { openDatabase } from "../core/store/db.js";
 import { EventRepository } from "../core/store/events.js";
+import { MessageRepository, DeliveryRepository } from "../core/store/messages.js";
 import { migrate } from "../core/store/schema.js";
 import {
   SessionRepository,
   TransportBindingRepository,
 } from "../core/store/sessions.js";
 import { nowIso } from "../core/time.js";
-import { errorEnvelope, ok } from "./output.js";
+import { errorEnvelope, render } from "./output.js";
 
 const COMMANDS = new Set([
   "register",
@@ -30,6 +36,10 @@ const COMMANDS = new Set([
   "whoami",
   "list",
   "heartbeat",
+  "send",
+  "inbox",
+  "ack",
+  "show",
 ]);
 
 const USAGE = `aechat — local-first session messaging
@@ -42,6 +52,11 @@ Commands:
   whoami     --session <uuid> | --conversation <id>
   list       [--json] [--all]
   heartbeat  --session <uuid>
+  send       --session <uuid> (--to-session <uuid> | --to-name <name>)
+             (--body <text> | --body-file <path>) [--dedup-key <key>] [--ttl <seconds>]
+  inbox      --session <uuid> [--peek] [--json] [--limit <n>]
+  ack        --session <uuid> --delivery <token>
+  show       --session <uuid> --message <message-id> [--json]
 
 All identity-related commands require an explicit session.
 `;
@@ -52,18 +67,30 @@ function createContext(): CommandContext {
   const db = openDatabase(process.env["AECHAT_DB"] ?? join(home, "aechat.db"));
   migrate(db);
 
+  const sessions = new SessionRepository(db);
+  const bindings = new TransportBindingRepository(db);
+  const events = new EventRepository(db);
   const transport = new AgmsgAdapter({
     cli: new AgmsgCli(),
     team: process.env["AECHAT_TEAM"] ?? "aechat",
   });
   const service = new SessionService({
-    sessions: new SessionRepository(db),
-    bindings: new TransportBindingRepository(db),
+    sessions,
+    bindings,
     transport,
-    events: new EventRepository(db),
+    events,
+  });
+  const delivery = new DeliveryService({
+    db,
+    messages: new MessageRepository(db),
+    deliveries: new DeliveryRepository(db),
+    sessions,
+    bindings,
+    transport,
+    events,
   });
 
-  return { service, transport, now: nowIso };
+  return { service, delivery, transport, now: nowIso };
 }
 
 /**
@@ -100,10 +127,22 @@ export async function main(argv: readonly string[]): Promise<number> {
       case "heartbeat":
         data = heartbeatCommand(rest, ctx);
         break;
+      case "send":
+        data = await sendCommand(rest, ctx);
+        break;
+      case "inbox":
+        data = await inboxCommand(rest, ctx);
+        break;
+      case "ack":
+        data = ackCommand(rest, ctx);
+        break;
+      case "show":
+        data = showCommand(rest, ctx);
+        break;
       default:
         throw new AechatError("internal", `unhandled command: ${command}`);
     }
-    ok(data);
+    render(data);
     return 0;
   } catch (error) {
     if (error instanceof AechatError) {

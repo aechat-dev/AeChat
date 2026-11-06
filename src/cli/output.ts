@@ -2,6 +2,32 @@ import { AechatError, exitCodeFor, type ErrorCode } from "../core/errors.js";
 
 export const SCHEMA_VERSION = 1;
 
+export interface CommandResult {
+  data: unknown;
+  text?: string;
+}
+
+export function isCommandResult(value: unknown): value is CommandResult {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "data" in value &&
+    !("ok" in value)
+  );
+}
+
+/**
+ * Render a command result: text for human-facing message commands, the JSON
+ * envelope everywhere else.
+ */
+export function render(result: unknown): void {
+  if (isCommandResult(result) && result.text !== undefined) {
+    process.stdout.write(result.text);
+    return;
+  }
+  ok(isCommandResult(result) ? result.data : result);
+}
+
 /**
  * Write a success envelope to stdout. `meta.schema` is always set by the
  * envelope, never by caller-supplied metadata.

@@ -266,6 +266,34 @@ export class SessionService {
     );
   }
 
+  resolveTargetByName(displayName: string): Session {
+    validateDisplayName(displayName);
+    const matches = this.sessions
+      .findByDisplayName(displayName)
+      .filter((session) => session.leftAt === null);
+    if (matches.length === 1) {
+      return matches[0] as Session;
+    }
+    if (matches.length === 0) {
+      throw new AechatError(
+        "target_not_found",
+        `no active session named: ${displayName}`,
+      );
+    }
+    throw new AechatError(
+      "ambiguous_target",
+      `display name matches multiple sessions: ${displayName}`,
+      {
+        candidates: matches.map((session) => ({
+          session_id: session.sessionId,
+          display_name: session.displayName,
+          client: session.client,
+          project: session.project,
+        })),
+      },
+    );
+  }
+
   list(opts: { includeLeft?: boolean } = {}): SessionListEntry[] {
     return this.sessions.list(opts).map((session) => {
       const bindings = this.bindings.listForSession(session.sessionId);

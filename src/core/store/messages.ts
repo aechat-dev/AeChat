@@ -223,6 +223,24 @@ export class DeliveryRepository {
     return row === undefined ? undefined : deliveryFromRow(row);
   }
 
+  getByMessageId(messageId: string): DeliveryRecord | undefined {
+    const row = this.db
+      .prepare("SELECT * FROM deliveries WHERE message_id = ?")
+      .get(messageId) as Row | undefined;
+    return row === undefined ? undefined : deliveryFromRow(row);
+  }
+
+  resetForRetry(deliveryId: string): boolean {
+    const result = this.db
+      .prepare(
+        `UPDATE deliveries
+         SET status = 'stored', last_error = NULL
+         WHERE delivery_id = ? AND status IN ('stored', 'notify_failed')`,
+      )
+      .run(deliveryId);
+    return Number(result.changes) > 0;
+  }
+
   /**
    * Atomically lazy-expire, dead-letter exhausted leases, then claim at most
    * `limit` deliverable rows for one session. Callers get a fresh token and a
@@ -357,6 +375,17 @@ export class DeliveryRepository {
       )
       .run(now, token, sessionId);
     return Number(result.changes) > 0;
+  }
+
+  markReplied(messageId: string, sessionId: string, now: string): void {
+    this.db
+      .prepare(
+        `UPDATE deliveries
+         SET status = 'acked', acked_at = COALESCE(acked_at, ?), replied_at = ?
+         WHERE message_id = ? AND session_id = ?
+           AND status NOT IN ('expired', 'dead_letter')`,
+      )
+      .run(now, now, messageId, sessionId);
   }
 
   markNotified(id: string, now: string): void {

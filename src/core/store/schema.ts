@@ -1,6 +1,6 @@
 import type { DatabaseSync } from "node:sqlite";
 
-const SCHEMA_VERSION = 2;
+const SCHEMA_VERSION = 3;
 
 const SCHEMA_SQL = `
 CREATE TABLE IF NOT EXISTS sessions (
@@ -127,9 +127,31 @@ CREATE INDEX IF NOT EXISTS deliveries_status_lease
   ON deliveries(status, lease_expires_at);
 `;
 
+const SCHEMA_V3_SQL = `
+CREATE TABLE IF NOT EXISTS requests (
+  request_id TEXT PRIMARY KEY REFERENCES messages(message_id),
+  requester_session TEXT NOT NULL REFERENCES sessions(session_id),
+  target_session TEXT NOT NULL REFERENCES sessions(session_id),
+  status TEXT NOT NULL CHECK (status IN ('open', 'replied', 'expired', 'cancelled')),
+  close_reason TEXT
+    CHECK (close_reason IS NULL OR close_reason IN (
+      'replied', 'deadline', 'sender_cancel', 'target_left', 'requester_left'
+    )),
+  deadline TEXT,
+  reply_message_id TEXT REFERENCES messages(message_id),
+  created_at TEXT NOT NULL,
+  status_changed_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS requests_target_status
+  ON requests(target_session, status, created_at);
+CREATE INDEX IF NOT EXISTS requests_requester_status
+  ON requests(requester_session, status, created_at);
+`;
+
 const MIGRATIONS: Record<number, string> = {
   1: SCHEMA_SQL,
   2: SCHEMA_V2_SQL,
+  3: SCHEMA_V3_SQL,
 };
 
 /**

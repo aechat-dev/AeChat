@@ -9,6 +9,7 @@ import type {
   DeliveryRepository,
   MessageRepository,
 } from "../store/messages.js";
+import type { RequestRepository } from "../store/requests.js";
 import type { DeliveryRecord, MessageKind, MessageRecord } from "../store/messages.js";
 import type {
   PointerNotification,
@@ -18,7 +19,7 @@ import type {
 import type { TransportBindingRecord } from "../types.js";
 import { withImmediate } from "../store/db.js";
 
-const MAX_BODY_BYTES = 16 * 1024;
+export const MAX_BODY_BYTES = 16 * 1024;
 const DEFAULT_LEASE_SECONDS = 30;
 const WAIT_POLL_MS = 250;
 
@@ -29,7 +30,30 @@ export interface SendInput {
   body: string;
   dedupKey?: string;
   ttlSeconds?: number;
+  deadlineSeconds?: number;
   now?: string;
+}
+
+export interface SendRequestInput {
+  fromSession: string;
+  toSession: string;
+  body: string;
+  deadlineSeconds?: number;
+  dedupKey?: string;
+  now?: string;
+}
+
+export interface RetryInput {
+  sessionId: string;
+  messageId?: string;
+  deliveryId?: string;
+}
+
+export interface RetryResult {
+  messageId: string;
+  deliveryId: string;
+  retried: boolean;
+  status: SendStatus;
 }
 
 export type SendStatus =
@@ -83,6 +107,7 @@ export interface DeliveryServiceDeps {
   db: DatabaseSync;
   messages: MessageRepository;
   deliveries: DeliveryRepository;
+  requests?: RequestRepository;
   sessions: SessionRepository;
   bindings: TransportBindingRepository;
   transport: TransportAdapter;
@@ -129,6 +154,7 @@ export class DeliveryService {
   private readonly db: DatabaseSync;
   private readonly messages: MessageRepository;
   private readonly deliveries: DeliveryRepository;
+  private readonly requests: RequestRepository | undefined;
   private readonly sessions: SessionRepository;
   private readonly bindings: TransportBindingRepository;
   private readonly transport: TransportAdapter;
@@ -140,6 +166,7 @@ export class DeliveryService {
     this.db = deps.db;
     this.messages = deps.messages;
     this.deliveries = deps.deliveries;
+    this.requests = deps.requests;
     this.sessions = deps.sessions;
     this.bindings = deps.bindings;
     this.transport = deps.transport;
@@ -149,11 +176,22 @@ export class DeliveryService {
   }
 
   async send(input: SendInput): Promise<SendResult> {
-    if (input.kind !== "notify") {
+    if (input.kind !== "notify" && input.kind !== "request") {
       throw new AechatError(
         "invalid_input",
-        "DeliveryService.send currently accepts kind=notify only",
+        "send accepts kind=notify or kind=request; replies use reply()",
       );
+    }
+    if (input.deadlineSeconds !== undefined) {
+      if (input.kind !== "request") {
+        throw new AechatError(
+          "invalid_input",
+          "deadline is only valid for a request",
+        );
+      }
+      if (input.deadlineSeconds <= 0) {
+        throw new AechatError("invalid_input", "deadline must be positive");
+      }
     }
     if (Buffer.byteLength(input.body, "utf8") > MAX_BODY_BYTES) {
       throw new AechatError("invalid_body", "message body exceeds 16 KiB");
@@ -181,6 +219,16 @@ export class DeliveryService {
     }
 
     const at = input.now ?? this.now();
+    if (input.kind === "request" && this.requests === undefined) {
+      throw new AechatError(
+        "internal",
+        "request messages require the request repository",
+      );
+    }
+    const deadline =
+      input.deadlineSeconds === undefined
+        ? null
+        : new Date(Date.parse(at) + input.deadlineSeconds * 1000).toISOString();
     const messageId = this.newId();
     const deliveryId = this.newId();
     const expiresAt =
@@ -223,12 +271,22 @@ export class DeliveryService {
         kind: input.kind,
         fromSession: input.fromSession,
         toSession: input.toSession,
+        requestId: input.kind === "request" ? messageId : null,
         body: input.body,
         createdAt: at,
         dedupKey: input.dedupKey ?? null,
         expiresAt,
       });
       this.deliveries.insert({ deliveryId, messageId, sessionId: input.toSession });
+      if (input.kind === "request") {
+        (this.requests as RequestRepository).insert({
+          requestId: messageId,
+          requesterSession: input.fromSession,
+          targetSession: input.toSession,
+          deadline,
+          createdAt: at,
+        });
+      }
     });
     if (duplicate !== undefined) {
       return duplicate;
@@ -241,6 +299,25 @@ export class DeliveryService {
       data: { toSession: input.toSession, kind: input.kind },
     });
 
+    return this.notifyDelivery({
+      messageId,
+      deliveryId,
+      fromSession: input.fromSession,
+      toSession: input.toSession,
+    });
+  }
+
+  /**
+   * Notify the target about a message that is already persisted together with
+   * its delivery row. Callers own the transaction that created them; a failed
+   * notification leaves the delivery pullable.
+   */
+  async notifyDelivery(input: {
+    messageId: string;
+    deliveryId: string;
+    fromSession: string;
+    toSession: string;
+  }): Promise<SendResult> {
     const toBinding = this.bindings.listForSession(input.toSession).at(-1);
     const fromBinding = this.bindings.listForSession(input.fromSession).at(-1);
     if (
@@ -248,11 +325,15 @@ export class DeliveryService {
       toBinding.mode === "off" ||
       toBinding.mode === "unknown"
     ) {
-      return { messageId, deliveryId, status: "stored" };
+      return {
+        messageId: input.messageId,
+        deliveryId: input.deliveryId,
+        status: "stored",
+      };
     }
 
     const notification: PointerNotification = {
-      messageId,
+      messageId: input.messageId,
       fromSession: input.fromSession,
       toSession: input.toSession,
       ...(fromBinding === undefined ? {} : { fromAddress: fromBinding.address }),
@@ -273,31 +354,119 @@ export class DeliveryService {
 
     const notifyAt = this.now();
     if (notifyResult.ok) {
-      this.deliveries.markNotified(deliveryId, notifyAt);
+      this.deliveries.markNotified(input.deliveryId, notifyAt);
       this.events?.record({
         event: "notify",
         sessionId: input.toSession,
-        messageId,
-        deliveryId,
+        messageId: input.messageId,
+        deliveryId: input.deliveryId,
         transport: toBinding.transport,
         mode: toBinding.mode,
       });
-      return { messageId, deliveryId, status: "notified" };
+      return {
+        messageId: input.messageId,
+        deliveryId: input.deliveryId,
+        status: "notified",
+      };
     }
 
     const error = notifyResult.error ?? "transport notify failed";
-    this.deliveries.markNotifyFailed(deliveryId, notifyAt, error);
+    this.deliveries.markNotifyFailed(input.deliveryId, notifyAt, error);
     this.events?.record({
       event: "notify_fail",
       level: "warn",
       sessionId: input.toSession,
-      messageId,
-      deliveryId,
+      messageId: input.messageId,
+      deliveryId: input.deliveryId,
       transport: toBinding.transport,
       mode: toBinding.mode,
       errorDetail: error,
     });
-    return { messageId, deliveryId, status: "notify_failed", error };
+    return {
+      messageId: input.messageId,
+      deliveryId: input.deliveryId,
+      status: "notify_failed",
+      error,
+    };
+  }
+
+  sendRequest(input: SendRequestInput): Promise<SendResult> {
+    return this.send({
+      fromSession: input.fromSession,
+      toSession: input.toSession,
+      kind: "request",
+      body: input.body,
+      ...(input.deadlineSeconds === undefined
+        ? {}
+        : { deadlineSeconds: input.deadlineSeconds }),
+      ...(input.dedupKey === undefined ? {} : { dedupKey: input.dedupKey }),
+      ...(input.now === undefined ? {} : { now: input.now }),
+    });
+  }
+
+  async retry(input: RetryInput): Promise<RetryResult> {
+    if (
+      (input.messageId === undefined) === (input.deliveryId === undefined)
+    ) {
+      throw new AechatError(
+        "invalid_input",
+        "retry requires exactly one of messageId or deliveryId",
+      );
+    }
+    const delivery =
+      input.deliveryId === undefined
+        ? this.deliveries.getByMessageId(input.messageId as string)
+        : this.deliveries.get(input.deliveryId);
+    if (delivery === undefined) {
+      throw new AechatError(
+        "delivery_not_found",
+        "delivery not found for retry",
+      );
+    }
+    const message = this.messages.get(delivery.messageId);
+    if (message === undefined) {
+      throw new AechatError(
+        "delivery_not_found",
+        `message not found: ${delivery.messageId}`,
+      );
+    }
+    if (message.fromSession !== input.sessionId) {
+      throw new AechatError("not_actor", "only the sender may retry this message");
+    }
+
+    if (
+      delivery.status !== "stored" &&
+      delivery.status !== "notify_failed"
+    ) {
+      return {
+        messageId: message.messageId,
+        deliveryId: delivery.deliveryId,
+        retried: false,
+        status: delivery.status,
+      };
+    }
+    if (!this.deliveries.resetForRetry(delivery.deliveryId)) {
+      const current = this.deliveries.get(delivery.deliveryId);
+      return {
+        messageId: message.messageId,
+        deliveryId: delivery.deliveryId,
+        retried: false,
+        status: current?.status ?? "stored",
+      };
+    }
+
+    const result = await this.notifyDelivery({
+      messageId: message.messageId,
+      deliveryId: delivery.deliveryId,
+      fromSession: message.fromSession,
+      toSession: message.toSession,
+    });
+    return {
+      messageId: result.messageId,
+      deliveryId: result.deliveryId,
+      retried: true,
+      status: result.status,
+    };
   }
 
   async inbox(input: InboxInput): Promise<InboxItem[]> {

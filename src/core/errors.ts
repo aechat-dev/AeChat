@@ -11,6 +11,8 @@ export type ErrorCode =
   | "ambiguous_target"
   | "not_actor"
   | "request_closed"
+  | "request_expired"
+  | "request_cancelled"
   | "already_replied"
   | "delivery_not_found"
   | "lease_expired"
@@ -31,6 +33,8 @@ const EXIT_CODES: Record<ErrorCode, number> = {
   ambiguous_target: 4,
   not_actor: 5,
   request_closed: 4,
+  request_expired: 4,
+  request_cancelled: 4,
   already_replied: 4,
   delivery_not_found: 3,
   lease_expired: 4,

@@ -1,0 +1,25 @@
+# 本地专用文件，不提交
+CLAUDE.md
+
+# macOS
+.DS_Store
+
+# Node / TypeScript
+node_modules/
+dist/
+build/
+coverage/
+*.tsbuildinfo
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# 环境变量与密钥
+.env
+.env.*
+!.env.example
+
+# 日志与本地运行数据
+*.log
+logs/

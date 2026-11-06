@@ -13,3 +13,24 @@ export function openDatabase(path: string): DatabaseSync {
   db.exec("PRAGMA synchronous = NORMAL");
   return db;
 }
+
+/**
+ * Run a multi-statement write under BEGIN IMMEDIATE. SQLite serializes the
+ * writer slot, so claim operations cannot hand the same delivery to two
+ * callers.
+ */
+export function withImmediate<T>(db: DatabaseSync, fn: () => T): T {
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    const result = fn();
+    db.exec("COMMIT");
+    return result;
+  } catch (error) {
+    try {
+      db.exec("ROLLBACK");
+    } catch {
+      // Preserve the original failure.
+    }
+    throw error;
+  }
+}

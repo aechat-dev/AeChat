@@ -1,6 +1,6 @@
 import type { DatabaseSync } from "node:sqlite";
 
-const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 2;
 
 const SCHEMA_SQL = `
 CREATE TABLE IF NOT EXISTS sessions (
@@ -83,30 +83,85 @@ CREATE TABLE IF NOT EXISTS config (
 );
 `;
 
+const SCHEMA_V2_SQL = `
+CREATE TABLE IF NOT EXISTS messages (
+  message_id TEXT PRIMARY KEY,
+  kind TEXT NOT NULL CHECK (kind IN ('notify', 'request', 'reply')),
+  from_session TEXT NOT NULL REFERENCES sessions(session_id),
+  to_session TEXT NOT NULL REFERENCES sessions(session_id),
+  request_id TEXT,
+  reply_to TEXT,
+  body TEXT NOT NULL,
+  dedup_key TEXT,
+  created_at TEXT NOT NULL,
+  expires_at TEXT
+);
+CREATE INDEX IF NOT EXISTS messages_to_session ON messages(to_session, created_at);
+CREATE INDEX IF NOT EXISTS messages_from_session ON messages(from_session, created_at);
+CREATE UNIQUE INDEX IF NOT EXISTS messages_dedup
+  ON messages(from_session, to_session, dedup_key)
+  WHERE dedup_key IS NOT NULL;
+
+CREATE TABLE IF NOT EXISTS deliveries (
+  delivery_id TEXT PRIMARY KEY,
+  message_id TEXT NOT NULL REFERENCES messages(message_id),
+  session_id TEXT NOT NULL REFERENCES sessions(session_id),
+  status TEXT NOT NULL
+    CHECK (status IN (
+      'stored', 'notified', 'delivered', 'acked', 'notify_failed',
+      'expired', 'dead_letter'
+    )),
+  delivery_token TEXT UNIQUE,
+  lease_expires_at TEXT,
+  attempts INTEGER NOT NULL DEFAULT 0,
+  notified_at TEXT,
+  delivered_at TEXT,
+  acked_at TEXT,
+  replied_at TEXT,
+  last_error TEXT,
+  UNIQUE(message_id, session_id)
+);
+CREATE INDEX IF NOT EXISTS deliveries_session_status
+  ON deliveries(session_id, status, lease_expires_at);
+CREATE INDEX IF NOT EXISTS deliveries_status_lease
+  ON deliveries(status, lease_expires_at);
+`;
+
+const MIGRATIONS: Record<number, string> = {
+  1: SCHEMA_SQL,
+  2: SCHEMA_V2_SQL,
+};
+
 /**
- * Create or upgrade the store schema. Version 1 is the Phase 1 baseline;
- * later phases add tables through explicit migrations.
+ * Create or upgrade the store schema. Migrations are applied in order, each
+ * in its own IMMEDIATE transaction; a database newer than this binary is
+ * rejected rather than opened with unknown columns.
  */
 export function migrate(db: DatabaseSync): void {
   const row = db.prepare("PRAGMA user_version").get() as
     | Record<string, unknown>
     | undefined;
-  const version = Number(row?.["user_version"] ?? 0);
+  let version = Number(row?.["user_version"] ?? 0);
 
-  if (version === SCHEMA_VERSION) {
-    return;
-  }
-  if (version !== 0) {
+  if (version > SCHEMA_VERSION) {
     throw new Error(`unsupported database schema version ${version}`);
   }
 
-  db.exec("BEGIN IMMEDIATE");
-  try {
-    db.exec(SCHEMA_SQL);
-    db.exec(`PRAGMA user_version = ${SCHEMA_VERSION}`);
-    db.exec("COMMIT");
-  } catch (error) {
-    db.exec("ROLLBACK");
-    throw error;
+  while (version < SCHEMA_VERSION) {
+    const next = version + 1;
+    const sql = MIGRATIONS[next];
+    if (sql === undefined) {
+      throw new Error(`missing migration ${next}`);
+    }
+    db.exec("BEGIN IMMEDIATE");
+    try {
+      db.exec(sql);
+      db.exec(`PRAGMA user_version = ${next}`);
+      db.exec("COMMIT");
+      version = next;
+    } catch (error) {
+      db.exec("ROLLBACK");
+      throw error;
+    }
   }
 }

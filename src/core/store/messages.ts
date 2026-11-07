@@ -241,6 +241,17 @@ export class DeliveryRepository {
     return Number(result.changes) > 0;
   }
 
+  resetUnackedForResume(sessionId: string): number {
+    const result = this.db
+      .prepare(
+        `UPDATE deliveries
+         SET status = 'notified', delivery_token = NULL, lease_expires_at = NULL
+         WHERE session_id = ? AND status = 'delivered'`,
+      )
+      .run(sessionId);
+    return Number(result.changes);
+  }
+
   /**
    * Atomically lazy-expire, dead-letter exhausted leases, then claim at most
    * `limit` deliverable rows for one session. Callers get a fresh token and a

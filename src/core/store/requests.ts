@@ -123,4 +123,21 @@ export class RequestRepository {
       .run(now, requestId, requesterSession, now);
     return Number(result.changes) > 0;
   }
+
+  cancelForLeft(sessionId: string, now: string): number {
+    const result = this.db
+      .prepare(
+        `UPDATE requests
+         SET status = 'cancelled',
+             close_reason = CASE
+               WHEN requester_session = ? THEN 'requester_left'
+               ELSE 'target_left'
+             END,
+             status_changed_at = ?
+         WHERE status = 'open'
+           AND (requester_session = ? OR target_session = ?)`,
+      )
+      .run(sessionId, now, sessionId, sessionId);
+    return Number(result.changes);
+  }
 }

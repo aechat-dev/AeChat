@@ -224,9 +224,40 @@ export class SessionRepository {
     return Number(result.changes) > 0;
   }
 
+  beginResume(id: SessionId): boolean {
+    const result = this.db
+      .prepare(
+        "UPDATE sessions SET resume_state = 'resume_pending' WHERE session_id = ? AND resume_state = 'idle' AND left_at IS NULL",
+      )
+      .run(id);
+    return Number(result.changes) > 0;
+  }
+
+  finishResume(id: SessionId, at: string): boolean {
+    const result = this.db
+      .prepare(
+        `UPDATE sessions
+         SET resume_state = 'idle', resume_count = resume_count + 1, resumed_at = ?
+         WHERE session_id = ? AND resume_state = 'resume_pending' AND left_at IS NULL`,
+      )
+      .run(at, id);
+    return Number(result.changes) > 0;
+  }
+
+  failResume(id: SessionId): boolean {
+    const result = this.db
+      .prepare(
+        "UPDATE sessions SET resume_state = 'idle' WHERE session_id = ? AND resume_state = 'resume_pending'",
+      )
+      .run(id);
+    return Number(result.changes) > 0;
+  }
+
   markLeft(id: SessionId, at: string): void {
     this.db
-      .prepare("UPDATE sessions SET left_at = ? WHERE session_id = ? AND left_at IS NULL")
+      .prepare(
+        "UPDATE sessions SET left_at = ?, resume_state = 'idle' WHERE session_id = ? AND left_at IS NULL",
+      )
       .run(at, id);
   }
 }

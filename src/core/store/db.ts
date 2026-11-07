@@ -1,3 +1,5 @@
+import { chmodSync } from "node:fs";
+
 import { DatabaseSync } from "node:sqlite";
 
 /**
@@ -7,6 +9,10 @@ import { DatabaseSync } from "node:sqlite";
  */
 export function openDatabase(path: string): DatabaseSync {
   const db = new DatabaseSync(path);
+  if (path !== ":memory:") {
+    // Message bodies live here; do not rely on the process umask.
+    chmodSync(path, 0o600);
+  }
   db.exec("PRAGMA foreign_keys = ON");
   db.exec("PRAGMA busy_timeout = 5000");
   db.exec("PRAGMA journal_mode = WAL");

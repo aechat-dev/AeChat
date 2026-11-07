@@ -54,7 +54,10 @@ export class FakeTransportAdapter implements TransportAdapter {
       team: "fake-team",
       mode: this.mode,
       state: "pending",
-      evidence: { sessionId: session.sessionId },
+      evidence: {
+        sessionId: session.sessionId,
+        bindDirective: `fake actas ${address}`,
+      },
       bindDirective: `fake actas ${address}`,
     });
   }

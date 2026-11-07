@@ -13,8 +13,10 @@ import { doctorCommand } from "./commands/doctor.js";
 import type { CommandContext } from "./commands/context.js";
 import { heartbeatCommand } from "./commands/heartbeat.js";
 import { inboxCommand } from "./commands/inbox.js";
+import { leaveCommand } from "./commands/leave.js";
 import { listCommand } from "./commands/list.js";
 import { registerCommand } from "./commands/register.js";
+import { resumeCommand } from "./commands/resume.js";
 import { replyCommand } from "./commands/reply.js";
 import { retryCommand } from "./commands/retry.js";
 import { sendCommand } from "./commands/send.js";
@@ -25,6 +27,7 @@ import { AechatError } from "../core/errors.js";
 import { DeliveryService } from "../core/services/delivery-service.js";
 import { CapabilityService } from "../core/services/capability-service.js";
 import { RequestService } from "../core/services/request-service.js";
+import { ResumeService } from "../core/services/resume-service.js";
 import { SessionService } from "../core/services/session-service.js";
 import { openDatabase } from "../core/store/db.js";
 import { EventRepository } from "../core/store/events.js";
@@ -54,6 +57,8 @@ const COMMANDS = new Set([
   "cancel",
   "retry",
   "doctor",
+  "resume",
+  "leave",
 ]);
 
 const USAGE = `aechat — local-first session messaging
@@ -77,6 +82,8 @@ Commands:
   cancel     --session <uuid> --request <request-id>
   retry      --session <uuid> (--message <message-id> | --delivery <delivery-id>)
   doctor     [--json]
+  resume     --session <uuid> [--force]
+  leave      --session <uuid>
 
 All identity-related commands require an explicit session.
 `;
@@ -99,6 +106,8 @@ function createContext(): CommandContext {
     sessions,
     bindings,
     transport,
+    requests: new RequestRepository(db),
+    db,
     events,
   });
   const delivery = new DeliveryService({
@@ -125,11 +134,20 @@ function createContext(): CommandContext {
     probes: new ProbeRepository(db),
     transport,
   });
+  const resume = new ResumeService({
+    db,
+    sessions,
+    bindings,
+    deliveries: new DeliveryRepository(db),
+    transport,
+    events,
+  });
 
   return {
     service,
     delivery,
     request,
+    resume,
     capabilities,
     transport,
     now: nowIso,
@@ -197,6 +215,12 @@ export async function main(argv: readonly string[]): Promise<number> {
         break;
       case "doctor":
         data = await doctorCommand(rest, ctx);
+        break;
+      case "resume":
+        data = await resumeCommand(rest, ctx);
+        break;
+      case "leave":
+        data = await leaveCommand(rest, ctx);
         break;
       default:
         throw new AechatError("internal", `unhandled command: ${command}`);

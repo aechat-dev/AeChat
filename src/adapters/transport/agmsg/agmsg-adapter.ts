@@ -88,6 +88,7 @@ export class AgmsgAdapter implements TransportAdapter {
         client: session.client,
         project: session.project,
         mode,
+        bindDirective: bindDirectiveFor(session.client, address),
       },
       bindDirective: bindDirectiveFor(session.client, address),
     };

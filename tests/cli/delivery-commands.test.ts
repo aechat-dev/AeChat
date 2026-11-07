@@ -7,6 +7,7 @@ import type { CommandResult } from "../../src/cli/output.js";
 import { DeliveryService } from "../../src/core/services/delivery-service.js";
 import { CapabilityService } from "../../src/core/services/capability-service.js";
 import { RequestService } from "../../src/core/services/request-service.js";
+import { ResumeService } from "../../src/core/services/resume-service.js";
 import { SessionService } from "../../src/core/services/session-service.js";
 import { openDatabase } from "../../src/core/store/db.js";
 import { EventRepository } from "../../src/core/store/events.js";
@@ -71,10 +72,20 @@ function setup(): Setup {
     probes: new ProbeRepository(db),
     transport,
   });
+  const resume = new ResumeService({
+    db,
+    sessions,
+    bindings,
+    deliveries,
+    transport,
+    events,
+    now,
+  });
   const ctx: CommandContext = {
     service,
     delivery,
     request,
+    resume,
     capabilities,
     transport,
     now,

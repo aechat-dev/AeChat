@@ -6,6 +6,7 @@ import { whoamiCommand } from "../../src/cli/commands/whoami.js";
 import { DeliveryService } from "../../src/core/services/delivery-service.js";
 import { CapabilityService } from "../../src/core/services/capability-service.js";
 import { RequestService } from "../../src/core/services/request-service.js";
+import { ResumeService } from "../../src/core/services/resume-service.js";
 import { EventRepository } from "../../src/core/store/events.js";
 import {
   DeliveryRepository,
@@ -63,7 +64,16 @@ function setup(options: ConstructorParameters<typeof FakeTransportAdapter>[0] = 
     probes: new ProbeRepository(db),
     transport,
   });
-  return { service, delivery, request, capabilities, transport };
+  const resume = new ResumeService({
+    db,
+    sessions,
+    bindings,
+    deliveries: new DeliveryRepository(db),
+    transport,
+    events: new EventRepository(db),
+    now: () => "2026-11-06T12:00:00.000Z",
+  });
+  return { service, delivery, request, resume, capabilities, transport };
 }
 
 afterEach(() => {
@@ -74,11 +84,11 @@ afterEach(() => {
 
 describe("session CLI commands", () => {
   it("register returns a session id and bind directive", async () => {
-    const { service, delivery, request, capabilities, transport } = setup();
+    const { service, delivery, request, resume, capabilities, transport } = setup();
 
     const data = await registerCommand(
       ["--name", "dev", "--client", "claude-code", "--project", "/tmp/project"],
-      { service, delivery, request, capabilities, transport, now: () => "2026-11-06T12:00:00.000Z" },
+      { service, delivery, request, resume, capabilities, transport, now: () => "2026-11-06T12:00:00.000Z" },
     );
 
     expect(data["session_id"]).toBeTypeOf("string");
@@ -87,7 +97,7 @@ describe("session CLI commands", () => {
   });
 
   it("whoami --conversation works without --session", async () => {
-    const { service, delivery, request, capabilities, transport } = setup();
+    const { service, delivery, request, resume, capabilities, transport } = setup();
     const registered = await service.register({
       displayName: "dev",
       client: "claude-code",
@@ -99,6 +109,7 @@ describe("session CLI commands", () => {
       service,
       delivery,
       request,
+      resume,
       capabilities,
       transport,
       now: () => "2026-11-06T12:00:00.000Z",
@@ -107,10 +118,10 @@ describe("session CLI commands", () => {
   });
 
   it("list --json includes supported/available separately", async () => {
-    const { service, delivery, request, capabilities, transport } = setup();
+    const { service, delivery, request, resume, capabilities, transport } = setup();
     const registered = await registerCommand(
       ["--name", "dev", "--client", "claude-code", "--project", "/tmp/project"],
-      { service, delivery, request, capabilities, transport, now: () => "2026-11-06T12:00:00.000Z" },
+      { service, delivery, request, resume, capabilities, transport, now: () => "2026-11-06T12:00:00.000Z" },
     );
     await service.confirm(registered["session_id"] as string);
 
@@ -118,6 +129,7 @@ describe("session CLI commands", () => {
       service,
       delivery,
       request,
+      resume,
       capabilities,
       transport,
       now: () => "2026-11-06T12:00:00.000Z",
@@ -135,10 +147,10 @@ describe("session CLI commands", () => {
   });
 
   it("does not mark capabilities available when the delivery mode is unknown", async () => {
-    const { service, delivery, request, capabilities, transport } = setup({ mode: "unknown" });
+    const { service, delivery, request, resume, capabilities, transport } = setup({ mode: "unknown" });
     const registered = await registerCommand(
       ["--name", "dev", "--client", "claude-code", "--project", "/tmp/project"],
-      { service, delivery, request, capabilities, transport, now: () => "2026-11-06T12:00:00.000Z" },
+      { service, delivery, request, resume, capabilities, transport, now: () => "2026-11-06T12:00:00.000Z" },
     );
     await service.confirm(registered["session_id"] as string);
 
@@ -146,6 +158,7 @@ describe("session CLI commands", () => {
       service,
       delivery,
       request,
+      resume,
       capabilities,
       transport,
       now: () => "2026-11-06T12:00:00.000Z",

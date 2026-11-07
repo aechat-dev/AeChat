@@ -1,3 +1,5 @@
+import type { DatabaseSync } from "node:sqlite";
+
 import { AechatError } from "../errors.js";
 import { newId } from "../ids.js";
 import { validateDisplayName } from "../names.js";
@@ -13,6 +15,8 @@ import type {
   TransportBindingRepository,
 } from "../store/sessions.js";
 import type { EventRepository } from "../store/events.js";
+import type { RequestRepository } from "../store/requests.js";
+import { withImmediate } from "../store/db.js";
 import type { TransportBindingRecord } from "../types.js";
 
 export type Session = SessionRecord;
@@ -48,6 +52,8 @@ export interface SessionServiceDeps {
   sessions: SessionRepository;
   bindings: TransportBindingRepository;
   transport: TransportAdapter;
+  requests?: RequestRepository;
+  db?: DatabaseSync;
   events?: EventRepository;
   now?: () => string;
   newId?: () => string;
@@ -97,6 +103,8 @@ export class SessionService {
   private readonly sessions: SessionRepository;
   private readonly bindings: TransportBindingRepository;
   private readonly transport: TransportAdapter;
+  private readonly requests: RequestRepository | undefined;
+  private readonly db: DatabaseSync | undefined;
   private readonly events: EventRepository | undefined;
   private readonly now: () => string;
   private readonly newId: () => string;
@@ -105,6 +113,8 @@ export class SessionService {
     this.sessions = deps.sessions;
     this.bindings = deps.bindings;
     this.transport = deps.transport;
+    this.requests = deps.requests;
+    this.db = deps.db;
     this.events = deps.events;
     this.now = deps.now ?? nowIso;
     this.newId = deps.newId ?? newId;
@@ -177,6 +187,12 @@ export class SessionService {
     if (session === undefined) {
       throw new AechatError("session_not_found", `session not found: ${sessionId}`);
     }
+    if (session.leftAt !== null) {
+      throw new AechatError(
+        "resume_unsafe",
+        `session has left; create a new session: ${sessionId}`,
+      );
+    }
 
     const records = this.bindings.listForSession(sessionId);
     const record = records.at(-1);
@@ -192,6 +208,14 @@ export class SessionService {
       adapterBinding(record),
       session.conversationId ?? undefined,
     );
+    const current = this.sessions.get(sessionId);
+    if (current?.leftAt !== null && current?.leftAt !== undefined) {
+      await this.transport.release(adapterBinding(record)).catch(() => undefined);
+      throw new AechatError(
+        "resume_unsafe",
+        `session left while confirming: ${sessionId}`,
+      );
+    }
     const at = this.now();
     this.bindings.updateState(record.bindingId, result.state, at);
 
@@ -301,6 +325,46 @@ export class SessionService {
         ...session,
         transport: bindings.at(-1) ?? null,
       };
+    });
+  }
+
+  async leave(sessionId: string): Promise<void> {
+    const session = this.sessions.get(sessionId);
+    if (session === undefined) {
+      throw new AechatError("session_not_found", `session not found: ${sessionId}`);
+    }
+    if (session.leftAt !== null) {
+      return;
+    }
+    const binding = this.bindings.listForSession(sessionId).at(-1);
+    if (binding !== undefined) {
+      try {
+        await this.transport.release(adapterBinding(binding));
+      } catch (error) {
+        throw new AechatError(
+          "transport_unavailable",
+          `transport release failed: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
+    }
+
+    const at = this.now();
+    const write = (): void => {
+      this.sessions.markLeft(sessionId, at);
+      if (binding !== undefined) {
+        this.bindings.updateState(binding.bindingId, "released", at);
+      }
+      this.requests?.cancelForLeft(sessionId, at);
+    };
+    if (this.db === undefined) {
+      write();
+    } else {
+      withImmediate(this.db, write);
+    }
+    this.events?.record({
+      event: "leave",
+      sessionId,
+      transport: binding?.transport ?? null,
     });
   }
 

@@ -4,12 +4,14 @@ import { listCommand } from "../../src/cli/commands/list.js";
 import { registerCommand } from "../../src/cli/commands/register.js";
 import { whoamiCommand } from "../../src/cli/commands/whoami.js";
 import { DeliveryService } from "../../src/core/services/delivery-service.js";
+import { CapabilityService } from "../../src/core/services/capability-service.js";
 import { RequestService } from "../../src/core/services/request-service.js";
 import { EventRepository } from "../../src/core/store/events.js";
 import {
   DeliveryRepository,
   MessageRepository,
 } from "../../src/core/store/messages.js";
+import { ProbeRepository } from "../../src/core/store/probes.js";
 import { RequestRepository } from "../../src/core/store/requests.js";
 import { SessionService } from "../../src/core/services/session-service.js";
 import { openDatabase } from "../../src/core/store/db.js";
@@ -55,7 +57,13 @@ function setup(options: ConstructorParameters<typeof FakeTransportAdapter>[0] = 
     events: new EventRepository(db),
     now: () => "2026-11-06T12:00:00.000Z",
   });
-  return { service, delivery, request, transport };
+  const capabilities = new CapabilityService({
+    sessions,
+    bindings,
+    probes: new ProbeRepository(db),
+    transport,
+  });
+  return { service, delivery, request, capabilities, transport };
 }
 
 afterEach(() => {
@@ -66,11 +74,11 @@ afterEach(() => {
 
 describe("session CLI commands", () => {
   it("register returns a session id and bind directive", async () => {
-    const { service, delivery, request, transport } = setup();
+    const { service, delivery, request, capabilities, transport } = setup();
 
     const data = await registerCommand(
       ["--name", "dev", "--client", "claude-code", "--project", "/tmp/project"],
-      { service, delivery, request, transport, now: () => "2026-11-06T12:00:00.000Z" },
+      { service, delivery, request, capabilities, transport, now: () => "2026-11-06T12:00:00.000Z" },
     );
 
     expect(data["session_id"]).toBeTypeOf("string");
@@ -79,7 +87,7 @@ describe("session CLI commands", () => {
   });
 
   it("whoami --conversation works without --session", async () => {
-    const { service, delivery, request, transport } = setup();
+    const { service, delivery, request, capabilities, transport } = setup();
     const registered = await service.register({
       displayName: "dev",
       client: "claude-code",
@@ -91,6 +99,7 @@ describe("session CLI commands", () => {
       service,
       delivery,
       request,
+      capabilities,
       transport,
       now: () => "2026-11-06T12:00:00.000Z",
     });
@@ -98,10 +107,10 @@ describe("session CLI commands", () => {
   });
 
   it("list --json includes supported/available separately", async () => {
-    const { service, delivery, request, transport } = setup();
+    const { service, delivery, request, capabilities, transport } = setup();
     const registered = await registerCommand(
       ["--name", "dev", "--client", "claude-code", "--project", "/tmp/project"],
-      { service, delivery, request, transport, now: () => "2026-11-06T12:00:00.000Z" },
+      { service, delivery, request, capabilities, transport, now: () => "2026-11-06T12:00:00.000Z" },
     );
     await service.confirm(registered["session_id"] as string);
 
@@ -109,26 +118,27 @@ describe("session CLI commands", () => {
       service,
       delivery,
       request,
+      capabilities,
       transport,
       now: () => "2026-11-06T12:00:00.000Z",
     });
     const sessions = data["sessions"] as Array<Record<string, unknown>>;
     expect(sessions).toHaveLength(1);
-    const capabilities = sessions[0]?.["capabilities"] as Record<string, unknown>;
-    expect(capabilities["supported"]).toEqual(
+    const caps = sessions[0]?.["capabilities"] as Record<string, unknown>;
+    expect(caps["supported"]).toEqual(
       expect.objectContaining({ pull: true, wait: true }),
     );
-    expect(capabilities["available"]).toEqual(
+    expect(caps["available"]).toEqual(
       expect.objectContaining({ pull: true, wait: true }),
     );
-    expect(capabilities["wakeup_level"]).toBe("unknown");
+    expect(caps["wakeup_level"]).toBe("unknown");
   });
 
   it("does not mark capabilities available when the delivery mode is unknown", async () => {
-    const { service, delivery, request, transport } = setup({ mode: "unknown" });
+    const { service, delivery, request, capabilities, transport } = setup({ mode: "unknown" });
     const registered = await registerCommand(
       ["--name", "dev", "--client", "claude-code", "--project", "/tmp/project"],
-      { service, delivery, request, transport, now: () => "2026-11-06T12:00:00.000Z" },
+      { service, delivery, request, capabilities, transport, now: () => "2026-11-06T12:00:00.000Z" },
     );
     await service.confirm(registered["session_id"] as string);
 
@@ -136,14 +146,15 @@ describe("session CLI commands", () => {
       service,
       delivery,
       request,
+      capabilities,
       transport,
       now: () => "2026-11-06T12:00:00.000Z",
     });
     const sessions = data["sessions"] as Array<Record<string, unknown>>;
-    const capabilities = sessions[0]?.["capabilities"] as Record<string, unknown>;
-    expect(capabilities["available"]).toEqual({
-      pull: false,
-      wait: false,
+    const caps = sessions[0]?.["capabilities"] as Record<string, unknown>;
+    expect(caps["available"]).toEqual({
+      pull: true,
+      wait: true,
       notification_receive: false,
       busy_receive: false,
       idle_wakeup: false,

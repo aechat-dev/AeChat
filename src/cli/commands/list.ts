@@ -3,91 +3,13 @@ import {
   DEFAULT_TTL,
   deriveBoundState,
   deriveStatus,
-  type BoundState,
   type SessionStatus,
   type StatusEvidence,
 } from "../../core/services/session-status.js";
-import type { TransportBinding } from "../../core/transport/adapter.js";
-import type { TransportBindingRecord } from "../../core/types.js";
+import { adapterBinding } from "../../core/services/capability-service.js";
+import type { TransportState } from "../../core/types.js";
 import { parseArgs } from "../args.js";
 import type { CommandContext } from "./context.js";
-
-function adapterBinding(record: TransportBindingRecord): TransportBinding {
-  let evidence: Record<string, unknown> = {};
-  if (record.evidenceJson !== null) {
-    try {
-      const parsed: unknown = JSON.parse(record.evidenceJson);
-      if (typeof parsed === "object" && parsed !== null) {
-        evidence = parsed as Record<string, unknown>;
-      }
-    } catch {
-      evidence = {};
-    }
-  }
-  return {
-    transport: record.transport,
-    address: record.address,
-    team: record.team,
-    mode: record.mode,
-    state: record.state,
-    evidence,
-    bindDirective: "",
-  };
-}
-
-interface CapabilitySet {
-  pull: boolean;
-  wait: boolean;
-  notification_receive: boolean;
-  busy_receive: boolean;
-  idle_wakeup: boolean;
-}
-
-function capabilitiesFor(
-  entry: SessionListEntry,
-  status: SessionStatus,
-  boundState: BoundState,
-): Record<string, unknown> {
-  const hasBinding = entry.transport !== null;
-  const supported: CapabilitySet = {
-    pull: true,
-    wait: true,
-    notification_receive: hasBinding,
-    busy_receive: false,
-    idle_wakeup: false,
-  };
-  const mode = entry.transport?.mode;
-  const canDeliver =
-    status === "online" &&
-    boundState === "valid" &&
-    hasBinding &&
-    mode !== "off" &&
-    mode !== "unknown";
-  const available: CapabilitySet = canDeliver
-    ? {
-        pull: true,
-        wait: true,
-        notification_receive: supported.notification_receive,
-        busy_receive: false,
-        idle_wakeup: false,
-      }
-    : {
-        pull: false,
-        wait: false,
-        notification_receive: false,
-        busy_receive: false,
-        idle_wakeup: false,
-      };
-
-  return {
-    supported,
-    available,
-    wakeup_level: "unknown",
-    observed_at: null,
-    conditions: [],
-    client_version: null,
-  };
-}
 
 export async function listCommand(
   argv: readonly string[],
@@ -115,15 +37,25 @@ export async function listCommand(
       const status = deriveStatus({
         lastSeenAt: entry.lastSeenAt,
         hostSeenAt: entry.hostSeenAt,
+        hostSeenSource: entry.hostSeenSource,
         binding: { state: transportState, at: inspectedAt },
         leftAt: entry.leftAt,
         now: ctx.now(),
         ttl: DEFAULT_TTL,
       });
+      let effectiveBindingState: TransportState = binding?.state ?? "pending";
+      if (transportState === "live") {
+        effectiveBindingState = "bound";
+      } else if (transportState === "dead" || transportState === "released") {
+        effectiveBindingState = "released";
+      } else if (binding !== null && binding.state === "bound") {
+        // The transport could not prove liveness; do not report a valid bind.
+        effectiveBindingState = "stale";
+      }
       const boundState = deriveBoundState({
         boundScope: entry.boundScope,
         boundCheckedAt: entry.boundCheckedAt,
-        binding,
+        binding: binding === null ? null : { state: effectiveBindingState },
         now: ctx.now(),
         boundTtlSeconds: DEFAULT_TTL.boundTtlSeconds,
       });
@@ -154,7 +86,12 @@ export async function listCommand(
                   last_verified_at: binding.lastVerifiedAt,
                 },
               ],
-        capabilities: capabilitiesFor(entry, status.status, boundState),
+        capabilities: ctx.capabilities.reportForSession(
+          entry,
+          binding,
+          status.status,
+          boundState,
+        ),
       };
     }),
   );

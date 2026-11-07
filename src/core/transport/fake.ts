@@ -102,7 +102,7 @@ export class FakeTransportAdapter implements TransportAdapter {
     );
   }
 
-  inspect(): Promise<TransportStatus> {
+  inspect(_binding?: TransportBinding): Promise<TransportStatus> {
     return Promise.resolve({
       state: this.live ? "live" : "dead",
       at: new Date().toISOString(),

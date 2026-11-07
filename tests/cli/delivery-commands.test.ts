@@ -5,6 +5,7 @@ import { sendCommand } from "../../src/cli/commands/send.js";
 import type { CommandContext } from "../../src/cli/commands/context.js";
 import type { CommandResult } from "../../src/cli/output.js";
 import { DeliveryService } from "../../src/core/services/delivery-service.js";
+import { CapabilityService } from "../../src/core/services/capability-service.js";
 import { RequestService } from "../../src/core/services/request-service.js";
 import { SessionService } from "../../src/core/services/session-service.js";
 import { openDatabase } from "../../src/core/store/db.js";
@@ -13,6 +14,7 @@ import {
   DeliveryRepository,
   MessageRepository,
 } from "../../src/core/store/messages.js";
+import { ProbeRepository } from "../../src/core/store/probes.js";
 import { RequestRepository } from "../../src/core/store/requests.js";
 import { migrate } from "../../src/core/store/schema.js";
 import {
@@ -63,10 +65,17 @@ function setup(): Setup {
     events,
     now,
   });
+  const capabilities = new CapabilityService({
+    sessions,
+    bindings,
+    probes: new ProbeRepository(db),
+    transport,
+  });
   const ctx: CommandContext = {
     service,
     delivery,
     request,
+    capabilities,
     transport,
     now,
   };

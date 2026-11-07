@@ -9,6 +9,7 @@ import { AgmsgCli } from "../adapters/transport/agmsg/agmsg-cli.js";
 import { ackCommand } from "./commands/ack.js";
 import { cancelCommand } from "./commands/cancel.js";
 import { confirmCommand } from "./commands/confirm.js";
+import { doctorCommand } from "./commands/doctor.js";
 import type { CommandContext } from "./commands/context.js";
 import { heartbeatCommand } from "./commands/heartbeat.js";
 import { inboxCommand } from "./commands/inbox.js";
@@ -22,11 +23,13 @@ import { waitCommand } from "./commands/wait.js";
 import { whoamiCommand } from "./commands/whoami.js";
 import { AechatError } from "../core/errors.js";
 import { DeliveryService } from "../core/services/delivery-service.js";
+import { CapabilityService } from "../core/services/capability-service.js";
 import { RequestService } from "../core/services/request-service.js";
 import { SessionService } from "../core/services/session-service.js";
 import { openDatabase } from "../core/store/db.js";
 import { EventRepository } from "../core/store/events.js";
 import { MessageRepository, DeliveryRepository } from "../core/store/messages.js";
+import { ProbeRepository } from "../core/store/probes.js";
 import { RequestRepository } from "../core/store/requests.js";
 import { migrate } from "../core/store/schema.js";
 import {
@@ -50,6 +53,7 @@ const COMMANDS = new Set([
   "wait",
   "cancel",
   "retry",
+  "doctor",
 ]);
 
 const USAGE = `aechat — local-first session messaging
@@ -72,6 +76,7 @@ Commands:
   wait       --session <uuid> [--request <request-id>] [--timeout <seconds>] [--peek] [--json]
   cancel     --session <uuid> --request <request-id>
   retry      --session <uuid> (--message <message-id> | --delivery <delivery-id>)
+  doctor     [--json]
 
 All identity-related commands require an explicit session.
 `;
@@ -85,8 +90,9 @@ function createContext(): CommandContext {
   const sessions = new SessionRepository(db);
   const bindings = new TransportBindingRepository(db);
   const events = new EventRepository(db);
+  const agmsgCli = new AgmsgCli();
   const transport = new AgmsgAdapter({
-    cli: new AgmsgCli(),
+    cli: agmsgCli,
     team: process.env["AECHAT_TEAM"] ?? "aechat",
   });
   const service = new SessionService({
@@ -113,8 +119,22 @@ function createContext(): CommandContext {
     delivery,
     events,
   });
+  const capabilities = new CapabilityService({
+    sessions,
+    bindings,
+    probes: new ProbeRepository(db),
+    transport,
+  });
 
-  return { service, delivery, request, transport, now: nowIso };
+  return {
+    service,
+    delivery,
+    request,
+    capabilities,
+    transport,
+    now: nowIso,
+    agmsgVersion: () => agmsgCli.version(),
+  };
 }
 
 /**
@@ -149,7 +169,7 @@ export async function main(argv: readonly string[]): Promise<number> {
         data = await listCommand(rest, ctx);
         break;
       case "heartbeat":
-        data = heartbeatCommand(rest, ctx);
+        data = await heartbeatCommand(rest, ctx);
         break;
       case "send":
         data = await sendCommand(rest, ctx);
@@ -174,6 +194,9 @@ export async function main(argv: readonly string[]): Promise<number> {
         break;
       case "retry":
         data = await retryCommand(rest, ctx);
+        break;
+      case "doctor":
+        data = await doctorCommand(rest, ctx);
         break;
       default:
         throw new AechatError("internal", `unhandled command: ${command}`);

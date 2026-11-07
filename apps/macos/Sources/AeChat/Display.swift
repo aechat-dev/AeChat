@@ -9,9 +9,10 @@ enum Display {
     static func timestamp(_ iso: String?) -> String {
         guard let iso else { return "—" }
         guard let date = isoDate(iso) else { return iso }
+        let use24Hour = UserDefaults.standard.object(forKey: "AeChatUse24Hour") as? Bool ?? true
         let formatter = DateFormatter()
         formatter.dateStyle = .none
-        formatter.timeStyle = .short
+        formatter.dateFormat = use24Hour ? "HH:mm" : "h:mm a"
         return formatter.string(from: date)
     }
 

@@ -7,6 +7,8 @@ struct RequestCard: View {
     let replies: [UiMessage]
 
     @StateObject private var expansion = ExpansionState()
+    @AppStorage("AeChatFontSize") private var fontSize = 13.0
+    @AppStorage("AeChatUse24Hour") private var use24Hour = true
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -80,7 +82,7 @@ struct RequestCard: View {
             : body
         return VStack(alignment: .leading, spacing: 4) {
             Text(visible)
-                .font(.body)
+                .font(.system(size: fontSize))
                 .textSelection(.enabled)
                 .fixedSize(horizontal: false, vertical: true)
             if tooLong {

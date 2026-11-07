@@ -1,3 +1,4 @@
+import Darwin
 import Foundation
 
 public enum AeChatClientError: LocalizedError {
@@ -36,6 +37,35 @@ public struct LaunchCommand: Equatable, Sendable {
     public init(executable: URL, arguments: [String]) {
         self.executable = executable
         self.arguments = arguments
+    }
+}
+
+private final class RunningProcesses: @unchecked Sendable {
+    static let shared = RunningProcesses()
+
+    private let lock = NSLock()
+    private var processes: [Int32: Process] = [:]
+
+    func add(_ process: Process) {
+        lock.lock()
+        processes[process.processIdentifier] = process
+        lock.unlock()
+    }
+
+    func remove(_ process: Process) {
+        lock.lock()
+        processes.removeValue(forKey: process.processIdentifier)
+        lock.unlock()
+    }
+
+    func terminateAll() {
+        lock.lock()
+        let running = Array(processes.values)
+        processes.removeAll()
+        lock.unlock()
+        for process in running where process.isRunning {
+            AeChatClient.terminateProcess(process)
+        }
     }
 }
 
@@ -249,7 +279,7 @@ public struct AeChatClient {
                     } catch {
                         stdout.fileHandleForReading.readabilityHandler = nil
                         if process.isRunning {
-                            process.terminate()
+                            Self.terminateProcess(process)
                         }
                         continuation.finish(throwing: error)
                         return
@@ -278,7 +308,7 @@ public struct AeChatClient {
             continuation.onTermination = { _ in
                 stdout.fileHandleForReading.readabilityHandler = nil
                 if process.isRunning {
-                    process.terminate()
+                    Self.terminateProcess(process)
                 }
             }
 
@@ -301,6 +331,26 @@ public struct AeChatClient {
             self.stdout = stdout
             self.stderr = stderr
             self.status = status
+        }
+    }
+
+    /// Stop every short-lived bridge process (snapshot/messages/log/doctor)
+    /// when the app is quitting.
+    public static func terminateActiveProcesses() {
+        RunningProcesses.shared.terminateAll()
+    }
+
+    /// Stop the stream child. SIGTERM is delivered first; SIGKILL is the
+    /// fallback because GUI signal handling can leave SIGTERM ignored in the
+    /// spawned process.
+    static func terminateProcess(_ process: Process) {
+        guard process.isRunning else { return }
+        process.terminate()
+        let identifier = process.processIdentifier
+        DispatchQueue.global().asyncAfter(deadline: .now() + 0.5) {
+            if process.isRunning {
+                kill(identifier, SIGKILL)
+            }
         }
     }
 
@@ -335,10 +385,11 @@ public struct AeChatClient {
                     )
                     return
                 }
+                RunningProcesses.shared.add(process)
 
                 let watchdog = DispatchWorkItem {
                     if process.isRunning {
-                        process.terminate()
+                        AeChatClient.terminateProcess(process)
                     }
                 }
                 DispatchQueue.global().asyncAfter(deadline: .now() + timeout, execute: watchdog)
@@ -355,6 +406,7 @@ public struct AeChatClient {
                 let output = stdout.fileHandleForReading.readDataToEndOfFile()
                 group.wait()
                 process.waitUntilExit()
+                RunningProcesses.shared.remove(process)
                 watchdog.cancel()
                 let errorOutput = errorBox.data
 

@@ -3,6 +3,7 @@ import SwiftUI
 
 struct InspectorView: View {
     @EnvironmentObject private var state: AppState
+    @AppStorage("AeChatUse24Hour") private var use24Hour = true
 
     var body: some View {
         Group {

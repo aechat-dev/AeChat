@@ -1,4 +1,5 @@
 import AeChatKit
+import Darwin
 import Foundation
 import SwiftUI
 
@@ -23,6 +24,9 @@ final class AppState: ObservableObject {
     @Published private(set) var logError: String?
     @Published private(set) var hasNewActivity = false
     @Published private(set) var streamConnected = false
+    @Published private(set) var doctor: UiDoctor?
+    @Published private(set) var doctorError: String?
+    @Published private(set) var isLoadingDoctor = false
 
     private var client: AeChatClient?
     private let stream = EventStream()
@@ -33,9 +37,11 @@ final class AppState: ObservableObject {
     private var lastSnapshotRefresh = Date.distantPast
     private var loadGeneration = 0
     private var logGeneration = 0
+    private var signalSources: [DispatchSourceSignal] = []
 
     init() {
         configureBinary()
+        installSignalHandlers()
     }
 
     var isBinaryMissing: Bool { client == nil }
@@ -310,6 +316,23 @@ final class AppState: ObservableObject {
         hasNewActivity = false
     }
 
+    // MARK: - Doctor
+
+    func loadDoctor() async {
+        guard let client else {
+            doctorError = AeChatClientError.binaryNotFound.localizedDescription
+            return
+        }
+        isLoadingDoctor = true
+        defer { isLoadingDoctor = false }
+        do {
+            doctor = try await client.doctor()
+            doctorError = nil
+        } catch {
+            doctorError = error.localizedDescription
+        }
+    }
+
     // MARK: - Event stream
 
     private func startStreamIfNeeded() {
@@ -332,7 +355,13 @@ final class AppState: ObservableObject {
         guard fallbackTask == nil else { return }
         fallbackTask = Task { [weak self] in
             while !Task.isCancelled {
-                try? await Task.sleep(nanoseconds: 10_000_000_000)
+                let configured = UserDefaults.standard.object(
+                    forKey: "AeChatRefreshInterval"
+                ) as? Double
+                let seconds = max(2, configured ?? 10)
+                try? await Task.sleep(
+                    nanoseconds: UInt64(seconds * 1_000_000_000)
+                )
                 guard let self else { return }
                 if !Task.isCancelled && !self.streamConnected {
                     await self.refreshSnapshotFromStream()
@@ -350,6 +379,7 @@ final class AppState: ObservableObject {
         reloadTask = nil
         fallbackTask?.cancel()
         fallbackTask = nil
+        AeChatClient.terminateActiveProcesses()
     }
 
     private func handle(_ line: UiEventLine) {
@@ -396,9 +426,14 @@ final class AppState: ObservableObject {
         UserDefaults.standard.set(url.path, forKey: Self.binaryDefaultsKey)
         binaryPath = url.path
         client = AeChatClient(binary: url)
+        doctor = nil
+        doctorError = nil
         stream.reset()
         streamConnected = false
-        Task { await refresh() }
+        Task {
+            await refresh()
+            await loadDoctor()
+        }
     }
 
     var binaryHint: String {
@@ -420,4 +455,20 @@ final class AppState: ObservableObject {
     }
 
     private static let binaryDefaultsKey = "AeChatBinaryPath"
+
+    /// SIGTERM/SIGINT should stop the ui-events child before exiting; the
+    /// normal quit path uses willTerminate, but a killed app must not leave a
+    /// stream process behind.
+    private func installSignalHandlers() {
+        for signalNumber in [SIGTERM, SIGINT] {
+            signal(signalNumber, SIG_IGN)
+            let source = DispatchSource.makeSignalSource(signal: signalNumber, queue: .main)
+            source.setEventHandler { [weak self] in
+                self?.stopStream()
+                exit(0)
+            }
+            source.resume()
+            signalSources.append(source)
+        }
+    }
 }

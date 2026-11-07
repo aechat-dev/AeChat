@@ -12,6 +12,11 @@ struct AeChatApp: App {
                 .frame(minWidth: 1_000, minHeight: 640)
         }
         .windowToolbarStyle(.unified)
+
+        Settings {
+            SettingsView()
+                .environmentObject(state)
+        }
     }
 }
 
@@ -46,13 +51,23 @@ struct RootView: View {
                     .truncationMode(.middle)
             }
             ToolbarItem(placement: .primaryAction) {
-                Button {
-                    Task { await state.refresh() }
-                } label: {
-                    Label("Refresh", systemImage: "arrow.clockwise")
+                HStack(spacing: 8) {
+                    Label("Read-only", systemImage: "lock.fill")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .help("AeChat never sends, replies or acknowledges messages.")
+                    SettingsLink {
+                        Label("Settings", systemImage: "gearshape")
+                    }
+                    .keyboardShortcut(",", modifiers: .command)
+                    Button {
+                        Task { await state.refresh() }
+                    } label: {
+                        Label("Refresh", systemImage: "arrow.clockwise")
+                    }
+                    .keyboardShortcut("r", modifiers: .command)
+                    .disabled(state.isLoading || state.isBinaryMissing)
                 }
-                .keyboardShortcut("r", modifiers: .command)
-                .disabled(state.isLoading || state.isBinaryMissing)
             }
         }
         .task {

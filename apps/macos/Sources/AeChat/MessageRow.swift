@@ -12,6 +12,8 @@ struct MessageRow: View {
     var compact = false
 
     @StateObject private var expansion = ExpansionState()
+    @AppStorage("AeChatFontSize") private var fontSize = 13.0
+    @AppStorage("AeChatUse24Hour") private var use24Hour = true
 
     private var isOutgoing: Bool {
         message.fromSession == state.perspectiveSessionId
@@ -68,7 +70,7 @@ struct MessageRow: View {
             : body
         return VStack(alignment: .leading, spacing: 4) {
             Text(visible)
-                .font(compact ? .callout : .body)
+                .font(.system(size: compact ? max(11, fontSize - 1) : fontSize))
                 .textSelection(.enabled)
                 .fixedSize(horizontal: false, vertical: true)
             if tooLong {

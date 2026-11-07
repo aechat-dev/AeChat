@@ -3,6 +3,8 @@ import { realpathSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 import { createRuntime } from "../app/runtime.js";
+import { createReadOnlyRuntime } from "../app/read-only-runtime.js";
+import { UiQueryService } from "../app/ui-query-service.js";
 import { ackCommand } from "./commands/ack.js";
 import { cancelCommand } from "./commands/cancel.js";
 import { confirmCommand } from "./commands/confirm.js";
@@ -21,8 +23,21 @@ import { sendCommand } from "./commands/send.js";
 import { showCommand } from "./commands/show.js";
 import { waitCommand } from "./commands/wait.js";
 import { whoamiCommand } from "./commands/whoami.js";
+import { uiDoctorCommand } from "./commands/ui-doctor.js";
+import { uiEventsCommand } from "./commands/ui-events.js";
+import { uiLogCommand } from "./commands/ui-log.js";
+import { uiMessagesCommand } from "./commands/ui-messages.js";
+import { uiSnapshotCommand } from "./commands/ui-snapshot.js";
 import { AechatError } from "../core/errors.js";
 import { errorEnvelope, isCommandResult, render } from "./output.js";
+
+const UI_COMMANDS = new Set([
+  "ui-snapshot",
+  "ui-messages",
+  "ui-log",
+  "ui-events",
+  "ui-doctor",
+]);
 
 const COMMANDS = new Set([
   "register",
@@ -43,6 +58,7 @@ const COMMANDS = new Set([
   "leave",
   "history",
   "log",
+  ...UI_COMMANDS,
 ]);
 
 const USAGE = `aechat — local-first session messaging
@@ -70,6 +86,11 @@ Commands:
   leave      --session <uuid>
   history    --session <uuid> [--limit <n>] [--json]
   log        --message <message-id> [--delivery <id>] [--as <session>] [--json]
+  ui-snapshot
+  ui-messages --session <uuid> [--counterpart <uuid>] [--before <cursor>] [--limit <n>] [--json]
+  ui-log     --message <message-id> [--delivery <id>] [--json]
+  ui-events  --after <seq> [--jsonl]
+  ui-doctor  [--json]
 
 All identity-related commands require an explicit session.
 `;
@@ -90,6 +111,37 @@ export async function main(argv: readonly string[]): Promise<number> {
   try {
     if (!COMMANDS.has(command)) {
       throw new AechatError("invalid_input", `unknown command: ${command}`);
+    }
+    if (UI_COMMANDS.has(command)) {
+      const runtime = createReadOnlyRuntime();
+      try {
+        const uiCtx = { runtime, ui: new UiQueryService(runtime) };
+        if (command === "ui-events") {
+          await uiEventsCommand(rest, uiCtx);
+          return 0;
+        }
+        let data: unknown;
+        switch (command) {
+          case "ui-snapshot":
+            data = await uiSnapshotCommand(rest, uiCtx);
+            break;
+          case "ui-messages":
+            data = uiMessagesCommand(rest, uiCtx);
+            break;
+          case "ui-log":
+            data = uiLogCommand(rest, uiCtx);
+            break;
+          case "ui-doctor":
+            data = await uiDoctorCommand(rest, uiCtx);
+            break;
+          default:
+            throw new AechatError("internal", `unhandled ui command: ${command}`);
+        }
+        render(data);
+        return isCommandResult(data) ? (data.exitCode ?? 0) : 0;
+      } finally {
+        runtime.close();
+      }
     }
     const ctx = createRuntime();
     try {
@@ -182,7 +234,14 @@ export function isEntryPoint(
 }
 
 if (isEntryPoint(process.argv[1], import.meta.url)) {
+  const streaming = process.argv[2] === "ui-events";
   void main(process.argv.slice(2)).then((code) => {
+    if (streaming) {
+      // A long-lived stream may still have buffered bytes in a pipe the app
+      // stopped reading. Exit explicitly after cleanup so the process cannot
+      // hang in the stdio flush at shutdown.
+      process.exit(code);
+    }
     process.exitCode = code;
   });
 }

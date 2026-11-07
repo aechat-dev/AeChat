@@ -51,8 +51,19 @@ export interface ThreadSummary {
   pending_deliveries: number;
 }
 
+export interface UiCounts {
+  sessions: number;
+  online: number;
+  offline: number;
+  unknown: number;
+  left: number;
+  pending_requests: number;
+  pending_deliveries: number;
+}
+
 export interface UiSnapshot {
   generated_at: string;
+  counts: UiCounts;
   sessions: SessionView[];
   threads: ThreadSummary[];
 }
@@ -72,6 +83,8 @@ export interface UiMessage {
   expires_at: string | null;
   delivery_status: string | null;
   request_status: string | null;
+  request_deadline: string | null;
+  request_close_reason: string | null;
 }
 
 export interface UiMessagePage {
@@ -103,14 +116,23 @@ export interface UiLog {
   attempts: number | null;
   last_error: string | null;
   request_status: string | null;
+  request_deadline: string | null;
+  request_close_reason: string | null;
   reply_message_id: string | null;
   chain: UiAuditEvent[];
 }
 
 export interface UiEvent {
+  kind: "event";
   seq: number;
   event: string;
   ts: string;
+  level: string;
+  session_id: string | null;
+  message_id: string | null;
+  delivery_id: string | null;
+  request_id: string | null;
+  data: Record<string, unknown> | null;
 }
 
 export interface UiEventTick {

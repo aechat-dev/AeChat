@@ -72,6 +72,30 @@ export interface InsertDeliveryInput {
 
 export type ClaimedDelivery = DeliveryRecord & { deliveryToken: string };
 
+export interface MessagePageInput {
+  sessionId: string;
+  counterpartId?: string;
+  before?: { createdAt: string; messageId: string };
+  limit: number;
+}
+
+export interface ThreadRecord {
+  aSession: string;
+  bSession: string;
+  aDisplayName: string;
+  aClient: string;
+  aProject: string;
+  bDisplayName: string;
+  bClient: string;
+  bProject: string;
+  lastMessageId: string;
+  lastKind: MessageKind;
+  lastBody: string;
+  lastCreatedAt: string;
+  pendingRequests: number;
+  pendingDeliveries: number;
+}
+
 type Row = Record<string, unknown>;
 
 function nullableString(value: unknown): string | null {
@@ -169,6 +193,115 @@ export class MessageRepository {
       )
       .all(sessionId, sessionId, limit) as Row[];
     return rows.map(messageFromRow);
+  }
+
+  /**
+   * Newest-first page for one session pair, using the stable
+   * `(created_at, message_id)` cursor. Without a counterpart it covers every
+   * message that involves the session.
+   */
+  listPage(input: MessagePageInput): MessageRecord[] {
+    const params: Array<string | number> = [];
+    let where: string;
+    if (input.counterpartId === undefined) {
+      where = "(from_session = ? OR to_session = ?)";
+      params.push(input.sessionId, input.sessionId);
+    } else {
+      where =
+        "((from_session = ? AND to_session = ?) OR (from_session = ? AND to_session = ?))";
+      params.push(
+        input.sessionId,
+        input.counterpartId,
+        input.counterpartId,
+        input.sessionId,
+      );
+    }
+    if (input.before !== undefined) {
+      where +=
+        " AND (created_at < ? OR (created_at = ? AND message_id < ?))";
+      params.push(
+        input.before.createdAt,
+        input.before.createdAt,
+        input.before.messageId,
+      );
+    }
+    params.push(input.limit);
+    const rows = this.db
+      .prepare(
+        `SELECT * FROM messages
+         WHERE ${where}
+         ORDER BY created_at DESC, message_id DESC
+         LIMIT ?`,
+      )
+      .all(...params) as Row[];
+    return rows.map(messageFromRow);
+  }
+
+  /**
+   * One row per unordered session pair, with its latest message and counts.
+   * `now` keeps pending_requests honest for a request whose deadline has
+   * passed but no writer has expired it yet.
+   */
+  listThreads(now: string): ThreadRecord[] {
+    const rows = this.db
+      .prepare(
+        `WITH pairs AS (
+           SELECT
+             CASE WHEN from_session < to_session THEN from_session ELSE to_session END AS a_session,
+             CASE WHEN from_session < to_session THEN to_session ELSE from_session END AS b_session,
+             message_id, kind, body, created_at
+           FROM messages
+         ),
+         ranked AS (
+           SELECT *, ROW_NUMBER() OVER (
+             PARTITION BY a_session, b_session
+             ORDER BY created_at DESC, message_id DESC
+           ) AS rn
+           FROM pairs
+         )
+         SELECT
+           r.a_session, r.b_session,
+           sa.display_name AS a_display_name, sa.client AS a_client, sa.project AS a_project,
+           sb.display_name AS b_display_name, sb.client AS b_client, sb.project AS b_project,
+           r.message_id AS last_message_id, r.kind AS last_kind,
+           r.body AS last_body, r.created_at AS last_created_at,
+           (
+             SELECT COUNT(*) FROM requests q
+             WHERE q.status = 'open'
+               AND (q.deadline IS NULL OR q.deadline > ?)
+               AND ((q.requester_session = r.a_session AND q.target_session = r.b_session)
+                 OR (q.requester_session = r.b_session AND q.target_session = r.a_session))
+           ) AS pending_requests,
+           (
+             SELECT COUNT(*) FROM deliveries d
+             JOIN messages m ON m.message_id = d.message_id
+             WHERE d.status IN ('stored', 'notified', 'notify_failed', 'delivered')
+               AND ((m.from_session = r.a_session AND m.to_session = r.b_session)
+                 OR (m.from_session = r.b_session AND m.to_session = r.a_session))
+           ) AS pending_deliveries
+         FROM ranked r
+         JOIN sessions sa ON sa.session_id = r.a_session
+         JOIN sessions sb ON sb.session_id = r.b_session
+         WHERE r.rn = 1
+         ORDER BY r.created_at DESC, r.message_id DESC`,
+      )
+      .all(now) as Row[];
+    return rows.map((row) => ({
+      aSession: String(row["a_session"]),
+      bSession: String(row["b_session"]),
+      aDisplayName: String(row["a_display_name"]),
+      aClient: String(row["a_client"]),
+      aProject: String(row["a_project"]),
+      bDisplayName: String(row["b_display_name"]),
+      bClient: String(row["b_client"]),
+      bProject: String(row["b_project"]),
+      lastMessageId: String(row["last_message_id"]),
+      lastKind: String(row["last_kind"]) as MessageKind,
+      lastBody: String(row["last_body"]),
+      lastCreatedAt: String(row["last_created_at"]),
+      pendingRequests: Number(row["pending_requests"]),
+      pendingDeliveries: Number(row["pending_deliveries"]),
+    }));
   }
 }
 

@@ -18,6 +18,7 @@ export interface ReadOnlyRuntime extends AppRepositories {
   transport: TransportAdapter;
   now: () => string;
   sessionQuery: SessionQueryService;
+  agmsgVersion?: () => Promise<string>;
   close(): void;
 }
 
@@ -32,7 +33,7 @@ export function createReadOnlyRuntime(options: AppOptions = {}): ReadOnlyRuntime
     throw error;
   }
   const repos = createRepositories(db);
-  const { transport } = resolveTransport(options);
+  const { transport, agmsgVersion } = resolveTransport(options);
   const now = resolveNow(options);
   const service = new CapabilityService({
     sessions: repos.sessions,
@@ -58,6 +59,7 @@ export function createReadOnlyRuntime(options: AppOptions = {}): ReadOnlyRuntime
     transport,
     now,
     sessionQuery,
+    ...(agmsgVersion === undefined ? {} : { agmsgVersion }),
     close: () => db.close(),
   };
 }

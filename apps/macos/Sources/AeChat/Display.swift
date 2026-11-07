@@ -41,8 +41,12 @@ enum Display {
         }
     }
 
-    static func transportModes(_ sessions: [SessionView]) -> [(mode: String, count: Int)] {
-        var counts: [String: Int] = [:]
+    /// Message bodies are agent text, never markup.
+    static func sanitizedBody(_ text: String) -> String {
+        AgentText.sanitized(text)
+    }
+
+    static func transportModes(_ sessions: [SessionView]) -> [(mode: String, count: Int)] {        var counts: [String: Int] = [:]
         for session in sessions {
             for transport in session.transports {
                 counts[transport.mode ?? "unknown", default: 0] += 1

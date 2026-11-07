@@ -101,6 +101,7 @@ public struct ThreadSummary: Decodable, Identifiable, Equatable {
 
 public struct UiSnapshot: Decodable, Equatable {
     public let generatedAt: String
+    public let eventSeq: Int
     public let counts: UiCounts
     public let sessions: [SessionView]
     public let threads: [ThreadSummary]

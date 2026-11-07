@@ -33,6 +33,7 @@ func testSnapshot() throws {
         return
     }
     check(snapshot.counts.sessions == 2, "session count")
+    check(snapshot.eventSeq == 12, "snapshot event seq")
     check(snapshot.counts.online == 1, "online count")
     check(snapshot.sessions.count == 2, "session rows")
     check(snapshot.sessions[0].displayName == "planner", "first session name")
@@ -93,6 +94,14 @@ func testMessageLogDoctor() throws {
     check(page.messages.first?.requestStatus == "expired", "message request status")
     check(page.messages.first?.requestCloseReason == "deadline", "message close reason")
     check(page.nextBefore == nil, "next cursor")
+
+    let replies = try AeChatClient.decode(Data("""
+    {"ok":true,"data":{"messages":[{"message_id":"m-2","kind":"reply","direction":"in","from_session":"b","to_session":"a","request_id":"m-1","reply_to":"m-1","body":"done","agent_origin":true,"not_a_user_instruction":true,"created_at":"2026-11-08T00:00:01.000Z","expires_at":null,"delivery_status":"acked","request_status":"replied","request_deadline":null,"request_close_reason":"replied"}],"next_before":"cursor"},"meta":{"schema":1}}
+    """.utf8), as: UiMessagePage.self)
+    check(replies.messages.first?.kind == "reply", "reply kind")
+    check(replies.messages.first?.replyTo == "m-1", "reply parent")
+    check(replies.messages.first?.deliveryStatus == "acked", "reply delivery")
+    check(replies.nextBefore == "cursor", "reply cursor")
 
     let log = try AeChatClient.decode(Data("""
     {"ok":true,"data":{"message_id":"m-1","kind":"notify","from_session":"a","to_session":"b","request_id":null,"delivery_id":"d-1","delivery_status":"ack","attempts":1,"last_error":null,"request_status":null,"request_deadline":null,"request_close_reason":null,"reply_message_id":null,"chain":[{"event":"send","stage":"stored","ts":"2026-11-08T00:00:00.000Z","level":"info","session_id":"a","delivery_id":"d-1","request_id":null,"error_code":null,"error_detail":null}]},"meta":{"schema":1}}
@@ -189,6 +198,16 @@ func testNodeLaunch() async throws {
     }
 }
 
+func testAgentTextSanitizer() {
+    let dirty = "hello\u{0000}\u{001B}[31m\u{202E} world\u{200B}\u{0007}\nsecond\tline"
+    let clean = AgentText.sanitized(dirty)
+    check(clean == "hello[31m world\nsecond\tline", "control characters stripped")
+    check(!clean.contains("\u{0000}"), "null removed")
+    check(!clean.contains("\u{202E}"), "bidi override removed")
+    check(!clean.contains("\u{200B}"), "zero-width removed")
+    check(clean.contains("\n"), "newline kept")
+}
+
 func testNewestNodeWins() throws {
     let home = FileManager.default.temporaryDirectory
         .appendingPathComponent("aechat-node-versions-\(UUID().uuidString)")
@@ -220,6 +239,7 @@ do {
     try testEventLines()
     try testMessageLogDoctor()
     try testBinaryLocator()
+    testAgentTextSanitizer()
     try testNewestNodeWins()
     try await testNodeLaunch()
 } catch {

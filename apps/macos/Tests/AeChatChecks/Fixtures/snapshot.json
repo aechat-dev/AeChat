@@ -2,6 +2,7 @@
   "ok": true,
   "data": {
     "generated_at": "2026-11-08T00:00:00.000Z",
+    "event_seq": 12,
     "counts": {
       "sessions": 2,
       "online": 1,

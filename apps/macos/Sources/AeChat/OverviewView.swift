@@ -99,7 +99,7 @@ struct OverviewView: View {
             } else {
                 ForEach(threads.prefix(8)) { thread in
                     Button {
-                        state.selectedSessionId = thread.participants.first?.sessionId
+                        state.selectSession(thread.participants.first?.sessionId)
                     } label: {
                         HStack(alignment: .top, spacing: 8) {
                             VStack(alignment: .leading, spacing: 2) {

@@ -46,7 +46,12 @@ struct SessionsView: View {
     }
 
     private var sessionList: some View {
-        List(selection: $state.selectedSessionId) {
+        List(
+            selection: Binding(
+                get: { state.selectedSessionId },
+                set: { state.selectSession($0) }
+            )
+        ) {
             ForEach(groups) { group in
                 Section(group.title) {
                     ForEach(group.sessions) { session in

@@ -23,10 +23,19 @@ struct RootView: View {
             SessionsView()
                 .navigationSplitViewColumnWidth(min: 220, ideal: 260)
         } content: {
-            OverviewView()
-                .navigationSplitViewColumnWidth(min: 320, ideal: 400)
+            if state.activeThread != nil {
+                ChatView()
+                    .navigationSplitViewColumnWidth(min: 360, ideal: 520)
+            } else {
+                OverviewView()
+                    .navigationSplitViewColumnWidth(min: 320, ideal: 400)
+            }
         } detail: {
-            SessionDetailView()
+            if state.selectedMessageId != nil {
+                InspectorView()
+            } else {
+                SessionDetailView()
+            }
         }
         .toolbar {
             ToolbarItem(placement: .status) {
@@ -48,6 +57,9 @@ struct RootView: View {
         }
         .task {
             await state.refresh()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)) { _ in
+            state.stopStream()
         }
         .overlay(alignment: .bottom) {
             if let error = state.errorMessage {

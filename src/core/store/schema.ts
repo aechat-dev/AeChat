@@ -1,6 +1,6 @@
 import type { DatabaseSync } from "node:sqlite";
 
-const SCHEMA_VERSION = 4;
+export const SCHEMA_VERSION = 5;
 
 const SCHEMA_SQL = `
 CREATE TABLE IF NOT EXISTS sessions (
@@ -152,12 +152,71 @@ const SCHEMA_V4_SQL = `
 ALTER TABLE sessions ADD COLUMN host_seen_source TEXT;
 `;
 
+/**
+ * The implicit rowid is not a durable cursor: SQLite may renumber it when a
+ * table is rebuilt or vacuumed. Give events an explicit autoincrement key so
+ * `ui-events --after <seq>` survives maintenance.
+ */
+const SCHEMA_V5_SQL = `
+CREATE TABLE events_v5 (
+  seq INTEGER PRIMARY KEY AUTOINCREMENT,
+  event_id TEXT NOT NULL UNIQUE,
+  ts TEXT NOT NULL,
+  level TEXT NOT NULL,
+  event TEXT NOT NULL,
+  session_id TEXT,
+  message_id TEXT,
+  delivery_id TEXT,
+  request_id TEXT,
+  transport TEXT,
+  mode TEXT,
+  exit_code INTEGER,
+  duration_ms INTEGER,
+  error_code TEXT,
+  error_detail TEXT,
+  data_json TEXT
+);
+INSERT INTO events_v5 (
+  event_id, ts, level, event, session_id, message_id, delivery_id,
+  request_id, transport, mode, exit_code, duration_ms, error_code,
+  error_detail, data_json
+)
+SELECT
+  event_id, ts, level, event, session_id, message_id, delivery_id,
+  request_id, transport, mode, exit_code, duration_ms, error_code,
+  error_detail, data_json
+FROM events
+ORDER BY rowid;
+DROP TABLE events;
+ALTER TABLE events_v5 RENAME TO events;
+CREATE INDEX IF NOT EXISTS events_ts ON events(ts);
+CREATE INDEX IF NOT EXISTS events_session ON events(session_id, ts);
+CREATE INDEX IF NOT EXISTS events_message ON events(message_id, ts);
+`;
+
 const MIGRATIONS: Record<number, string> = {
   1: SCHEMA_SQL,
   2: SCHEMA_V2_SQL,
   3: SCHEMA_V3_SQL,
   4: SCHEMA_V4_SQL,
+  5: SCHEMA_V5_SQL,
 };
+
+/**
+ * Read-only readers cannot migrate. Fail with an actionable message instead
+ * of surfacing a missing-column SQLite error on the first query.
+ */
+export function assertCurrentSchema(db: DatabaseSync): void {
+  const row = db.prepare("PRAGMA user_version").get() as
+    | Record<string, unknown>
+    | undefined;
+  const version = Number(row?.["user_version"] ?? 0);
+  if (version !== SCHEMA_VERSION) {
+    throw new Error(
+      `database schema version ${version} is not supported (expected ${SCHEMA_VERSION}); run aechat once to migrate it`,
+    );
+  }
+}
 
 /**
  * Create or upgrade the store schema. Migrations are applied in order, each

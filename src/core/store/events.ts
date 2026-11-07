@@ -23,6 +23,7 @@ export interface RecordEventInput {
 }
 
 export interface EventRecord {
+  seq: number;
   eventId: string;
   ts: string;
   level: string;
@@ -48,6 +49,7 @@ function nullableString(value: unknown): string | null {
 
 function eventFromRow(row: Row): EventRecord {
   return {
+    seq: Number(row["seq"]),
     eventId: String(row["event_id"]),
     ts: String(row["ts"]),
     level: String(row["level"]),
@@ -109,8 +111,23 @@ export class EventRepository {
 
   listForSession(sessionId: string): EventRecord[] {
     const rows = this.db
-      .prepare("SELECT * FROM events WHERE session_id = ? ORDER BY rowid")
+      .prepare("SELECT * FROM events WHERE session_id = ? ORDER BY seq")
       .all(sessionId) as Row[];
+    return rows.map(eventFromRow);
+  }
+
+  listAfter(after: number, limit = 200): EventRecord[] {
+    if (!Number.isInteger(after) || after < 0) {
+      throw new Error("event cursor must be a non-negative integer");
+    }
+    if (!Number.isInteger(limit) || limit < 1) {
+      throw new Error("event limit must be a positive integer");
+    }
+    const rows = this.db
+      .prepare(
+        "SELECT * FROM events WHERE seq > ? ORDER BY seq LIMIT ?",
+      )
+      .all(after, limit) as Row[];
     return rows.map(eventFromRow);
   }
 
@@ -130,7 +147,7 @@ export class EventRepository {
             .prepare(
               `SELECT * FROM events
                WHERE message_id = ? OR message_id = ? OR request_id = ?
-               ORDER BY rowid`,
+               ORDER BY seq`,
             )
             .all(messageId, requestId, requestId)
         : this.db
@@ -138,7 +155,7 @@ export class EventRepository {
               `SELECT * FROM events
                WHERE (message_id = ? OR message_id = ? OR request_id = ?)
                  AND delivery_id = ?
-               ORDER BY rowid`,
+               ORDER BY seq`,
             )
             .all(messageId, requestId, requestId, deliveryId)
     ) as Row[];

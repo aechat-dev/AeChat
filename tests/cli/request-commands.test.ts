@@ -8,6 +8,7 @@ import { sendCommand } from "../../src/cli/commands/send.js";
 import { waitCommand } from "../../src/cli/commands/wait.js";
 import type { CommandResult } from "../../src/cli/output.js";
 import { DeliveryService } from "../../src/core/services/delivery-service.js";
+import { AuditService } from "../../src/core/services/audit-service.js";
 import { CapabilityService } from "../../src/core/services/capability-service.js";
 import { RequestService } from "../../src/core/services/request-service.js";
 import { ResumeService } from "../../src/core/services/resume-service.js";
@@ -84,12 +85,21 @@ function setup(options: { notifyFails?: boolean } = {}) {
     events,
     now,
   });
+  const audit = new AuditService({
+    messages,
+    deliveries,
+    requests,
+    sessions,
+    events,
+    now,
+  });
   const ctx: CommandContext = {
     service: sessionService,
     delivery,
     request,
     resume,
     capabilities,
+    audit,
     transport,
     now,
   };

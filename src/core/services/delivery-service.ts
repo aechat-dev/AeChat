@@ -1,6 +1,7 @@
 import type { DatabaseSync } from "node:sqlite";
 
 import { AechatError } from "../errors.js";
+import { redactErrorDetail } from "../log-redaction.js";
 import { newId } from "../ids.js";
 import { nowIso } from "../time.js";
 import type { SessionRepository, TransportBindingRepository } from "../store/sessions.js";
@@ -296,6 +297,7 @@ export class DeliveryService {
       sessionId: input.fromSession,
       messageId,
       deliveryId,
+      ts: at,
       data: { toSession: input.toSession, kind: input.kind },
     });
 
@@ -362,6 +364,7 @@ export class DeliveryService {
         deliveryId: input.deliveryId,
         transport: toBinding.transport,
         mode: toBinding.mode,
+        ts: notifyAt,
       });
       return {
         messageId: input.messageId,
@@ -370,7 +373,9 @@ export class DeliveryService {
       };
     }
 
-    const error = notifyResult.error ?? "transport notify failed";
+    const error =
+      redactErrorDetail(notifyResult.error ?? "transport notify failed") ??
+      "transport notify failed";
     this.deliveries.markNotifyFailed(input.deliveryId, notifyAt, error);
     this.events?.record({
       event: "notify_fail",
@@ -380,6 +385,7 @@ export class DeliveryService {
       deliveryId: input.deliveryId,
       transport: toBinding.transport,
       mode: toBinding.mode,
+      ts: notifyAt,
       errorDetail: error,
     });
     return {
@@ -499,6 +505,7 @@ export class DeliveryService {
         sessionId: input.sessionId,
         messageId: delivery.messageId,
         deliveryId: delivery.deliveryId,
+        ts: at,
         data: { attempts: delivery.attempts },
       });
     }
@@ -531,15 +538,17 @@ export class DeliveryService {
   }
 
   ack(input: AckInput): boolean {
-    const ok = this.deliveries.ack(
-      input.token,
-      input.sessionId,
-      input.now ?? this.now(),
-    );
-    if (ok) {
+    const at = input.now ?? this.now();
+    const delivery = this.deliveries.getByToken(input.token, input.sessionId);
+    const wasDelivered = delivery?.status === "delivered";
+    const ok = this.deliveries.ack(input.token, input.sessionId, at);
+    if (ok && wasDelivered) {
       this.events?.record({
         event: "ack",
         sessionId: input.sessionId,
+        messageId: delivery?.messageId ?? null,
+        deliveryId: delivery?.deliveryId ?? null,
+        ts: at,
         data: { tokenPresent: true },
       });
     }

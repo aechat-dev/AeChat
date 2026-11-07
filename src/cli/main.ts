@@ -10,6 +10,8 @@ import { ackCommand } from "./commands/ack.js";
 import { cancelCommand } from "./commands/cancel.js";
 import { confirmCommand } from "./commands/confirm.js";
 import { doctorCommand } from "./commands/doctor.js";
+import { historyCommand } from "./commands/history.js";
+import { logCommand } from "./commands/log.js";
 import type { CommandContext } from "./commands/context.js";
 import { heartbeatCommand } from "./commands/heartbeat.js";
 import { inboxCommand } from "./commands/inbox.js";
@@ -24,6 +26,7 @@ import { showCommand } from "./commands/show.js";
 import { waitCommand } from "./commands/wait.js";
 import { whoamiCommand } from "./commands/whoami.js";
 import { AechatError } from "../core/errors.js";
+import { AuditService } from "../core/services/audit-service.js";
 import { DeliveryService } from "../core/services/delivery-service.js";
 import { CapabilityService } from "../core/services/capability-service.js";
 import { RequestService } from "../core/services/request-service.js";
@@ -59,6 +62,8 @@ const COMMANDS = new Set([
   "doctor",
   "resume",
   "leave",
+  "history",
+  "log",
 ]);
 
 const USAGE = `aechat — local-first session messaging
@@ -69,7 +74,7 @@ Commands:
   register   --name <display> --client <claude-code|codex|other> [--project <path>]
   confirm    --session <uuid>
   whoami     --session <uuid> | --conversation <id>
-  list       [--json] [--all]
+  list       [--json] [--all] [--as <session>]
   heartbeat  --session <uuid>
   send       --session <uuid> (--to-session <uuid> | --to-name <name>)
              (--body <text> | --body-file <path>) [--request] [--deadline <seconds>]
@@ -84,6 +89,8 @@ Commands:
   doctor     [--json]
   resume     --session <uuid> [--force]
   leave      --session <uuid>
+  history    --session <uuid> [--limit <n>] [--json]
+  log        --message <message-id> [--delivery <id>] [--as <session>] [--json]
 
 All identity-related commands require an explicit session.
 `;
@@ -91,6 +98,7 @@ All identity-related commands require an explicit session.
 function createContext(): CommandContext {
   const home = process.env["AECHAT_HOME"] ?? join(homedir(), ".aechat");
   mkdirSync(home, { recursive: true, mode: 0o700 });
+  mkdirSync(join(home, "logs"), { recursive: true, mode: 0o700 });
   const db = openDatabase(process.env["AECHAT_DB"] ?? join(home, "aechat.db"));
   migrate(db);
 
@@ -142,6 +150,13 @@ function createContext(): CommandContext {
     transport,
     events,
   });
+  const audit = new AuditService({
+    messages: new MessageRepository(db),
+    deliveries: new DeliveryRepository(db),
+    requests: new RequestRepository(db),
+    sessions,
+    events,
+  });
 
   return {
     service,
@@ -149,6 +164,7 @@ function createContext(): CommandContext {
     request,
     resume,
     capabilities,
+    audit,
     transport,
     now: nowIso,
     agmsgVersion: () => agmsgCli.version(),
@@ -221,6 +237,12 @@ export async function main(argv: readonly string[]): Promise<number> {
         break;
       case "leave":
         data = await leaveCommand(rest, ctx);
+        break;
+      case "history":
+        data = historyCommand(rest, ctx);
+        break;
+      case "log":
+        data = logCommand(rest, ctx);
         break;
       default:
         throw new AechatError("internal", `unhandled command: ${command}`);

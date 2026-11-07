@@ -105,6 +105,8 @@ export class RequestService {
           messageId: string;
           alreadyReplied: boolean;
           deliveryId?: string;
+          requestDeliveryId?: string | null;
+          requestAlreadyAcked?: boolean;
           requesterSession?: string;
         }
       | undefined;
@@ -175,11 +177,17 @@ export class RequestService {
         );
       }
       // A reply is also an acknowledgement of the request delivery.
+      const requestDelivery = this.deliveries.getForMessageSession(
+        request.requestId,
+        input.sessionId,
+      );
       this.deliveries.markReplied(request.requestId, input.sessionId, at);
       outcome = {
         messageId,
         alreadyReplied: false,
         deliveryId,
+        requestDeliveryId: requestDelivery?.deliveryId ?? null,
+        requestAlreadyAcked: requestDelivery?.status === "acked",
         requesterSession: request.requesterSession,
       };
     });
@@ -197,11 +205,33 @@ export class RequestService {
     const deliveryId = outcome.deliveryId as string;
     const requesterSession = outcome.requesterSession as string;
     this.events?.record({
+      event: "send",
+      sessionId: input.sessionId,
+      messageId: outcome.messageId,
+      deliveryId,
+      requestId: input.requestId,
+      ts: at,
+      data: { kind: "reply" },
+    });
+    if (outcome.requestAlreadyAcked !== true) {
+      this.events?.record({
+        event: "ack",
+        sessionId: input.sessionId,
+        messageId: input.requestId,
+        deliveryId: outcome.requestDeliveryId ?? null,
+        requestId: input.requestId,
+        ts: at,
+        data: { by: "reply" },
+      });
+    }
+    this.events?.record({
       event: "reply",
       sessionId: input.sessionId,
       messageId: outcome.messageId,
       deliveryId,
       requestId: input.requestId,
+      ts: at,
+      data: { replyMessageId: outcome.messageId },
     });
     await this.delivery.notifyDelivery({
       messageId: outcome.messageId,
@@ -301,6 +331,17 @@ export class RequestService {
     if (request.status !== "open") {
       return false;
     }
-    return this.requests.markCancelled(requestId, sessionId, at);
+    const cancelled = this.requests.markCancelled(requestId, sessionId, at);
+    if (cancelled) {
+      this.events?.record({
+        event: "cancel",
+        sessionId,
+        messageId: requestId,
+        requestId,
+        ts: at,
+        data: { closeReason: "sender_cancel" },
+      });
+    }
+    return cancelled;
   }
 }

@@ -9,6 +9,7 @@ import { doctorCommand } from "../../src/cli/commands/doctor.js";
 import { listCommand } from "../../src/cli/commands/list.js";
 import { CapabilityService } from "../../src/core/services/capability-service.js";
 import { DeliveryService } from "../../src/core/services/delivery-service.js";
+import { AuditService } from "../../src/core/services/audit-service.js";
 import { RequestService } from "../../src/core/services/request-service.js";
 import { ResumeService } from "../../src/core/services/resume-service.js";
 import { SessionService } from "../../src/core/services/session-service.js";
@@ -86,12 +87,21 @@ function setup(options: { mode?: string; live?: boolean } = {}) {
     events,
     now,
   });
+  const audit = new AuditService({
+    messages,
+    deliveries,
+    requests,
+    sessions,
+    events,
+    now,
+  });
   const ctx: CommandContext = {
     service,
     delivery,
     request,
     resume,
     capabilities,
+    audit,
     transport,
     now,
   };

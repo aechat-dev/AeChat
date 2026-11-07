@@ -1,3 +1,4 @@
+import type { AuditService } from "../../core/services/audit-service.js";
 import type { CapabilityService } from "../../core/services/capability-service.js";
 import type { DeliveryService } from "../../core/services/delivery-service.js";
 import type { RequestService } from "../../core/services/request-service.js";
@@ -11,6 +12,7 @@ export interface CommandContext {
   request: RequestService;
   resume: ResumeService;
   capabilities: CapabilityService;
+  audit: AuditService;
   transport: TransportAdapter;
   now: () => string;
   agmsgVersion?: () => Promise<string>;

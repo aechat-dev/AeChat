@@ -1,5 +1,6 @@
 import type { DatabaseSync } from "node:sqlite";
 
+import { redactErrorDetail } from "../log-redaction.js";
 import { newId } from "../ids.js";
 import { nowIso } from "../time.js";
 
@@ -60,7 +61,7 @@ function eventFromRow(row: Row): EventRecord {
     exitCode: row["exit_code"] === null ? null : Number(row["exit_code"]),
     durationMs: row["duration_ms"] === null ? null : Number(row["duration_ms"]),
     errorCode: nullableString(row["error_code"]),
-    errorDetail: nullableString(row["error_detail"]),
+    errorDetail: redactErrorDetail(nullableString(row["error_detail"])),
     dataJson: nullableString(row["data_json"]),
   };
 }
@@ -100,7 +101,7 @@ export class EventRepository {
         input.exitCode ?? null,
         input.durationMs ?? null,
         input.errorCode ?? null,
-        input.errorDetail ?? null,
+        redactErrorDetail(input.errorDetail ?? null),
         input.data === undefined ? null : JSON.stringify(input.data),
       );
     return eventId;
@@ -108,8 +109,39 @@ export class EventRepository {
 
   listForSession(sessionId: string): EventRecord[] {
     const rows = this.db
-      .prepare("SELECT * FROM events WHERE session_id = ? ORDER BY ts, event_id")
+      .prepare("SELECT * FROM events WHERE session_id = ? ORDER BY rowid")
       .all(sessionId) as Row[];
+    return rows.map(eventFromRow);
+  }
+
+  /**
+   * Audit chain for one message. A reply event stores the reply message id and
+   * the original request id, so matching request_id keeps the whole exchange
+   * visible from either message without joining a separate table.
+   */
+  listForMessage(
+    messageId: string,
+    deliveryId?: string,
+    requestId: string = messageId,
+  ): EventRecord[] {
+    const rows = (
+      deliveryId === undefined
+        ? this.db
+            .prepare(
+              `SELECT * FROM events
+               WHERE message_id = ? OR message_id = ? OR request_id = ?
+               ORDER BY rowid`,
+            )
+            .all(messageId, requestId, requestId)
+        : this.db
+            .prepare(
+              `SELECT * FROM events
+               WHERE (message_id = ? OR message_id = ? OR request_id = ?)
+                 AND delivery_id = ?
+               ORDER BY rowid`,
+            )
+            .all(messageId, requestId, requestId, deliveryId)
+    ) as Row[];
     return rows.map(eventFromRow);
   }
 }

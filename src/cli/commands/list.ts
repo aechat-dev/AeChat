@@ -17,6 +17,7 @@ export async function listCommand(
 ): Promise<Record<string, unknown>> {
   const args = parseArgs(argv);
   const includeLeft = args.flags.has("all");
+  ctx.audit.recordListRead(args.values.get("as"));
   const entries = ctx.service.list({ includeLeft });
 
   const sessions = await Promise.all(

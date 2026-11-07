@@ -1,5 +1,6 @@
 import type { DatabaseSync } from "node:sqlite";
 
+import { redactErrorDetail } from "../log-redaction.js";
 import { newId } from "../ids.js";
 import { withImmediate } from "./db.js";
 
@@ -105,7 +106,7 @@ function deliveryFromRow(row: Row): DeliveryRecord {
     deliveredAt: nullableString(row["delivered_at"]),
     ackedAt: nullableString(row["acked_at"]),
     repliedAt: nullableString(row["replied_at"]),
-    lastError: nullableString(row["last_error"]),
+    lastError: redactErrorDetail(nullableString(row["last_error"])),
   };
 }
 
@@ -227,6 +228,15 @@ export class DeliveryRepository {
     const row = this.db
       .prepare("SELECT * FROM deliveries WHERE message_id = ?")
       .get(messageId) as Row | undefined;
+    return row === undefined ? undefined : deliveryFromRow(row);
+  }
+
+  getByToken(token: string, sessionId: string): DeliveryRecord | undefined {
+    const row = this.db
+      .prepare(
+        "SELECT * FROM deliveries WHERE delivery_token = ? AND session_id = ?",
+      )
+      .get(token, sessionId) as Row | undefined;
     return row === undefined ? undefined : deliveryFromRow(row);
   }
 
@@ -418,6 +428,6 @@ export class DeliveryRepository {
          WHERE delivery_id = ?
            AND status NOT IN ('delivered', 'acked', 'expired', 'dead_letter')`,
       )
-      .run(error, id);
+      .run(redactErrorDetail(error) ?? "", id);
   }
 }

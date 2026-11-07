@@ -1,10 +1,13 @@
 import { afterEach, describe, expect, it } from "vitest";
 
 import { inboxCommand } from "../../src/cli/commands/inbox.js";
+import { historyCommand } from "../../src/cli/commands/history.js";
+import { logCommand } from "../../src/cli/commands/log.js";
 import { sendCommand } from "../../src/cli/commands/send.js";
 import type { CommandContext } from "../../src/cli/commands/context.js";
 import type { CommandResult } from "../../src/cli/output.js";
 import { DeliveryService } from "../../src/core/services/delivery-service.js";
+import { AuditService } from "../../src/core/services/audit-service.js";
 import { CapabilityService } from "../../src/core/services/capability-service.js";
 import { RequestService } from "../../src/core/services/request-service.js";
 import { ResumeService } from "../../src/core/services/resume-service.js";
@@ -81,12 +84,21 @@ function setup(): Setup {
     events,
     now,
   });
+  const audit = new AuditService({
+    messages,
+    deliveries,
+    requests,
+    sessions,
+    events,
+    now,
+  });
   const ctx: CommandContext = {
     service,
     delivery,
     request,
     resume,
     capabilities,
+    audit,
     transport,
     now,
   };
@@ -234,5 +246,108 @@ describe("delivery CLI commands", () => {
     const after = deliveries.getForMessageSession(sent.messageId, to);
     expect(after?.status).toBe("notified");
     expect(after?.deliveryToken).toBeNull();
+  });
+
+  it("log --message reconstructs the chain without exposing the body", async () => {
+    const { ctx, delivery, addSession } = setup();    const from = await addSession("sender");
+    const to = await addSession("receiver");
+    const sent = await delivery.send({
+      fromSession: from,
+      toSession: to,
+      kind: "notify",
+      body: "top-secret body",
+    });
+    const [claimed] = await delivery.inbox({ sessionId: to, limit: 1 });
+    delivery.ack({
+      sessionId: to,
+      token: claimed?.deliveryToken as string,
+    });
+
+    const result = logCommand(
+      ["--message", sent.messageId, "--json"],
+      ctx,
+    ) as CommandResult;
+    const entry = result.data as {
+      delivery_status: string;
+      chain: Array<{ stage: string }>;
+    };
+
+    expect(entry.delivery_status).toBe("acked");
+    expect(entry.chain.map((item) => item.stage)).toEqual(
+      expect.arrayContaining(["stored", "notified", "delivered", "acked"]),
+    );
+    expect(JSON.stringify(result)).not.toContain("top-secret body");
+  });
+
+  it("log --json redacts last_error", async () => {
+    const { ctx, delivery, deliveries, addSession } = setup();
+    const from = await addSession("sender");
+    const to = await addSession("receiver");
+    const sent = await delivery.send({
+      fromSession: from,
+      toSession: to,
+      kind: "notify",
+      body: "hello",
+    });
+    deliveries.markNotifyFailed(
+      sent.deliveryId,
+      "2026-11-06T12:00:00.000Z",
+      "Authorization: Basic basic-secret /Users/alice/.aechat/secret",
+    );
+
+    const result = logCommand(
+      ["--message", sent.messageId, "--json"],
+      ctx,
+    ) as CommandResult;
+    const serialized = JSON.stringify(result);
+
+    expect(serialized).not.toContain("basic-secret");
+    expect(serialized).not.toContain("/Users/alice");
+  });
+
+  it("history returns only the requested session's messages", async () => {
+    const { ctx, delivery, addSession } = setup();    const a = await addSession("a");
+    const b = await addSession("b");
+    const c = await addSession("c");
+    await delivery.send({
+      fromSession: a,
+      toSession: b,
+      kind: "notify",
+      body: "a to b",
+    });
+    await delivery.send({
+      fromSession: b,
+      toSession: c,
+      kind: "notify",
+      body: "b to c",
+    });
+    await delivery.send({
+      fromSession: c,
+      toSession: a,
+      kind: "notify",
+      body: "c to a",
+    });
+
+    const result = historyCommand(["--session", b], ctx) as CommandResult;
+    const data = result.data as { messages: Array<Record<string, unknown>> };
+    expect(data.messages.map((item) => item["body"]).sort()).toEqual([
+      "a to b",
+      "b to c",
+    ]);
+  });
+
+  it("history does not refresh last_seen_at", async () => {
+    const { ctx, addSession } = setup();
+    const sessionId = await addSession("reader");
+    const before = ctx.service
+      .list()
+      .find((item) => item.sessionId === sessionId)?.lastSeenAt;
+
+    historyCommand(["--session", sessionId], ctx);
+
+    const after = ctx.service
+      .list()
+      .find((item) => item.sessionId === sessionId)?.lastSeenAt;
+    expect(after).toBe(before);
   });
 });

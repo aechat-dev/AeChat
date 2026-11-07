@@ -178,6 +178,9 @@ export class UiQueryService {
   }
 
   async snapshot(): Promise<UiSnapshot> {
+    // Capture the cursor before reading data. Events committed while the
+    // snapshot is assembled are then replayed instead of being skipped.
+    const eventSeq = this.runtime.events.latestSeq();
     const sessions = await this.runtime.sessionQuery.list({ includeLeft: true });
     const threads = this.runtime.messages
       .listThreads(this.runtime.now())
@@ -189,6 +192,7 @@ export class UiQueryService {
     }
     return {
       generated_at: this.runtime.now(),
+      event_seq: eventSeq,
       counts,
       sessions,
       threads,

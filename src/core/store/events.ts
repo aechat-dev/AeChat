@@ -116,6 +116,14 @@ export class EventRepository {
     return rows.map(eventFromRow);
   }
 
+  /** Latest committed seq, or 0 for an empty log. */
+  latestSeq(): number {
+    const row = this.db
+      .prepare("SELECT COALESCE(MAX(seq), 0) AS seq FROM events")
+      .get() as Row | undefined;
+    return Number(row?.["seq"] ?? 0);
+  }
+
   listAfter(after: number, limit = 200): EventRecord[] {
     if (!Number.isInteger(after) || after < 0) {
       throw new Error("event cursor must be a non-negative integer");

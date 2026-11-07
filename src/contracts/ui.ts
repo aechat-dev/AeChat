@@ -63,6 +63,8 @@ export interface UiCounts {
 
 export interface UiSnapshot {
   generated_at: string;
+  /** Events up to this seq are already reflected in the snapshot. */
+  event_seq: number;
   counts: UiCounts;
   sessions: SessionView[];
   threads: ThreadSummary[];

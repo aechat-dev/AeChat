@@ -124,6 +124,7 @@ describe("ui bridge commands", () => {
         sessions: Array<{ session_id: string }>;
         threads: Array<{ key: string; last_message: { preview: string } }>;
         counts: { sessions: number };
+        event_seq: number;
       };
       meta: { schema: number };
     };
@@ -134,6 +135,7 @@ describe("ui bridge commands", () => {
     expect(envelope.data.threads).toHaveLength(1);
     expect(envelope.data.threads[0]?.last_message.preview).toBe("bridge message");
     expect(envelope.data.counts.sessions).toBe(2);
+    expect(envelope.data.event_seq).toBeGreaterThan(0);
 
     const check = openDatabase(join(home, "aechat.db"));
     try {

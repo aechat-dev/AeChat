@@ -116,7 +116,7 @@ async function fixture(
 
 describe("UiQueryService.snapshot", () => {
   it("returns sessions, one thread and the pending counts", async () => {
-    const { a, b, ui } = await fixture();
+    const { a, b, runtime, ui } = await fixture();
 
     const snapshot = await ui.snapshot();
 
@@ -124,6 +124,7 @@ describe("UiQueryService.snapshot", () => {
       [a, b].sort(),
     );
     expect(snapshot.counts.sessions).toBe(2);
+    expect(snapshot.event_seq).toBe(runtime.events.latestSeq());
     expect(snapshot.threads).toHaveLength(1);
     const thread = snapshot.threads[0];
     expect(thread?.key).toBe([a, b].sort().join("|"));

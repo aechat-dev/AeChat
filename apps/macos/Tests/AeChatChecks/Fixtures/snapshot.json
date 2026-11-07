@@ -1,0 +1,125 @@
+{
+  "ok": true,
+  "data": {
+    "generated_at": "2026-11-08T00:00:00.000Z",
+    "counts": {
+      "sessions": 2,
+      "online": 1,
+      "offline": 1,
+      "unknown": 0,
+      "left": 0,
+      "pending_requests": 1,
+      "pending_deliveries": 2
+    },
+    "sessions": [
+      {
+        "session_id": "0190f000-0000-7000-8000-000000000001",
+        "display_name": "planner",
+        "client": "claude-code",
+        "project": "/tmp/project-a",
+        "conversation_id": null,
+        "status": "online",
+        "status_evidence": "transport_live",
+        "evidence_at": "2026-11-08T00:00:00.000Z",
+        "last_seen_at": "2026-11-08T00:00:00.000Z",
+        "host_seen_at": "2026-11-08T00:00:00.000Z",
+        "bound_scope": "host_role",
+        "bound_state": "valid",
+        "bound_checked_at": "2026-11-08T00:00:00.000Z",
+        "transports": [
+          {
+            "transport": "agmsg",
+            "address": "aechat-000000000001",
+            "mode": "monitor",
+            "state": "live",
+            "last_verified_at": "2026-11-08T00:00:00.000Z"
+          }
+        ],
+        "capabilities": {
+          "supported": {
+            "pull": true,
+            "wait": true,
+            "notification_receive": true,
+            "busy_receive": false,
+            "idle_wakeup": true
+          },
+          "available": {
+            "pull": true,
+            "wait": true,
+            "notification_receive": true,
+            "busy_receive": false,
+            "idle_wakeup": true
+          },
+          "wakeup_level": "L3",
+          "observed_at": "2026-11-08T00:00:00.000Z",
+          "conditions": [],
+          "client_version": "1.0.0"
+        }
+      },
+      {
+        "session_id": "0190f000-0000-7000-8000-000000000002",
+        "display_name": "worker",
+        "client": "codex",
+        "project": "/tmp/project-b",
+        "conversation_id": "conv-2",
+        "status": "offline",
+        "status_evidence": "heartbeat",
+        "evidence_at": "2026-11-07T23:00:00.000Z",
+        "last_seen_at": "2026-11-07T23:00:00.000Z",
+        "host_seen_at": null,
+        "bound_scope": "none",
+        "bound_state": "invalid",
+        "bound_checked_at": null,
+        "transports": [],
+        "capabilities": {
+          "supported": {
+            "pull": true,
+            "wait": true,
+            "notification_receive": false,
+            "busy_receive": false,
+            "idle_wakeup": false
+          },
+          "available": {
+            "pull": false,
+            "wait": false,
+            "notification_receive": false,
+            "busy_receive": false,
+            "idle_wakeup": false
+          },
+          "wakeup_level": "unknown",
+          "observed_at": null,
+          "conditions": ["offline"],
+          "client_version": null
+        }
+      }
+    ],
+    "threads": [
+      {
+        "key": "0190f000-0000-7000-8000-000000000001|0190f000-0000-7000-8000-000000000002",
+        "participants": [
+          {
+            "session_id": "0190f000-0000-7000-8000-000000000001",
+            "display_name": "planner",
+            "client": "claude-code",
+            "project": "/tmp/project-a"
+          },
+          {
+            "session_id": "0190f000-0000-7000-8000-000000000002",
+            "display_name": "worker",
+            "client": "codex",
+            "project": "/tmp/project-b"
+          }
+        ],
+        "last_message_at": "2026-11-08T00:00:00.000Z",
+        "last_message": {
+          "message_id": "0190f000-0000-7000-8000-0000000000aa",
+          "kind": "request",
+          "preview": "please run the tests"
+        },
+        "pending_requests": 1,
+        "pending_deliveries": 2
+      }
+    ]
+  },
+  "meta": { "schema": 1 }
+}

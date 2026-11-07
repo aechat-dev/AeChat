@@ -4,6 +4,7 @@ import type {
   BindingId,
   BoundScope,
   Client,
+  HostSeenSource,
   ResumeState,
   SessionId,
   SessionRecord,
@@ -37,6 +38,7 @@ function sessionFromRow(row: Row): SessionRecord {
     capabilitiesJson: nullableString(row["capabilities_json"]),
     lastSeenAt: requiredString(row["last_seen_at"], "last_seen_at"),
     hostSeenAt: nullableString(row["host_seen_at"]),
+    hostSeenSource: nullableString(row["host_seen_source"]) as HostSeenSource | null,
     resumeState: requiredString(row["resume_state"], "resume_state") as ResumeState,
     resumeCount: Number(row["resume_count"] ?? 0),
     resumedAt: nullableString(row["resumed_at"]),
@@ -73,6 +75,7 @@ export interface CreateSessionInput {
   boundCheckedAt?: string | null;
   capabilitiesJson?: string | null;
   hostSeenAt?: string | null;
+  hostSeenSource?: HostSeenSource | null;
   resumeState?: ResumeState;
   resumeCount?: number;
   resumedAt?: string | null;
@@ -113,9 +116,9 @@ export class SessionRepository {
         `INSERT INTO sessions (
           session_id, display_name, client, project, conversation_id,
           bound_scope, bound_at, bound_checked_at, capabilities_json,
-          last_seen_at, host_seen_at, resume_state, resume_count, resumed_at,
-          created_at, left_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          last_seen_at, host_seen_at, host_seen_source, resume_state,
+          resume_count, resumed_at, created_at, left_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         input.sessionId,
@@ -129,6 +132,7 @@ export class SessionRepository {
         input.capabilitiesJson ?? null,
         input.lastSeenAt,
         input.hostSeenAt ?? null,
+        input.hostSeenSource ?? null,
         input.resumeState ?? "idle",
         input.resumeCount ?? 0,
         input.resumedAt ?? null,
@@ -171,13 +175,19 @@ export class SessionRepository {
     return rows.map(sessionFromRow);
   }
 
-  touch(id: SessionId, at: string, opts: { host?: boolean } = {}): void {
+  touch(
+    id: SessionId,
+    at: string,
+    opts: { host?: boolean; hostSource?: HostSeenSource } = {},
+  ): void {
     if (opts.host === true) {
       this.db
         .prepare(
-          "UPDATE sessions SET last_seen_at = ?, host_seen_at = ? WHERE session_id = ?",
+          `UPDATE sessions
+           SET last_seen_at = ?, host_seen_at = ?, host_seen_source = ?
+           WHERE session_id = ?`,
         )
-        .run(at, at, id);
+        .run(at, at, opts.hostSource ?? "heartbeat", id);
       return;
     }
     this.db

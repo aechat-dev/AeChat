@@ -1,6 +1,6 @@
 import type { DatabaseSync } from "node:sqlite";
 
-const SCHEMA_VERSION = 3;
+const SCHEMA_VERSION = 4;
 
 const SCHEMA_SQL = `
 CREATE TABLE IF NOT EXISTS sessions (
@@ -148,10 +148,15 @@ CREATE INDEX IF NOT EXISTS requests_requester_status
   ON requests(requester_session, status, created_at);
 `;
 
+const SCHEMA_V4_SQL = `
+ALTER TABLE sessions ADD COLUMN host_seen_source TEXT;
+`;
+
 const MIGRATIONS: Record<number, string> = {
   1: SCHEMA_SQL,
   2: SCHEMA_V2_SQL,
   3: SCHEMA_V3_SQL,
+  4: SCHEMA_V4_SQL,
 };
 
 /**

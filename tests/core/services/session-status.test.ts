@@ -105,4 +105,16 @@ describe("deriveBoundState", () => {
       }),
     ).toBe("invalid");
   });
+
+  it("does not treat a pending transport as a valid binding", () => {
+    expect(
+      deriveBoundState({
+        boundScope: "host_role",
+        boundCheckedAt: NOW,
+        binding: { state: "pending" },
+        now: NOW,
+        boundTtlSeconds: 600,
+      }),
+    ).toBe("invalid");
+  });
 });

@@ -308,7 +308,7 @@ export class SessionService {
     if (this.sessions.get(sessionId) === undefined) {
       throw new AechatError("session_not_found", `session not found: ${sessionId}`);
     }
-    this.sessions.touch(sessionId, at, { host: true });
+    this.sessions.touch(sessionId, at, { host: true, hostSource: "heartbeat" });
     this.events?.record({ event: "heartbeat", sessionId, data: { at } });
   }
 }

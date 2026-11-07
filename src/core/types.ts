@@ -13,6 +13,8 @@ export type BoundScope = "conversation" | "host_role" | "none";
 export type ResumeState = "idle" | "resume_pending";
 export type TransportState = "pending" | "bound" | "stale" | "released" | "failed";
 
+export type HostSeenSource = "heartbeat" | "hook";
+
 export interface SessionRecord {
   sessionId: SessionId;
   displayName: string;
@@ -25,6 +27,7 @@ export interface SessionRecord {
   capabilitiesJson: string | null;
   lastSeenAt: string;
   hostSeenAt: string | null;
+  hostSeenSource: HostSeenSource | null;
   resumeState: ResumeState;
   resumeCount: number;
   resumedAt: string | null;

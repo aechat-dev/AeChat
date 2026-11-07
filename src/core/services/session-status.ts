@@ -30,6 +30,7 @@ export interface StatusBinding {
 export interface DeriveStatusInput {
   lastSeenAt: string | null;
   hostSeenAt: string | null;
+  hostSeenSource?: string | null;
   binding: StatusBinding | null;
   leftAt?: string | null;
   now: string;
@@ -86,7 +87,7 @@ export function deriveStatus(input: DeriveStatusInput): StatusResult {
   if (hostAge !== null && hostAge <= input.ttl.onlineTtlSeconds) {
     return {
       status: "online",
-      evidence: "hook",
+      evidence: input.hostSeenSource === "heartbeat" ? "heartbeat" : "hook",
       evidenceAt: input.hostSeenAt,
     };
   }
@@ -131,12 +132,16 @@ export function deriveBoundState(input: DeriveBoundStateInput): BoundState {
   if (
     input.binding === null ||
     input.binding.state === "released" ||
-    input.binding.state === "failed"
+    input.binding.state === "failed" ||
+    input.binding.state === "pending"
   ) {
     return "invalid";
   }
   if (input.binding.state === "stale") {
     return "stale";
+  }
+  if (input.binding.state !== "bound") {
+    return "invalid";
   }
   if (input.boundCheckedAt === null) {
     return "invalid";

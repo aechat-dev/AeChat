@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 
 import { listCommand } from "../../src/cli/commands/list.js";
+import { SessionQueryService } from "../../src/app/session-query.js";
 import { registerCommand } from "../../src/cli/commands/register.js";
 import { whoamiCommand } from "../../src/cli/commands/whoami.js";
 import { DeliveryService } from "../../src/core/services/delivery-service.js";
@@ -82,7 +83,23 @@ function setup(options: ConstructorParameters<typeof FakeTransportAdapter>[0] = 
     events: new EventRepository(db),
     now: () => "2026-11-06T12:00:00.000Z",
   });
-  return { service, delivery, request, resume, capabilities, audit, transport };
+  const sessionQuery = new SessionQueryService({
+    sessions,
+    bindings,
+    transport,
+    capabilities,
+    now: () => "2026-11-06T12:00:00.000Z",
+  });
+  return {
+    service,
+    delivery,
+    request,
+    resume,
+    capabilities,
+    audit,
+    transport,
+    sessionQuery,
+  };
 }
 
 afterEach(() => {
@@ -93,11 +110,11 @@ afterEach(() => {
 
 describe("session CLI commands", () => {
   it("register returns a session id and bind directive", async () => {
-    const { service, delivery, request, resume, capabilities, audit, transport } = setup();
+    const { service, delivery, request, resume, capabilities, audit, transport, sessionQuery } = setup();
 
     const data = await registerCommand(
       ["--name", "dev", "--client", "claude-code", "--project", "/tmp/project"],
-      { service, delivery, request, resume, capabilities, audit, transport, now: () => "2026-11-06T12:00:00.000Z" },
+      { service, delivery, request, resume, capabilities, audit, transport, sessionQuery, now: () => "2026-11-06T12:00:00.000Z" },
     );
 
     expect(data["session_id"]).toBeTypeOf("string");
@@ -106,7 +123,7 @@ describe("session CLI commands", () => {
   });
 
   it("whoami --conversation works without --session", async () => {
-    const { service, delivery, request, resume, capabilities, audit, transport } = setup();
+    const { service, delivery, request, resume, capabilities, audit, transport, sessionQuery } = setup();
     const registered = await service.register({
       displayName: "dev",
       client: "claude-code",
@@ -122,16 +139,17 @@ describe("session CLI commands", () => {
       capabilities,
       audit,
       transport,
+      sessionQuery,
       now: () => "2026-11-06T12:00:00.000Z",
     });
     expect(data["session_id"]).toBe(registered.session.sessionId);
   });
 
   it("list --json includes supported/available separately", async () => {
-    const { service, delivery, request, resume, capabilities, audit, transport } = setup();
+    const { service, delivery, request, resume, capabilities, audit, transport, sessionQuery } = setup();
     const registered = await registerCommand(
       ["--name", "dev", "--client", "claude-code", "--project", "/tmp/project"],
-      { service, delivery, request, resume, capabilities, audit, transport, now: () => "2026-11-06T12:00:00.000Z" },
+      { service, delivery, request, resume, capabilities, audit, transport, sessionQuery, now: () => "2026-11-06T12:00:00.000Z" },
     );
     await service.confirm(registered["session_id"] as string);
 
@@ -143,6 +161,7 @@ describe("session CLI commands", () => {
       capabilities,
       audit,
       transport,
+      sessionQuery,
       now: () => "2026-11-06T12:00:00.000Z",
     });
     const sessions = data["sessions"] as Array<Record<string, unknown>>;
@@ -158,10 +177,10 @@ describe("session CLI commands", () => {
   });
 
   it("does not mark capabilities available when the delivery mode is unknown", async () => {
-    const { service, delivery, request, resume, capabilities, audit, transport } = setup({ mode: "unknown" });
+    const { service, delivery, request, resume, capabilities, audit, transport, sessionQuery } = setup({ mode: "unknown" });
     const registered = await registerCommand(
       ["--name", "dev", "--client", "claude-code", "--project", "/tmp/project"],
-      { service, delivery, request, resume, capabilities, audit, transport, now: () => "2026-11-06T12:00:00.000Z" },
+      { service, delivery, request, resume, capabilities, audit, transport, sessionQuery, now: () => "2026-11-06T12:00:00.000Z" },
     );
     await service.confirm(registered["session_id"] as string);
 
@@ -173,6 +192,7 @@ describe("session CLI commands", () => {
       capabilities,
       audit,
       transport,
+      sessionQuery,
       now: () => "2026-11-06T12:00:00.000Z",
     });
     const sessions = data["sessions"] as Array<Record<string, unknown>>;

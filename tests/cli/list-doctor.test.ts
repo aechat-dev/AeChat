@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { CommandContext } from "../../src/cli/commands/context.js";
 import { doctorCommand } from "../../src/cli/commands/doctor.js";
 import { listCommand } from "../../src/cli/commands/list.js";
+import { SessionQueryService } from "../../src/app/session-query.js";
 import { CapabilityService } from "../../src/core/services/capability-service.js";
 import { DeliveryService } from "../../src/core/services/delivery-service.js";
 import { AuditService } from "../../src/core/services/audit-service.js";
@@ -104,6 +105,13 @@ function setup(options: { mode?: string; live?: boolean } = {}) {
     audit,
     transport,
     now,
+    sessionQuery: new SessionQueryService({
+      sessions,
+      bindings,
+      transport,
+      capabilities,
+      now,
+    }),
   };
   return { db, ctx, sessions, bindings, service, transport, probes };
 }

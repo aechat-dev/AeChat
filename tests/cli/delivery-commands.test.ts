@@ -6,6 +6,7 @@ import { logCommand } from "../../src/cli/commands/log.js";
 import { sendCommand } from "../../src/cli/commands/send.js";
 import type { CommandContext } from "../../src/cli/commands/context.js";
 import type { CommandResult } from "../../src/cli/output.js";
+import { SessionQueryService } from "../../src/app/session-query.js";
 import { DeliveryService } from "../../src/core/services/delivery-service.js";
 import { AuditService } from "../../src/core/services/audit-service.js";
 import { CapabilityService } from "../../src/core/services/capability-service.js";
@@ -69,10 +70,11 @@ function setup(): Setup {
     events,
     now,
   });
+  const probes = new ProbeRepository(db);
   const capabilities = new CapabilityService({
     sessions,
     bindings,
-    probes: new ProbeRepository(db),
+    probes,
     transport,
   });
   const resume = new ResumeService({
@@ -101,6 +103,13 @@ function setup(): Setup {
     audit,
     transport,
     now,
+    sessionQuery: new SessionQueryService({
+      sessions,
+      bindings,
+      transport,
+      capabilities,
+      now,
+    }),
   };
 
   return {

@@ -21,6 +21,17 @@ export function openDatabase(path: string): DatabaseSync {
 }
 
 /**
+ * Open an existing store without migration, chmod or WAL reconfiguration.
+ * The UI bridge uses this path so observation cannot mutate the database.
+ */
+export function openReadOnlyDatabase(path: string): DatabaseSync {
+  const db = new DatabaseSync(path, { readOnly: true });
+  db.exec("PRAGMA foreign_keys = ON");
+  db.exec("PRAGMA busy_timeout = 5000");
+  return db;
+}
+
+/**
  * Run a multi-statement write under BEGIN IMMEDIATE. SQLite serializes the
  * writer slot, so claim operations cannot hand the same delivery to two
  * callers.

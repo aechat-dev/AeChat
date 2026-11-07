@@ -1,6 +1,11 @@
 import { AechatError, exitCodeFor, type ErrorCode } from "../core/errors.js";
+import {
+  buildErrorEnvelope,
+  buildSuccessEnvelope,
+  SCHEMA_VERSION,
+} from "../contracts/envelope.js";
 
-export const SCHEMA_VERSION = 1;
+export { SCHEMA_VERSION };
 
 export interface CommandResult {
   data: unknown;
@@ -34,12 +39,7 @@ export function render(result: unknown): void {
  * envelope, never by caller-supplied metadata.
  */
 export function ok(data: unknown, meta: Record<string, unknown> = {}): void {
-  const envelope = {
-    ok: true,
-    data,
-    meta: { ...meta, schema: SCHEMA_VERSION },
-  };
-  process.stdout.write(`${JSON.stringify(envelope)}\n`);
+  process.stdout.write(`${JSON.stringify(buildSuccessEnvelope(data, meta))}\n`);
 }
 
 /**
@@ -52,15 +52,7 @@ export function errorEnvelope(
   details?: unknown,
 ): void {
   process.exitCode = exitCodeFor(code);
-  const error =
-    details === undefined ? { code, message } : { code, message, details };
-  process.stderr.write(
-    `${JSON.stringify({
-      ok: false,
-      error,
-      meta: { schema: SCHEMA_VERSION },
-    })}\n`,
-  );
+  process.stderr.write(`${JSON.stringify(buildErrorEnvelope(code, message, details))}\n`);
 }
 
 /**

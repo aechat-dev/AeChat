@@ -7,6 +7,7 @@ import { retryCommand } from "../../src/cli/commands/retry.js";
 import { sendCommand } from "../../src/cli/commands/send.js";
 import { waitCommand } from "../../src/cli/commands/wait.js";
 import type { CommandResult } from "../../src/cli/output.js";
+import { SessionQueryService } from "../../src/app/session-query.js";
 import { DeliveryService } from "../../src/core/services/delivery-service.js";
 import { AuditService } from "../../src/core/services/audit-service.js";
 import { CapabilityService } from "../../src/core/services/capability-service.js";
@@ -70,10 +71,11 @@ function setup(options: { notifyFails?: boolean } = {}) {
     events,
     now,
   });
+  const probes = new ProbeRepository(db);
   const capabilities = new CapabilityService({
     sessions,
     bindings,
-    probes: new ProbeRepository(db),
+    probes,
     transport,
   });
   const resume = new ResumeService({
@@ -102,6 +104,13 @@ function setup(options: { notifyFails?: boolean } = {}) {
     audit,
     transport,
     now,
+    sessionQuery: new SessionQueryService({
+      sessions,
+      bindings,
+      transport,
+      capabilities,
+      now,
+    }),
   };
 
   async function addSession(name: string): Promise<string> {

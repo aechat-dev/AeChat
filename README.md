@@ -156,6 +156,7 @@ user authorization.
 | `reply` | Answer a request |
 | `wait` | Block until a correlated reply arrives |
 | `heartbeat` | Keep a session marked online |
+| `probe` | Record one capability observation |
 | `cancel` / `retry` | Cancel a request or retry a delivery |
 | `resume` / `leave` | Rebind or retire a session |
 | `log` / `history` | Inspect one audit chain or one session's messages |

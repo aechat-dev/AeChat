@@ -17,6 +17,7 @@ import { initCommand } from "./commands/init.js";
 import { leaveCommand } from "./commands/leave.js";
 import { listCommand } from "./commands/list.js";
 import { logCommand } from "./commands/log.js";
+import { probeCommand } from "./commands/probe.js";
 import { registerCommand } from "./commands/register.js";
 import { replyCommand } from "./commands/reply.js";
 import { resumeCommand } from "./commands/resume.js";
@@ -47,6 +48,7 @@ const COMMANDS = new Set([
   "whoami",
   "list",
   "heartbeat",
+  "probe",
   "send",
   "inbox",
   "ack",
@@ -75,6 +77,7 @@ Commands:
   whoami     --session <uuid> | --conversation <id>
   list       [--json] [--all] [--as <session>]
   heartbeat  --session <uuid>
+  probe      --session <uuid>
   send       --session <uuid> (--to-session <uuid> | --to-name <name>)
              (--body <text> | --body-file <path>) [--request] [--deadline <seconds>]
              [--dedup-key <key>] [--ttl <seconds>]
@@ -184,6 +187,9 @@ export async function main(argv: readonly string[]): Promise<number> {
           break;
         case "heartbeat":
           data = await heartbeatCommand(rest, ctx);
+          break;
+        case "probe":
+          data = await probeCommand(rest, ctx);
           break;
         case "send":
           data = await sendCommand(rest, ctx);

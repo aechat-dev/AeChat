@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { CommandContext } from "../../src/cli/commands/context.js";
 import { doctorCommand } from "../../src/cli/commands/doctor.js";
 import { listCommand } from "../../src/cli/commands/list.js";
+import { probeCommand } from "../../src/cli/commands/probe.js";
 import { AuditService } from "../../src/core/services/audit-service.js";
 import { CapabilityService } from "../../src/core/services/capability-service.js";
 import { DeliveryService } from "../../src/core/services/delivery-service.js";
@@ -223,6 +224,75 @@ describe("doctor output", () => {
         process.env["AECHAT_HOME"] = previousHome;
       }
     }
+  });
+});
+
+describe("probe command", () => {
+  it("records evidence and reports the observed level", async () => {
+    const { ctx, service, transport, probes } = setup();
+    const registered = await service.register({
+      displayName: "probe",
+      client: "claude-code",
+      project: "/tmp/probe",
+    });
+    vi.spyOn(transport, "probe").mockResolvedValue({
+      observedLevel: "L2",
+      pull: true,
+      wait: true,
+      notificationReceive: true,
+      busyReceive: true,
+      idleWakeup: false,
+      evidence: { clientVersion: "2.0.0", condition: "host busy" },
+      at: "2026-11-07T00:00:01.000Z",
+    });
+
+    const data = await probeCommand(
+      ["--session", registered.session.sessionId],
+      ctx,
+    );
+
+    expect(data).toMatchObject({
+      session_id: registered.session.sessionId,
+      client: "claude-code",
+      client_version: "2.0.0",
+      wakeup_level: "L2",
+      busy_receive: true,
+      idle_wakeup: false,
+      observed_at: "2026-11-07T00:00:01.000Z",
+      evidence: { condition: "host busy" },
+    });
+    expect(
+      probes.latestForSession(registered.session.sessionId)?.observedLevel,
+    ).toBe("L2");
+  });
+
+  it("keeps unproven levels unknown", async () => {
+    const { ctx, service } = setup();
+    const registered = await service.register({
+      displayName: "probe",
+      client: "claude-code",
+      project: "/tmp/probe",
+    });
+
+    const data = await probeCommand(
+      ["--session", registered.session.sessionId],
+      ctx,
+    );
+
+    expect(data["wakeup_level"]).toBe("unknown");
+    expect(data["busy_receive"]).toBeNull();
+    expect(data["idle_wakeup"]).toBeNull();
+  });
+
+  it("rejects a missing or malformed session id", async () => {
+    const { ctx } = setup();
+
+    await expect(probeCommand([], ctx)).rejects.toMatchObject({
+      code: "invalid_input",
+    });
+    await expect(
+      probeCommand(["--session", "../bad"], ctx),
+    ).rejects.toMatchObject({ code: "invalid_input" });
   });
 });
 

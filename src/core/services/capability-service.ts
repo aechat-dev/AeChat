@@ -72,13 +72,17 @@ export function adapterBinding(
   };
 }
 
-function levelOf(
-  probe: ProbeRecord | undefined,
-): CapabilityReport["wakeup_level"] {
-  const level = probe?.observedLevel;
+export type WakeupLevel = CapabilityReport["wakeup_level"];
+
+/** Probe rows carry raw evidence; only the four defined levels are reportable. */
+export function wakeupLevelOf(level: string | null | undefined): WakeupLevel {
   return level === "L0" || level === "L1" || level === "L2" || level === "L3"
     ? level
     : "unknown";
+}
+
+function levelOf(probe: ProbeRecord | undefined): WakeupLevel {
+  return wakeupLevelOf(probe?.observedLevel);
 }
 
 /**

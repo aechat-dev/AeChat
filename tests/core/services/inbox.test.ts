@@ -81,6 +81,59 @@ afterEach(() => {
 });
 
 describe("DeliveryService.inbox", () => {
+  it("records an expire event when a delivery TTL lapses", async () => {
+    const { service, events } = setup();
+    const sent = await service.send({
+      fromSession: "from-session",
+      toSession: "to-session",
+      kind: "notify",
+      body: "gone",
+      ttlSeconds: 1,
+      now: "2026-11-06T00:00:00.000Z",
+    });
+
+    await service.inbox({
+      sessionId: "to-session",
+      limit: 10,
+      now: "2026-11-06T00:00:10.000Z",
+    });
+
+    const expire = events
+      .listForMessage(sent.messageId)
+      .find((event) => event.event === "expire");
+    expect(expire).toMatchObject({
+      messageId: sent.messageId,
+      deliveryId: sent.deliveryId,
+      sessionId: "to-session",
+    });
+    expect(JSON.parse(expire?.dataJson ?? "{}")).toMatchObject({
+      reason: "ttl",
+    });
+  });
+
+  it("records a dead_letter event after the lease and attempt limit", async () => {
+    const { service, events } = setup();
+    const sent = await service.send({
+      fromSession: "from-session",
+      toSession: "to-session",
+      kind: "notify",
+      body: "never acked",
+      now: "2026-11-06T00:00:00.000Z",
+    });
+
+    for (const time of ["00:01", "00:12", "00:23", "00:34"]) {
+      await service.inbox({
+        sessionId: "to-session",
+        limit: 1,
+        now: `2026-11-06T${time}:00.000Z`,
+      });
+    }
+
+    expect(
+      events.listForMessage(sent.messageId).map((event) => event.event),
+    ).toContain("dead_letter");
+  });
+
   it("claims and returns delivery_token", async () => {
     const { service } = setup();
     const sent = await service.send({

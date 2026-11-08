@@ -99,7 +99,7 @@ export class RequestService {
     // Expire in its own transaction: a late reply must leave the observable
     // request status as expired, not roll the lazy transition back.
     withImmediate(this.db, () => {
-      this.requests.expireOverdue(input.requestId, at);
+      this.expireRequest(input.requestId, at);
     });
     let outcome:
       | {
@@ -183,7 +183,7 @@ export class RequestService {
         input.sessionId,
       );
       this.deliveries.markReplied(request.requestId, input.sessionId, at);
-      outcome = {
+      const completed = {
         messageId,
         alreadyReplied: false,
         deliveryId,
@@ -191,6 +191,36 @@ export class RequestService {
         requestAlreadyAcked: requestDelivery?.status === "acked",
         requesterSession: request.requesterSession,
       };
+      outcome = completed;
+      this.events?.record({
+        event: "send",
+        sessionId: input.sessionId,
+        messageId: completed.messageId,
+        deliveryId: completed.deliveryId,
+        requestId: input.requestId,
+        ts: at,
+        data: { kind: "reply" },
+      });
+      if (completed.requestAlreadyAcked !== true) {
+        this.events?.record({
+          event: "ack",
+          sessionId: input.sessionId,
+          messageId: input.requestId,
+          deliveryId: completed.requestDeliveryId,
+          requestId: input.requestId,
+          ts: at,
+          data: { by: "reply" },
+        });
+      }
+      this.events?.record({
+        event: "reply",
+        sessionId: input.sessionId,
+        messageId: completed.messageId,
+        deliveryId: completed.deliveryId,
+        requestId: input.requestId,
+        ts: at,
+        data: { replyMessageId: completed.messageId },
+      });
     });
 
     if (outcome === undefined) {
@@ -208,35 +238,6 @@ export class RequestService {
 
     const deliveryId = outcome.deliveryId as string;
     const requesterSession = outcome.requesterSession as string;
-    this.events?.record({
-      event: "send",
-      sessionId: input.sessionId,
-      messageId: outcome.messageId,
-      deliveryId,
-      requestId: input.requestId,
-      ts: at,
-      data: { kind: "reply" },
-    });
-    if (outcome.requestAlreadyAcked !== true) {
-      this.events?.record({
-        event: "ack",
-        sessionId: input.sessionId,
-        messageId: input.requestId,
-        deliveryId: outcome.requestDeliveryId ?? null,
-        requestId: input.requestId,
-        ts: at,
-        data: { by: "reply" },
-      });
-    }
-    this.events?.record({
-      event: "reply",
-      sessionId: input.sessionId,
-      messageId: outcome.messageId,
-      deliveryId,
-      requestId: input.requestId,
-      ts: at,
-      data: { replyMessageId: outcome.messageId },
-    });
     await this.delivery.notifyDelivery({
       messageId: outcome.messageId,
       deliveryId,
@@ -263,7 +264,7 @@ export class RequestService {
     const deadline = Date.now() + timeoutSeconds * 1000;
     for (;;) {
       withImmediate(this.db, () => {
-        this.requests.expireOverdue(requestId, this.now());
+        this.expireRequest(requestId, this.now());
       });
       const request = this.requests.get(requestId);
       if (request === undefined) {
@@ -311,10 +312,34 @@ export class RequestService {
     }
   }
 
+  /**
+   * Lazy deadline transition. Callers run this inside the same transaction as
+   * the transition, so the audit event cannot survive a rolled-back state.
+   */
+  private expireRequest(requestId: string, at: string): boolean {
+    if (!this.requests.expireOverdue(requestId, at)) {
+      return false;
+    }
+    const request = this.requests.get(requestId);
+    this.events?.record({
+      event: "expire",
+      sessionId: request?.targetSession ?? null,
+      messageId: requestId,
+      requestId,
+      ts: at,
+      data: {
+        scope: "request",
+        reason: "deadline",
+        deadline: request?.deadline ?? null,
+      },
+    });
+    return true;
+  }
+
   cancel(sessionId: string, requestId: string): boolean {
     const at = this.now();
     withImmediate(this.db, () => {
-      this.requests.expireOverdue(requestId, at);
+      this.expireRequest(requestId, at);
     });
     const request = this.requests.get(requestId);
     if (request === undefined) {
@@ -332,17 +357,19 @@ export class RequestService {
     if (request.status !== "open") {
       return false;
     }
-    const cancelled = this.requests.markCancelled(requestId, sessionId, at);
-    if (cancelled) {
-      this.events?.record({
-        event: "cancel",
-        sessionId,
-        messageId: requestId,
-        requestId,
-        ts: at,
-        data: { closeReason: "sender_cancel" },
-      });
-    }
-    return cancelled;
+    return withImmediate(this.db, () => {
+      const cancelled = this.requests.markCancelled(requestId, sessionId, at);
+      if (cancelled) {
+        this.events?.record({
+          event: "cancel",
+          sessionId,
+          messageId: requestId,
+          requestId,
+          ts: at,
+          data: { closeReason: "sender_cancel" },
+        });
+      }
+      return cancelled;
+    });
   }
 }

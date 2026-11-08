@@ -300,18 +300,18 @@ export class DeliveryService {
           createdAt: at,
         });
       }
+      this.events?.record({
+        event: "send",
+        sessionId: input.fromSession,
+        messageId,
+        deliveryId,
+        ts: at,
+        data: { toSession: input.toSession, kind: input.kind },
+      });
     });
     if (duplicate !== undefined) {
       return duplicate;
     }
-    this.events?.record({
-      event: "send",
-      sessionId: input.fromSession,
-      messageId,
-      deliveryId,
-      ts: at,
-      data: { toSession: input.toSession, kind: input.kind },
-    });
 
     return this.notifyDelivery({
       messageId,
@@ -370,15 +370,17 @@ export class DeliveryService {
 
     const notifyAt = this.now();
     if (notifyResult.ok) {
-      this.deliveries.markNotified(input.deliveryId, notifyAt);
-      this.events?.record({
-        event: "notify",
-        sessionId: input.toSession,
-        messageId: input.messageId,
-        deliveryId: input.deliveryId,
-        transport: toBinding.transport,
-        mode: toBinding.mode,
-        ts: notifyAt,
+      withImmediate(this.db, () => {
+        this.deliveries.markNotified(input.deliveryId, notifyAt);
+        this.events?.record({
+          event: "notify",
+          sessionId: input.toSession,
+          messageId: input.messageId,
+          deliveryId: input.deliveryId,
+          transport: toBinding.transport,
+          mode: toBinding.mode,
+          ts: notifyAt,
+        });
       });
       return {
         messageId: input.messageId,
@@ -390,17 +392,19 @@ export class DeliveryService {
     const error =
       redactErrorDetail(notifyResult.error ?? "transport notify failed") ??
       "transport notify failed";
-    this.deliveries.markNotifyFailed(input.deliveryId, error);
-    this.events?.record({
-      event: "notify_fail",
-      level: "warn",
-      sessionId: input.toSession,
-      messageId: input.messageId,
-      deliveryId: input.deliveryId,
-      transport: toBinding.transport,
-      mode: toBinding.mode,
-      ts: notifyAt,
-      errorDetail: error,
+    withImmediate(this.db, () => {
+      this.deliveries.markNotifyFailed(input.deliveryId, error);
+      this.events?.record({
+        event: "notify_fail",
+        level: "warn",
+        sessionId: input.toSession,
+        messageId: input.messageId,
+        deliveryId: input.deliveryId,
+        transport: toBinding.transport,
+        mode: toBinding.mode,
+        ts: notifyAt,
+        errorDetail: error,
+      });
     });
     return {
       messageId: input.messageId,
@@ -513,6 +517,19 @@ export class DeliveryService {
       limit: input.limit,
       now: at,
       leaseSeconds: DEFAULT_LEASE_SECONDS,
+      onTransition: (transition) => {
+        this.events?.record({
+          event: transition.event,
+          sessionId: transition.sessionId,
+          messageId: transition.messageId,
+          deliveryId: transition.deliveryId,
+          ts: at,
+          data:
+            transition.event === "expire"
+              ? { reason: "ttl", attempts: transition.attempts }
+              : { reason: "lease_exhausted", attempts: transition.attempts },
+        });
+      },
     });
     for (const delivery of claimed) {
       this.events?.record({
@@ -559,18 +576,20 @@ export class DeliveryService {
     const at = input.now ?? this.now();
     const delivery = this.deliveries.getByToken(input.token, input.sessionId);
     const wasDelivered = delivery?.status === "delivered";
-    const ok = this.deliveries.ack(input.token, input.sessionId, at);
-    if (ok && wasDelivered) {
-      this.events?.record({
-        event: "ack",
-        sessionId: input.sessionId,
-        messageId: delivery?.messageId ?? null,
-        deliveryId: delivery?.deliveryId ?? null,
-        ts: at,
-        data: { tokenPresent: true },
-      });
-    }
-    return ok;
+    return withImmediate(this.db, () => {
+      const ok = this.deliveries.ack(input.token, input.sessionId, at);
+      if (ok && wasDelivered) {
+        this.events?.record({
+          event: "ack",
+          sessionId: input.sessionId,
+          messageId: delivery?.messageId ?? null,
+          deliveryId: delivery?.deliveryId ?? null,
+          ts: at,
+          data: { tokenPresent: true },
+        });
+      }
+      return ok;
+    });
   }
 
   show(input: ShowInput): MessageRecord {

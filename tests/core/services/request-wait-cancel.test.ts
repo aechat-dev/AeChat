@@ -74,7 +74,7 @@ function setup(options: { notifyFails?: boolean } = {}) {
     });
   }
 
-  return { delivery, service, messages, deliveries, requests };
+  return { delivery, service, messages, deliveries, requests, events };
 }
 
 afterEach(() => {
@@ -147,6 +147,40 @@ describe("RequestService.wait", () => {
     const inbox = await delivery.inbox({ sessionId: "requester", limit: 10 });
     expect(inbox).toHaveLength(1);
     expect(inbox[0]?.message.messageId).toBe(reply.messageId);
+  });
+});
+
+describe("RequestService expiry", () => {
+  it("records an expire event when a late reply observes the deadline", async () => {
+    const { delivery, service, events } = setup();
+    const request = await delivery.sendRequest({
+      fromSession: "requester",
+      toSession: "target",
+      body: "too late",
+      deadlineSeconds: 1,
+      now: "2026-11-07T00:00:00.000Z",
+    });
+
+    await expect(
+      service.reply({
+        sessionId: "target",
+        requestId: request.messageId,
+        body: "late",
+        now: "2026-11-07T00:00:10.000Z",
+      }),
+    ).rejects.toMatchObject({ code: "request_expired" });
+
+    const expire = events
+      .listForMessage(request.messageId)
+      .find((event) => event.event === "expire");
+    expect(expire).toMatchObject({
+      messageId: request.messageId,
+      requestId: request.messageId,
+    });
+    expect(JSON.parse(expire?.dataJson ?? "{}")).toMatchObject({
+      scope: "request",
+      reason: "deadline",
+    });
   });
 });
 

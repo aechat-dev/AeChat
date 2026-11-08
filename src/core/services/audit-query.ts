@@ -109,9 +109,11 @@ function chainEvent(event: EventRecord): AuditChainEvent {
 function compareChainEvents(left: EventRecord, right: EventRecord): number {
   const leftRank = STAGE_RANK[stageOf(left.event)] ?? 99;
   const rightRank = STAGE_RANK[stageOf(right.event)] ?? 99;
+  // Chronological first; stage rank breaks ties for events written in the
+  // same millisecond (common in tests and batched transactions).
   return (
-    leftRank - rightRank ||
     left.ts.localeCompare(right.ts) ||
+    leftRank - rightRank ||
     left.eventId.localeCompare(right.eventId)
   );
 }

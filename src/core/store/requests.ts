@@ -1,6 +1,12 @@
 import type { DatabaseSync } from "node:sqlite";
 
 export type RequestStatus = "open" | "replied" | "expired" | "cancelled";
+
+export interface CancelledRequest {
+  requestId: string;
+  requesterSession: string;
+  targetSession: string;
+}
 export type RequestCloseReason =
   | "replied"
   | "deadline"
@@ -126,8 +132,19 @@ export class RequestRepository {
     return Number(result.changes) > 0;
   }
 
-  cancelForLeft(sessionId: string, now: string): number {
-    const result = this.db
+  cancelForLeft(sessionId: string, now: string): CancelledRequest[] {
+    const rows = this.db
+      .prepare(
+        `SELECT request_id, requester_session, target_session
+         FROM requests
+         WHERE status = 'open'
+           AND (requester_session = ? OR target_session = ?)`,
+      )
+      .all(sessionId, sessionId) as Row[];
+    if (rows.length === 0) {
+      return [];
+    }
+    this.db
       .prepare(
         `UPDATE requests
          SET status = 'cancelled',
@@ -140,6 +157,10 @@ export class RequestRepository {
            AND (requester_session = ? OR target_session = ?)`,
       )
       .run(sessionId, now, sessionId, sessionId);
-    return Number(result.changes);
+    return rows.map((row) => ({
+      requestId: String(row["request_id"]),
+      requesterSession: String(row["requester_session"]),
+      targetSession: String(row["target_session"]),
+    }));
   }
 }

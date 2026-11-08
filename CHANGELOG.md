@@ -35,6 +35,12 @@ are assembled from the `Unreleased` section at tag time.
   `AGMSG_SESSION_ID` overriding) and falls back to the bind directive when no
   claim succeeded and no role is held.
 
+### Fixed
+
+- Expiry, dead-letter and leave-cancellation transitions now emit per-message
+  audit events in the same transaction as the state change, and `aechat log`
+  orders the chain by time.
+
 ### Security
 
 - Database files are created owner-only (0600).

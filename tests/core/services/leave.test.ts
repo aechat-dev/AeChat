@@ -92,6 +92,7 @@ function setup() {
     bindings,
     requests,
     messages,
+    events,
   };
 }
 
@@ -102,6 +103,32 @@ afterEach(() => {
 });
 
 describe("SessionService.leave", () => {
+  it("records cancel events for open requests and leave in the same chain", async () => {
+    const { service, delivery, events } = setup();
+    const request = await delivery.sendRequest({
+      fromSession: "a",
+      toSession: "b",
+      body: "pending",
+      deadlineSeconds: 300,
+    });
+
+    await service.leave("b");
+
+    const cancel = events
+      .listForMessage(request.messageId)
+      .find((event) => event.event === "cancel");
+    expect(cancel).toMatchObject({
+      messageId: request.messageId,
+      requestId: request.messageId,
+    });
+    expect(JSON.parse(cancel?.dataJson ?? "{}")).toMatchObject({
+      closeReason: "target_left",
+    });
+    expect(events.listForSession("b").map((event) => event.event)).toContain(
+      "leave",
+    );
+  });
+
   it("releases the binding and marks the session left", async () => {
     const { service, delivery, transport, sessions, bindings, messages } =
       setup();

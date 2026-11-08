@@ -159,7 +159,7 @@ export class SessionService {
     // Register with the transport before persisting the session: an adapter
     // failure must not leave an unbound identity behind.
     const binding = await this.transport.register(ref, input.desiredAddress);
-    try {
+    const write = (): RegisterResult => {
       this.sessions.create({
         sessionId,
         displayName: input.displayName,
@@ -185,6 +185,7 @@ export class SessionService {
         sessionId,
         transport: binding.transport,
         mode: binding.mode,
+        ts: at,
         data: { address: binding.address },
       });
       return {
@@ -192,6 +193,9 @@ export class SessionService {
         binding: storedBinding,
         bindDirective: binding.bindDirective,
       };
+    };
+    try {
+      return this.db === undefined ? write() : withImmediate(this.db, write);
     } catch (error) {
       // The transport identity exists already; do not leave a half-created
       // session behind. Both compensation steps are best-effort, and release
@@ -372,39 +376,43 @@ export class SessionService {
       );
     }
     const at = this.now();
-    this.bindings.updateState(record.bindingId, result.state, at);
+    const write = (): ConfirmResult => {
+      this.bindings.updateState(record.bindingId, result.state, at);
 
-    const update: {
-      sessionId: string;
-      boundScope: BoundScope;
-      boundAt?: string;
-      boundCheckedAt: string;
-      conversationId?: string;
-    } = {
-      sessionId,
-      boundScope: result.boundScope,
-      boundCheckedAt: at,
-    };
-    if (result.boundScope !== "none") {
-      update.boundAt = at;
-    }
-    if (result.conversationId !== null) {
-      update.conversationId = result.conversationId;
-    }
-    this.sessions.updateBinding(update);
-    this.sessions.touch(sessionId, at);
-    this.events?.record({
-      event: "confirm",
-      sessionId,
-      transport: record.transport,
-      mode: record.mode,
-      data: { boundScope: result.boundScope, bindingState: result.state },
-    });
+      const update: {
+        sessionId: string;
+        boundScope: BoundScope;
+        boundAt?: string;
+        boundCheckedAt: string;
+        conversationId?: string;
+      } = {
+        sessionId,
+        boundScope: result.boundScope,
+        boundCheckedAt: at,
+      };
+      if (result.boundScope !== "none") {
+        update.boundAt = at;
+      }
+      if (result.conversationId !== null) {
+        update.conversationId = result.conversationId;
+      }
+      this.sessions.updateBinding(update);
+      this.sessions.touch(sessionId, at);
+      this.events?.record({
+        event: "confirm",
+        sessionId,
+        transport: record.transport,
+        mode: record.mode,
+        ts: at,
+        data: { boundScope: result.boundScope, bindingState: result.state },
+      });
 
-    return {
-      session: this.sessions.get(sessionId) as Session,
-      boundScope: result.boundScope,
+      return {
+        session: this.sessions.get(sessionId) as Session,
+        boundScope: result.boundScope,
+      };
     };
+    return this.db === undefined ? write() : withImmediate(this.db, write);
   }
 
   whoami(input: WhoamiInput): Session {
@@ -512,18 +520,34 @@ export class SessionService {
       if (binding !== undefined) {
         this.bindings.updateState(binding.bindingId, "released", at);
       }
-      this.requests?.cancelForLeft(sessionId, at);
+      const cancelled = this.requests?.cancelForLeft(sessionId, at) ?? [];
+      for (const request of cancelled) {
+        this.events?.record({
+          event: "cancel",
+          sessionId,
+          messageId: request.requestId,
+          requestId: request.requestId,
+          ts: at,
+          data: {
+            closeReason:
+              request.requesterSession === sessionId
+                ? "requester_left"
+                : "target_left",
+          },
+        });
+      }
+      this.events?.record({
+        event: "leave",
+        sessionId,
+        transport: binding?.transport ?? null,
+        ts: at,
+      });
     };
     if (this.db === undefined) {
       write();
     } else {
       withImmediate(this.db, write);
     }
-    this.events?.record({
-      event: "leave",
-      sessionId,
-      transport: binding?.transport ?? null,
-    });
   }
 
   heartbeat(sessionId: string, at: string = this.now()): void {
@@ -533,7 +557,22 @@ export class SessionService {
         `session not found: ${sessionId}`,
       );
     }
-    this.sessions.touch(sessionId, at, { host: true, hostSource: "heartbeat" });
-    this.events?.record({ event: "heartbeat", sessionId, data: { at } });
+    const write = (): void => {
+      this.sessions.touch(sessionId, at, {
+        host: true,
+        hostSource: "heartbeat",
+      });
+      this.events?.record({
+        event: "heartbeat",
+        sessionId,
+        ts: at,
+        data: { at },
+      });
+    };
+    if (this.db === undefined) {
+      write();
+    } else {
+      withImmediate(this.db, write);
+    }
   }
 }

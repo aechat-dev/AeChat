@@ -159,7 +159,7 @@ describe("AuditService.log", () => {
     );
   });
 
-  it("shows the expired state without inventing an event", async () => {
+  it("records the expired transition in the chain", async () => {
     const { delivery, audit } = setup();
     const sent = await delivery.send({
       fromSession: "a",
@@ -177,7 +177,33 @@ describe("AuditService.log", () => {
 
     const entry = audit.log({ messageId: sent.messageId });
     expect(entry.deliveryStatus).toBe("expired");
-    expect(entry.chain.map((item) => item.stage)).not.toContain("expired");
+    expect(entry.chain.map((item) => item.stage)).toContain("expired");
+  });
+
+  it("orders chain events by time rather than lifecycle stage", () => {
+    const { audit, events, messages } = setup();
+    messages.insert({
+      messageId: "manual",
+      kind: "notify",
+      fromSession: "a",
+      toSession: "b",
+      body: "chain",
+      createdAt: "2026-11-07T00:00:00.000Z",
+    });
+    events.record({
+      event: "ack",
+      messageId: "manual",
+      ts: "2026-11-07T00:00:01.000Z",
+    });
+    events.record({
+      event: "notify",
+      messageId: "manual",
+      ts: "2026-11-07T00:00:02.000Z",
+    });
+
+    expect(
+      audit.log({ messageId: "manual" }).chain.map((item) => item.event),
+    ).toEqual(["ack", "notify"]);
   });
 
   it("records a log_read event only against --as, not inside the chain", async () => {

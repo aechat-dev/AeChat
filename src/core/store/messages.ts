@@ -13,6 +13,14 @@ export type DeliveryStatus =
   | "expired"
   | "dead_letter";
 
+export interface DeliveryTransition {
+  event: "expire" | "dead_letter";
+  deliveryId: string;
+  messageId: string;
+  sessionId: string;
+  attempts: number;
+}
+
 export interface MessageRecord {
   messageId: string;
   kind: MessageKind;
@@ -410,6 +418,7 @@ export class DeliveryRepository {
     now: string;
     leaseSeconds: number;
     maxAttempts?: number;
+    onTransition?: (transition: DeliveryTransition) => void;
   }): ClaimedDelivery[] {
     const maxAttempts = input.maxAttempts ?? 3;
     const leaseExpiresAt = new Date(
@@ -417,6 +426,15 @@ export class DeliveryRepository {
     ).toISOString();
 
     return withImmediate(this.db, () => {
+      const expired = this.db
+        .prepare(
+          `SELECT d.delivery_id, d.message_id, d.session_id, d.attempts
+           FROM deliveries d
+           JOIN messages m ON m.message_id = d.message_id
+           WHERE d.status IN ('stored', 'notified', 'notify_failed')
+             AND m.expires_at IS NOT NULL AND m.expires_at <= ?`,
+        )
+        .all(input.now) as Row[];
       this.db
         .prepare(
           `UPDATE deliveries
@@ -428,7 +446,26 @@ export class DeliveryRepository {
              )`,
         )
         .run(input.now);
+      for (const row of expired) {
+        input.onTransition?.({
+          event: "expire",
+          deliveryId: String(row["delivery_id"]),
+          messageId: String(row["message_id"]),
+          sessionId: String(row["session_id"]),
+          attempts: Number(row["attempts"]),
+        });
+      }
 
+      const deadLettered = this.db
+        .prepare(
+          `SELECT delivery_id, message_id, session_id, attempts
+           FROM deliveries
+           WHERE status = 'delivered'
+             AND lease_expires_at IS NOT NULL
+             AND lease_expires_at < ?
+             AND attempts >= ?`,
+        )
+        .all(input.now, maxAttempts) as Row[];
       this.db
         .prepare(
           `UPDATE deliveries
@@ -439,6 +476,15 @@ export class DeliveryRepository {
              AND attempts >= ?`,
         )
         .run(input.now, maxAttempts);
+      for (const row of deadLettered) {
+        input.onTransition?.({
+          event: "dead_letter",
+          deliveryId: String(row["delivery_id"]),
+          messageId: String(row["message_id"]),
+          sessionId: String(row["session_id"]),
+          attempts: Number(row["attempts"]),
+        });
+      }
 
       const rows = this.db
         .prepare(

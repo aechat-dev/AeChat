@@ -47,7 +47,7 @@ jobs:
 
       - name: Upload coverage
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: coverage
           path: coverage/
@@ -92,7 +92,7 @@ jobs:
       - name: Archive app
         run: ditto -c -k --keepParent dist/AeChat.app dist/AeChat.app.zip
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: AeChat.app
           path: dist/AeChat.app.zip

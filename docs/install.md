@@ -22,15 +22,16 @@ From the repository:
 ```bash
 pnpm install
 pnpm build
-pnpm add -g .
+npm link
 aechat init
 aechat doctor --json
 ```
 
-`pnpm add -g .` installs this checkout as a global package. If `aechat` is not
-found afterwards, run `pnpm setup`, restart the shell, then run `aechat init`
-again. The global bin directory is reported by `pnpm bin -g` and must be on
-`PATH`.
+`npm link` exposes the built CLI as `aechat` on your `PATH`. If it is not
+found, add the `bin` directory under `npm config get prefix` to `PATH`, then
+run `aechat init` again. `pnpm add -g .` is not used because pnpm 11 removed
+`pnpm link --global`, and `pnpm add -g .` adds a self-dependency to this
+checkout.
 
 `init` creates the database, checks agmsg and installs the host skill for every
 detected host. `doctor` reports the Node version, agmsg version and support
@@ -146,7 +147,7 @@ Release active sessions first so agmsg roles are not left held:
 
 ```bash
 aechat leave --session "<session_id>"
-pnpm remove -g aechat
+npm unlink -g aechat
 ```
 
 Removing `~/.aechat` deletes the database and all local message/audit history.

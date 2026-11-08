@@ -71,7 +71,11 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release create "$GITHUB_REF_NAME" \
+          prerelease=()
+          if [[ "$GITHUB_REF_NAME" == *-* ]]; then
+            prerelease=(--prerelease)
+          fi
+          gh release create "$GITHUB_REF_NAME" "${prerelease[@]}" \
             --title "AeChat $GITHUB_REF_NAME" \
             --notes-file release-notes.md \
             "${{ steps.pack.outputs.tarball }}" \

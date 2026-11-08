@@ -1,4 +1,5 @@
 import { AechatError } from "../../../core/errors.js";
+import { redactErrorDetail } from "../../../core/log-redaction.js";
 import type {
   BindResult,
   CapabilityEvidence,
@@ -242,9 +243,11 @@ export class AgmsgAdapter implements TransportAdapter {
       };
     }
 
+    let stage = "team";
     try {
       const teamName = binding.team ?? this.team;
       const team = await this.cli.teamJson(teamName);
+      stage = "doctor";
       const doctor = await this.cli.doctorStatus(teamName, client, project);
       return {
         ...base,
@@ -256,11 +259,16 @@ export class AgmsgAdapter implements TransportAdapter {
         },
       };
     } catch (error) {
+      // CLI errors can carry paths and tokens; store the same redacted form
+      // used by the audit log.
       return {
         ...base,
         evidence: {
           probe: "transport facts unavailable",
-          error: error instanceof Error ? error.message : String(error),
+          stage,
+          error: redactErrorDetail(
+            error instanceof Error ? error.message : String(error),
+          ),
         },
       };
     }

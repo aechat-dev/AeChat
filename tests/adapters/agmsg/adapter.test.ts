@@ -241,7 +241,7 @@ describe("AgmsgAdapter", () => {
     const adapter = new AgmsgAdapter({
       cli: fakeCli({
         teamJson: vi.fn(async () => {
-          throw new Error("agmsg team failed");
+          throw new Error("agmsg team failed at /Users/other/.claude/config");
         }),
       }),
       team: "aechat-test",
@@ -256,13 +256,16 @@ describe("AgmsgAdapter", () => {
       bindDirective: "",
     };
 
-    await expect(adapter.probe(binding)).resolves.toMatchObject({
+    const probe = await adapter.probe(binding);
+    expect(probe).toMatchObject({
       observedLevel: "unknown",
       evidence: {
         probe: "transport facts unavailable",
-        error: "agmsg team failed",
+        stage: "team",
+        error: "agmsg team failed at [path]",
       },
     });
+    expect(JSON.stringify(probe.evidence)).not.toContain("/Users/other");
   });
 
   it("inspect reports dead when roster has no matching address", async () => {

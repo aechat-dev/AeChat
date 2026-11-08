@@ -27,7 +27,14 @@ is expected in this mode; delivery is pull-only.
 Failure means the transport foundation is broken. Do not run host tests on top
 of a failing local suite.
 
-## 2. Manual host E2E
+## 2. Crash recovery
+
+`pnpm test` runs `tests/e2e/crash-recovery.test.ts`, which kills a child
+process with `SIGKILL` during send, before notify, during a claim, after a
+claim, after ack and after reply, then reopens the database. The expected state
+at each point is documented in [reliability.md](reliability.md).
+
+## 3. Manual host E2E
 
 Use this for a real Claude Code or Codex conversation. Work in a temporary
 project and an isolated AeChat home so the run cannot touch real sessions.

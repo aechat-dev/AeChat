@@ -28,6 +28,8 @@ are assembled from the `Unreleased` section at tag time.
   coverage floors and CI on Linux and macOS.
 - Local transport E2E harness (`pnpm e2e:local`) and a dated host compatibility
   matrix with a repeatable manual protocol.
+- Reliable-delivery contract and a `SIGKILL` crash-recovery suite covering
+  send, notify, claim, ack and reply boundaries.
 - `aechat init` and `aechat setup <host>`: create the store, check agmsg and
   install or refresh host skills.
 - `aechat register` claims the binding from inside Claude Code or Codex

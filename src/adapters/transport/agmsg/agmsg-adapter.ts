@@ -217,16 +217,52 @@ export class AgmsgAdapter implements TransportAdapter {
     await this.cli.leave(binding.team ?? this.team, binding.address);
   }
 
-  probe(): Promise<CapabilityEvidence> {
-    return Promise.resolve({
-      observedLevel: "unknown",
+  /**
+   * Records transport facts only. A mode or a live lock says the role is held,
+   * not that a host processed a message or woke from idle, so the level stays
+   * unknown until a real host observation provides that evidence.
+   */
+  async probe(binding: TransportBinding): Promise<CapabilityEvidence> {
+    const at = new Date().toISOString();
+    const base = {
+      observedLevel: "unknown" as const,
       pull: null,
       wait: null,
       notificationReceive: null,
       busyReceive: null,
       idleWakeup: null,
-      evidence: { probe: "not implemented in Phase 1" },
-      at: new Date().toISOString(),
-    });
+      at,
+    };
+    const client = binding.evidence["client"];
+    const project = binding.evidence["project"];
+    if (typeof client !== "string" || typeof project !== "string") {
+      return {
+        ...base,
+        evidence: { probe: "binding lacks client/project evidence" },
+      };
+    }
+
+    try {
+      const teamName = binding.team ?? this.team;
+      const team = await this.cli.teamJson(teamName);
+      const doctor = await this.cli.doctorStatus(teamName, client, project);
+      return {
+        ...base,
+        evidence: {
+          probe: "transport facts only",
+          roster: hasAddress(team, binding.address),
+          lock: parseLockState(doctor.locks[`${teamName}/${binding.address}`]),
+          mode: doctor.mode,
+        },
+      };
+    } catch (error) {
+      return {
+        ...base,
+        evidence: {
+          probe: "transport facts unavailable",
+          error: error instanceof Error ? error.message : String(error),
+        },
+      };
+    }
   }
 }

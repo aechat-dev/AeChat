@@ -189,6 +189,82 @@ describe("AgmsgAdapter", () => {
     expect(binding.mode).toBe("off");
   });
 
+  it("probe records transport facts without claiming a wakeup level", async () => {
+    const address = "aechat-aaaaaaaaaaaa";
+    const cli = fakeCli({
+      teamJson: vi.fn(async () => ({
+        agents: { [address]: { member_id: "m-1", registrations: [] } },
+      })),
+      doctorStatus: vi.fn(async () => ({
+        mode: "monitor",
+        locks: { [`aechat-test/${address}`]: "owner(alive)=sid.123" },
+      })),
+    });
+    const adapter = new AgmsgAdapter({ cli, team: "aechat-test" });
+    const binding = await adapter.register(SESSION, address);
+
+    await expect(adapter.probe(binding)).resolves.toMatchObject({
+      observedLevel: "unknown",
+      busyReceive: null,
+      idleWakeup: null,
+      evidence: {
+        probe: "transport facts only",
+        roster: true,
+        lock: "alive",
+        mode: "monitor",
+      },
+    });
+  });
+
+  it("probe stays unknown when the binding lacks host evidence", async () => {
+    const adapter = new AgmsgAdapter({
+      cli: fakeCli(),
+      team: "aechat-test",
+    });
+    const binding = {
+      transport: "agmsg",
+      address: "aechat-aaaaaaaaaaaa",
+      team: "aechat-test",
+      mode: "monitor",
+      state: "bound" as const,
+      evidence: {},
+      bindDirective: "",
+    };
+
+    await expect(adapter.probe(binding)).resolves.toMatchObject({
+      observedLevel: "unknown",
+      evidence: { probe: "binding lacks client/project evidence" },
+    });
+  });
+
+  it("probe records why transport facts were unavailable", async () => {
+    const adapter = new AgmsgAdapter({
+      cli: fakeCli({
+        teamJson: vi.fn(async () => {
+          throw new Error("agmsg team failed");
+        }),
+      }),
+      team: "aechat-test",
+    });
+    const binding = {
+      transport: "agmsg",
+      address: "aechat-aaaaaaaaaaaa",
+      team: "aechat-test",
+      mode: "monitor",
+      state: "bound" as const,
+      evidence: { client: "claude-code", project: "/tmp/project" },
+      bindDirective: "",
+    };
+
+    await expect(adapter.probe(binding)).resolves.toMatchObject({
+      observedLevel: "unknown",
+      evidence: {
+        probe: "transport facts unavailable",
+        error: "agmsg team failed",
+      },
+    });
+  });
+
   it("inspect reports dead when roster has no matching address", async () => {
     const cli = fakeCli();
     const adapter = new AgmsgAdapter({ cli, team: "aechat-test" });

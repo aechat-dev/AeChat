@@ -35,6 +35,8 @@ final class AppState: ObservableObject {
     private var reloadTask: Task<Void, Never>?
     private var fallbackTask: Task<Void, Never>?
     private var lastSnapshotRefresh = Date.distantPast
+    private var eventPolicy = EventPolicy()
+    private var logRefreshTask: Task<Void, Never>?
     private var loadGeneration = 0
     private var logGeneration = 0
     private var signalSources: [DispatchSourceSignal] = []
@@ -143,6 +145,7 @@ final class AppState: ObservableObject {
 
     private func apply(snapshot fresh: UiSnapshot) {
         snapshot = fresh
+        eventPolicy.reset(to: fresh.eventSeq)
         if let key = selectedThreadKey,
             !fresh.threads.contains(where: { $0.key == key })
         {
@@ -383,28 +386,58 @@ final class AppState: ObservableObject {
         reloadTask = nil
         fallbackTask?.cancel()
         fallbackTask = nil
+        logRefreshTask?.cancel()
+        logRefreshTask = nil
         AeChatClient.terminateActiveProcesses()
     }
 
     private func handle(_ line: UiEventLine) {
-        // The snapshot already reflects these events; ignore replay on connect.
-        if let seq = line.seq, seq <= (snapshot?.eventSeq ?? 0) {
-            return
-        }
         if line.kind == "snapshot" {
-            scheduleSnapshotRefresh()
+            reconcileSnapshotIfStale()
             return
         }
-        if let thread = activeThread,
-            let sessionId = line.sessionId,
-            line.messageId != nil,
-            line.event == "send" || line.event == "reply",
-            thread.participants.contains(where: { $0.sessionId == sessionId })
-        {
-            hasNewActivity = true
+
+        let threadSessionIds = Set(
+            activeThread?.participants.map(\.sessionId) ?? []
+        )
+        let decision = eventPolicy.decide(
+            event: line,
+            snapshotSeq: snapshot?.eventSeq ?? 0,
+            threadSessionIds: threadSessionIds,
+            selectedMessageId: selectedMessageId
+        )
+
+        if decision.reloadMessages {
+            hasNewActivity = decision.newActivity
             scheduleActiveReload()
         }
+        if decision.reloadLog {
+            scheduleLogRefresh()
+        }
+        if decision.refreshSnapshot {
+            scheduleSnapshotRefresh()
+        }
+    }
+
+    /// The stream tick is a reconciliation signal only; a subprocess per tick
+    /// is exactly the cost this path avoids. Re-read the snapshot slowly, or
+    /// immediately when the event cursor shows a gap.
+    private func reconcileSnapshotIfStale() {
+        guard Date().timeIntervalSince(lastSnapshotRefresh) >= 30 else {
+            return
+        }
         scheduleSnapshotRefresh()
+    }
+
+    private func scheduleLogRefresh() {
+        guard let id = selectedMessageId else { return }
+        let generation = logGeneration
+        logRefreshTask?.cancel()
+        logRefreshTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 300_000_000)
+            guard !Task.isCancelled else { return }
+            await self?.loadLog(id, generation: generation)
+        }
     }
 
     private func scheduleActiveReload() {

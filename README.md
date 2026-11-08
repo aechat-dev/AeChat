@@ -66,7 +66,19 @@ sequenceDiagram
 
 **Requirements:** macOS 14+, Node.js 24, pnpm 11, and agmsg 1.7.1 on `PATH`.
 
-Install the release tarball:
+Install the CLI with the release installer:
+
+```bash
+curl -fsSLO https://raw.githubusercontent.com/aechat-dev/AeChat/main/scripts/install.sh
+bash install.sh
+aechat init
+```
+
+`bash install.sh --help` lists `--version`, `--stable`, `--prefix` and
+`--dry-run`. Registry publication is not available yet; the installer uses the
+GitHub release tarball and verifies `SHA256SUMS`.
+
+Manual install, if preferred:
 
 ```bash
 version=0.1.0-alpha.1
@@ -78,8 +90,7 @@ npm install -g "aechat-$version.tgz"
 aechat init
 ```
 
-Registry publication is not available yet, so install from the GitHub release
-tarball. For development, build and link the checkout instead:
+For development, build and link the checkout instead:
 
 ```bash
 git clone https://github.com/aechat-dev/AeChat.git

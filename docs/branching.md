@@ -8,9 +8,10 @@ AeChat separates integration from release verification. Feature work lands on
 `main` and `dev` both exist on origin. `main` requires a pull request (zero
 approvals), the `TypeScript` and `macOS app` checks, an up-to-date branch and
 conversation resolution; force pushes and deletions are blocked and
-`enforce_admins` is on. `dev` requires a pull request and `TypeScript`; force
-pushes and deletions are blocked. The branch model and CI below are the
-operating rules.
+`enforce_admins` is on. `dev` requires a pull request and `TypeScript`,
+conversation resolution, and blocks force pushes and deletions; `enforce_admins`
+is on, so administrators also merge through pull requests. The branch model and
+CI below are the operating rules.
 
 ## Branch model
 
@@ -34,10 +35,17 @@ protection cannot restrict the head branch of a pull request.
 - `.github/workflows/macos.yml` — `macOS app`: Swift format, build, checks,
   packaging and signature verification. Runs on pull requests into `main`, on
   pushes to `dev`, nightly on the default branch, and manually.
+- `.github/workflows/preflight.yml` — `Pre-release smoke`: manual
+  `workflow_dispatch` job that runs the full checks, builds and verifies the
+  app, packs the CLI, installs the tarball into a temporary prefix and runs
+  `aechat --help` plus `aechat doctor --json`. Run it on `dev` after a batch of
+  pull requests, before opening the release pull request into `main`.
 
-Feature pull requests into `dev` get the fast TypeScript gate only. Release
-pull requests from `dev` into `main` also run the macOS job, so the artifact
-and signature are verified before the merge.
+Feature pull requests into `dev` get the fast TypeScript gate only. Pushes to
+`dev` add the macOS integration job. Release pull requests from `dev` into
+`main` run both required checks, so the artifact and signature are verified
+before the merge. Preflight is an extra, manual batch check; it never blocks a
+pull request and is not part of release publication.
 
 ## Repository settings
 
@@ -69,11 +77,13 @@ base branch.
   - enable `enforce_admins`.
 - `dev` protection:
   - require a pull request and the `TypeScript` check;
-  - block force pushes and deletions.
+  - require conversation resolution;
+  - block force pushes and deletions;
+  - enable `enforce_admins`.
 
-`enforce_admins` is on for `main`, so administrators cannot bypass its rules.
-For `dev` it is off: administrators can still push directly during a bootstrap,
-while regular contributors must use a pull request.
+`enforce_admins` is on for both branches, so administrators cannot bypass their
+rules. Every change, including `main` → `dev` synchronization, arrives through a
+pull request.
 
 ## Release steps
 

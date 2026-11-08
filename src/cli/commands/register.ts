@@ -46,7 +46,7 @@ function autoBindView(result: ClaimResult): Record<string, unknown> {
   return {
     claimed: result.claimed,
     boundScope: result.boundScope,
-    transportClaimed: result.transportClaimed,
+    transportClaimState: result.transportClaimState,
     bindingState: result.bindingState,
     ...(result.reason === undefined ? {} : { reason: result.reason }),
   };
@@ -95,7 +95,9 @@ export async function registerCommand(
         autoClaim = {
           claimed: false,
           boundScope: "none",
-          transportClaimed: false,
+          // The service failed unexpectedly; treat the role as possibly held
+          // so the caller is never sent into a second actas attempt.
+          transportClaimState: "unknown",
           bindingState: result.binding.state,
           session: result.session,
           reason: error instanceof Error ? error.message : String(error),
@@ -107,10 +109,12 @@ export async function registerCommand(
   const bound = autoClaim?.claimed === true;
   const session = autoClaim?.session ?? result.session;
   const bindingState = autoClaim?.bindingState ?? result.binding.state;
-  // A successful claim that could not be verified still holds the transport
-  // role. Returning the bind directive would collide with that lock, so point
-  // the caller at `confirm`/`leave` through auto_bind.reason instead.
-  const holdsRole = autoClaim?.transportClaimed === true;
+  // An accepted or unknown claim may hold the transport role even when the
+  // binding was not confirmed. Returning the bind directive would collide
+  // with that lock, so point at `confirm`/`leave` through auto_bind.reason.
+  const holdsRole =
+    autoClaim?.transportClaimState === "accepted" ||
+    autoClaim?.transportClaimState === "unknown";
 
   return {
     ...sessionDto(session),
@@ -124,7 +128,7 @@ export async function registerCommand(
         ? {
             claimed: false,
             boundScope: "none",
-            transportClaimed: false,
+            transportClaimState: "not-attempted",
             bindingState,
             reason: skipReason,
           }

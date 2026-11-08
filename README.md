@@ -96,8 +96,8 @@ aechat register --name worker --client codex --project "$PWD"
 
 If the result contains a `bind_directive` and `bound_scope=none`, run that
 directive in the same conversation, then `aechat confirm --session "<id>"`. If
-`auto_bind.transportClaimed` is true but `claimed` is false, follow
-`auto_bind.reason` instead; the role is already held.
+`auto_bind.transportClaimState` is `accepted` or `unknown` but `claimed` is
+false, follow `auto_bind.reason` instead; the role may already be held.
 `aechat list --json` shows the sessions and their reported capabilities.
 
 Send a request and answer it:

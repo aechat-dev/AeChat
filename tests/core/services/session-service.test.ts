@@ -265,7 +265,7 @@ describe("SessionService.claim", () => {
     ).resolves.toMatchObject({
       claimed: true,
       boundScope: "host_role",
-      transportClaimed: true,
+      transportClaimState: "accepted",
       bindingState: "bound",
     });
   });
@@ -289,7 +289,7 @@ describe("SessionService.claim", () => {
     expect(result).toMatchObject({
       claimed: false,
       boundScope: "none",
-      transportClaimed: true,
+      transportClaimState: "accepted",
       bindingState: "failed",
     });
     expect(result.reason).toContain("no live binding");
@@ -317,11 +317,39 @@ describe("SessionService.claim", () => {
     expect(result).toMatchObject({
       claimed: false,
       boundScope: "none",
-      transportClaimed: true,
+      transportClaimState: "accepted",
       bindingState: "pending",
     });
     expect(result.reason).toContain("binding verification failed");
     expect(result.reason).toContain("aechat confirm");
+  });
+
+  it("reports an unknown outcome when the claim command throws", async () => {
+    const { service, transport } = setup();
+    Object.assign(transport, {
+      claim: async () => {
+        throw new Error("claim command timed out after acquiring lock");
+      },
+    });
+    const registered = await service.register({
+      displayName: "dev",
+      client: "claude-code",
+      project: "/tmp/project",
+    });
+
+    const result = await service.claim(
+      registered.session.sessionId,
+      "host-session-1",
+    );
+
+    expect(result).toMatchObject({
+      claimed: false,
+      boundScope: "none",
+      transportClaimState: "unknown",
+      bindingState: "pending",
+    });
+    expect(result.reason).toContain("outcome is unknown");
+    expect(result.reason).toContain("Do not run the bind directive");
   });
 
   it("keeps the binding unclaimed when the adapter refuses", async () => {
@@ -340,7 +368,7 @@ describe("SessionService.claim", () => {
     ).resolves.toMatchObject({
       claimed: false,
       boundScope: "none",
-      transportClaimed: false,
+      transportClaimState: "refused",
       bindingState: "pending",
       reason: "held by another session",
     });
@@ -359,7 +387,7 @@ describe("SessionService.claim", () => {
     ).resolves.toMatchObject({
       claimed: false,
       boundScope: "none",
-      transportClaimed: false,
+      transportClaimState: "not-attempted",
       bindingState: "pending",
       reason: "transport does not support host-session claims",
     });

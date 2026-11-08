@@ -12,6 +12,7 @@ import type {
 } from "../store/sessions.js";
 import { nowIso } from "../time.js";
 import type {
+  NotifyResult,
   SessionRef,
   TransportAdapter,
   TransportBinding,
@@ -45,12 +46,21 @@ export interface ConfirmResult {
   boundScope: BoundScope;
 }
 
+export type TransportClaimState =
+  | "accepted"
+  | "refused"
+  | "unknown"
+  | "not-attempted";
+
 export interface ClaimResult {
   /** True only when a live binding was confirmed, not when the claim ran. */
   claimed: boolean;
   boundScope: BoundScope;
-  /** True when the transport accepted the claim command. */
-  transportClaimed: boolean;
+  /**
+   * Outcome of the transport claim command. `unknown` means the command threw,
+   * so it may still hold the role; callers must not retry the bind directive.
+   */
+  transportClaimState: TransportClaimState;
   bindingState: TransportState;
   session: Session;
   reason?: string;
@@ -226,22 +236,42 @@ export class SessionService {
       return {
         claimed: false,
         boundScope: "none",
-        transportClaimed: false,
+        transportClaimState: "not-attempted",
         bindingState: record.state,
         session,
         reason: "transport does not support host-session claims",
       };
     }
-    const result = await this.transport.claim(
-      sessionRef(session),
-      adapterBinding(record),
-      hostSessionId,
-    );
+
+    let result: NotifyResult;
+    try {
+      result = await this.transport.claim(
+        sessionRef(session),
+        adapterBinding(record),
+        hostSessionId,
+      );
+    } catch (error) {
+      // execFile can time out after actas-claim.sh already took the lock. The
+      // outcome is genuinely unknown, so treat it as possibly held and keep
+      // the caller away from a second actas attempt.
+      const detail = error instanceof Error ? error.message : String(error);
+      return {
+        claimed: false,
+        boundScope: "none",
+        transportClaimState: "unknown",
+        bindingState: this.currentBindingState(sessionId, record.state),
+        session: this.currentSession(sessionId),
+        reason:
+          `transport claim outcome is unknown: ${detail}; it may already hold the role. ` +
+          `Run aechat confirm --session ${sessionId}, or aechat leave --session ${sessionId} and register again. ` +
+          "Do not run the bind directive.",
+      };
+    }
     if (!result.ok) {
       return {
         claimed: false,
         boundScope: "none",
-        transportClaimed: false,
+        transportClaimState: "refused",
         bindingState: record.state,
         session,
         reason: result.error ?? "transport claim failed",
@@ -260,7 +290,7 @@ export class SessionService {
       return {
         claimed: false,
         boundScope: "none",
-        transportClaimed: true,
+        transportClaimState: "accepted",
         bindingState: this.currentBindingState(sessionId, record.state),
         session: this.currentSession(sessionId),
         reason:
@@ -274,7 +304,7 @@ export class SessionService {
       return {
         claimed: false,
         boundScope: "none",
-        transportClaimed: true,
+        transportClaimState: "accepted",
         bindingState,
         session: confirmed.session,
         reason:
@@ -285,7 +315,7 @@ export class SessionService {
     return {
       claimed: true,
       boundScope: confirmed.boundScope,
-      transportClaimed: true,
+      transportClaimState: "accepted",
       bindingState,
       session: confirmed.session,
     };

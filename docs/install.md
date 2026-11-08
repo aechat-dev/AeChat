@@ -68,9 +68,10 @@ Then confirm from the shell:
 aechat confirm --session "<session_id>"
 ```
 
-If `auto_bind.transportClaimed` is true but `auto_bind.claimed` is false, the
-claim ran but no live binding was confirmed; do not run another `actas`. Follow
-`auto_bind.reason` (`aechat confirm`, or `aechat leave` then register again).
+If `auto_bind.transportClaimState` is `accepted` or `unknown` but
+`auto_bind.claimed` is false, the claim may hold the role without a confirmed
+binding; do not run another `actas`. Follow `auto_bind.reason` (`aechat confirm`,
+or `aechat leave` then register again).
 
 `confirm` only reports `bound` when agmsg has a live actas lock for that
 address. A successful agmsg team join without a live lock is not a valid

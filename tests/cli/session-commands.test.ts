@@ -170,7 +170,7 @@ describe("session CLI commands", () => {
     expect(data["bind_directive"]).toBeNull();
     expect(data["auto_bind"]).toMatchObject({
       claimed: true,
-      transportClaimed: true,
+      transportClaimState: "accepted",
       bindingState: "bound",
     });
   });
@@ -211,8 +211,33 @@ describe("session CLI commands", () => {
     expect(data["bind_directive"]).toBeNull();
     expect(data["auto_bind"]).toMatchObject({
       claimed: false,
-      transportClaimed: true,
+      transportClaimState: "accepted",
     });
+  });
+
+  it("suppresses the bind directive when the claim command throws", async () => {
+    vi.stubEnv("AGMSG_SESSION_ID", "");
+    vi.stubEnv("CLAUDE_CODE_SESSION_ID", "host-claude-1");
+    const ctx = setup();
+    Object.assign(ctx.transport, {
+      claim: async () => {
+        throw new Error("claim command timed out after acquiring lock");
+      },
+    });
+
+    const data = await registerCommand(
+      ["--name", "dev", "--client", "claude-code", "--project", "/tmp/project"],
+      ctx,
+    );
+
+    expect(data["bound_state"]).toBe("invalid");
+    expect(data["bind_directive"]).toBeNull();
+    const autoBind = data["auto_bind"] as Record<string, unknown>;
+    expect(autoBind).toMatchObject({
+      claimed: false,
+      transportClaimState: "unknown",
+    });
+    expect(String(autoBind["reason"])).toContain("outcome is unknown");
   });
 
   it("honors --no-bind and client=other without attempting a claim", async () => {
@@ -234,6 +259,7 @@ describe("session CLI commands", () => {
     expect(noBind["bind_directive"]).toContain(noBind["address"]);
     expect(noBind["auto_bind"]).toMatchObject({
       claimed: false,
+      transportClaimState: "not-attempted",
       reason: "disabled by --no-bind",
     });
 

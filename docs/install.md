@@ -36,8 +36,10 @@ checkout.
 `init` creates the database, checks agmsg and installs the host skill for every
 detected host. `doctor` reports the Node version, agmsg version and support
 flag, database health/mode, log directory, transport bindings and host hook
-paths. It does not change session state. A missing agmsg is a hard transport
-failure in v1; registration cannot produce a usable binding without it.
+paths. Hook paths follow each host's config directory, so `CLAUDE_CONFIG_DIR`
+and `CODEX_HOME` also move the files `doctor` inspects. It does not change
+session state. A missing agmsg is a hard transport failure in v1; registration
+cannot produce a usable binding without it.
 
 ## 3. Install the host skill (optional, recommended)
 

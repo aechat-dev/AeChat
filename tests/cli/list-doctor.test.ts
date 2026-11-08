@@ -116,6 +116,7 @@ function setup(options: { mode?: string; live?: boolean } = {}) {
 }
 
 afterEach(() => {
+  vi.unstubAllEnvs();
   while (databases.length > 0) {
     databases.pop()?.close();
   }
@@ -180,6 +181,10 @@ describe("doctor output", () => {
     tempDirs.push(home);
     const previousHome = process.env["AECHAT_HOME"];
     process.env["AECHAT_HOME"] = home;
+    const claudeDir = join(home, "claude-config");
+    const codexDir = join(home, "codex-home");
+    vi.stubEnv("CLAUDE_CONFIG_DIR", claudeDir);
+    vi.stubEnv("CODEX_HOME", codexDir);
     mkdirSync(join(home, "logs"));
     const { ctx, service } = setup();
     await service.register({
@@ -200,7 +205,13 @@ describe("doctor output", () => {
         database: { path: join(home, "aechat.db"), writable: true },
         logs: { path: join(home, "logs"), exists: true, writable: true },
         transport: { name: "fake" },
-        host_hook: { configured: expect.any(Array) },
+        host_hook: {
+          paths: [
+            join(claudeDir, "settings.json"),
+            join(codexDir, "config.toml"),
+          ],
+          configured: expect.any(Array),
+        },
       });
       expect(
         (data["transport"] as { bindings: unknown[] }).bindings,

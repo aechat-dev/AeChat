@@ -26,6 +26,9 @@ aechat init
 aechat doctor --json
 ```
 
+The installer is attached to each new release; the URL above works until the
+next tag is published.
+
 `bash install.sh --help` lists the options: `--version <tag>` for an exact
 release, `--stable` to skip prereleases, `--prefix <dir>` for a non-default
 install root, and `--dry-run` to print the plan.

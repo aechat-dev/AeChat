@@ -74,6 +74,9 @@ bash install.sh
 aechat init
 ```
 
+The installer is attached to each new release; the URL above works until the
+next tag is published.
+
 `bash install.sh --help` lists `--version`, `--stable`, `--prefix` and
 `--dry-run`. Registry publication is not available yet; the installer uses the
 GitHub release tarball and verifies `SHA256SUMS`.

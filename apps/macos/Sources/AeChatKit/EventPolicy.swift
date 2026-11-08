@@ -34,9 +34,14 @@ public struct EventPolicy {
         self.observedSeq = observedSeq
     }
 
-    /// A fresh snapshot is authoritative; move the cursor to its event seq.
+    /// Snapshots can arrive out of order; never move the cursor backwards.
     public mutating func reset(to seq: Int) {
-        observedSeq = seq
+        observedSeq = max(observedSeq, seq)
+    }
+
+    /// Switching to a different database starts a new sequence space.
+    public mutating func clear() {
+        observedSeq = 0
     }
 
     public mutating func decide(

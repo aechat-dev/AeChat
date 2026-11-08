@@ -72,7 +72,7 @@ function setup() {
     });
   }
 
-  return { delivery, service, messages, deliveries, requests };
+  return { delivery, service, messages, deliveries, requests, events };
 }
 
 afterEach(() => {
@@ -83,7 +83,8 @@ afterEach(() => {
 
 describe("RequestService.reply", () => {
   it("marks the request replied and links the reply message", async () => {
-    const { delivery, service, messages, deliveries, requests } = setup();
+    const { delivery, service, messages, deliveries, requests, events } =
+      setup();
     const request = await delivery.sendRequest({
       fromSession: "requester",
       toSession: "target",
@@ -117,6 +118,16 @@ describe("RequestService.reply", () => {
     expect(
       deliveries.getForMessageSession(reply.messageId, "requester")?.status,
     ).toBe("notified");
+    const replySend = events
+      .listForSession("target")
+      .find(
+        (event) =>
+          event.event === "send" && event.messageId === reply.messageId,
+      );
+    expect(JSON.parse(replySend?.dataJson ?? "{}")).toMatchObject({
+      kind: "reply",
+      toSession: "requester",
+    });
     expect(
       deliveries.getForMessageSession(request.messageId, "target"),
     ).toMatchObject({ status: "acked" });

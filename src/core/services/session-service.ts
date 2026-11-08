@@ -2,7 +2,7 @@ import type { DatabaseSync } from "node:sqlite";
 
 import { AechatError } from "../errors.js";
 import { newId } from "../ids.js";
-import { validateDisplayName } from "../names.js";
+import { validateClient, validateDisplayName } from "../names.js";
 import { withImmediate } from "../store/db.js";
 import type { EventRepository } from "../store/events.js";
 import type { RequestRepository } from "../store/requests.js";
@@ -146,6 +146,7 @@ export class SessionService {
 
   async register(input: RegisterInput): Promise<RegisterResult> {
     validateDisplayName(input.displayName);
+    validateClient(input.client);
     const at = this.now();
     const sessionId = this.newId();
     const ref: SessionRef = {

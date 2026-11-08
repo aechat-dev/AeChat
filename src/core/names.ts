@@ -2,6 +2,21 @@ import { AechatError } from "./errors.js";
 
 const UUID_SHAPE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const CLIENT_SHAPE = /^[a-z0-9][a-z0-9-]{0,31}$/;
+
+export function isValidClient(client: string): boolean {
+  return CLIENT_SHAPE.test(client);
+}
+
+/** Host ids are adapter-owned, but their shape is a core invariant. */
+export function validateClient(client: string): void {
+  if (!isValidClient(client)) {
+    throw new AechatError(
+      "invalid_name",
+      "host id must be 1-32 lowercase letters, digits or dashes",
+    );
+  }
+}
 
 /**
  * Display names are user-facing and non-unique, but must be printable, 1–64

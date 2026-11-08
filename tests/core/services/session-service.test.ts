@@ -82,6 +82,22 @@ describe("SessionService.register", () => {
     }
   });
 
+  it("rejects invalid host ids before touching the transport", async () => {
+    const { service, sessions } = setup();
+    const invalid = ["", "Claude Code", "-lead", "a".repeat(33)];
+
+    for (const client of invalid) {
+      await expect(
+        service.register({
+          displayName: "dev",
+          client,
+          project: "/tmp/project",
+        }),
+      ).rejects.toMatchObject({ code: "invalid_name" });
+    }
+    expect(sessions.list()).toHaveLength(0);
+  });
+
   it("does not persist a session when transport registration fails", async () => {
     const { service, sessions } = setup({ registerFails: true });
 

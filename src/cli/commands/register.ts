@@ -4,6 +4,7 @@ import {
   SHARED_SESSION_ENV,
 } from "../../adapters/hosts/registry.js";
 import { AechatError } from "../../core/errors.js";
+import { isValidClient } from "../../core/names.js";
 import type {
   ClaimResult,
   Session,
@@ -26,10 +27,8 @@ function sessionDto(session: Session): Record<string, unknown> {
   };
 }
 
-const CLIENT_PATTERN = /^[a-z0-9][a-z0-9-]{0,31}$/;
-
 function isClient(value: string): boolean {
-  return value === "other" || CLIENT_PATTERN.test(value);
+  return value === "other" || isValidClient(value);
 }
 
 function autoBindView(result: ClaimResult): Record<string, unknown> {

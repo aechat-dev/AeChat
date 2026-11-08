@@ -135,24 +135,6 @@ if [ "$dry_run" = true ]; then
   exit 0
 fi
 
-if [ "$(uname -s)" != "Darwin" ]; then
-  echo "AeChat currently supports macOS only" >&2
-  exit 1
-fi
-
-for command in curl node npm shasum; do
-  command -v "$command" >/dev/null 2>&1 || {
-    echo "missing required command: $command" >&2
-    exit 1
-  }
-done
-
-node_major=$(node -p 'process.versions.node.split(".")[0]')
-if [ "$node_major" -lt 24 ]; then
-  echo "Node.js 24 or newer is required; found $(node -v)" >&2
-  exit 1
-fi
-
 work=$(mktemp -d "${TMPDIR:-/tmp}/aechat-install.XXXXXX")
 trap 'rm -rf "$work"' EXIT
 
@@ -177,6 +159,24 @@ expected=$(
 actual=$(shasum -a 256 "$work/$asset" | awk '{ print $1 }')
 if [ "$expected" != "$actual" ]; then
   echo "checksum mismatch for $asset" >&2
+  exit 1
+fi
+
+if [ "$(uname -s)" != "Darwin" ]; then
+  echo "AeChat currently supports macOS only" >&2
+  exit 1
+fi
+
+for command in curl node npm shasum; do
+  command -v "$command" >/dev/null 2>&1 || {
+    echo "missing required command: $command" >&2
+    exit 1
+  }
+done
+
+node_major=$(node -p 'process.versions.node.split(".")[0]')
+if [ "$node_major" -lt 24 ]; then
+  echo "Node.js 24 or newer is required; found $(node -v)" >&2
   exit 1
 fi
 

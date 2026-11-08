@@ -32,7 +32,9 @@ aechat doctor --json
 
 Registry publication is not available yet; the GitHub release tarball is the
 supported install path. The release also publishes `AeChat.app.zip` and
-`SHA256SUMS`.
+`SHA256SUMS`. The app is ad-hoc signed, not notarized: if macOS quarantines a
+downloaded copy, open it once with right-click → Open, or remove the attribute
+with `xattr -d com.apple.quarantine AeChat.app`.
 
 ### From the repository (development)
 
@@ -183,7 +185,24 @@ Removing `~/.aechat` deletes the database and all local message/audit history.
 It does not delete agmsg teams, roles or messages. Remove those with agmsg's own
 commands only after confirming they are test data.
 
-## 8. Scope notes
+## 8. Upgrade and rollback
+
+Install the newer tarball over the existing CLI; `npm install -g` replaces the
+previous files. Check the result before using it:
+
+```bash
+aechat doctor --json
+```
+
+Back up `~/.aechat/aechat.db` before an upgrade. Rollback reinstalls the
+previous release tarball, but do not run an older binary against a database
+migrated by a newer one: the schema version is one-way. If the older binary
+refuses the database, restore the backup taken before the upgrade.
+
+Prerelease tags (`v*-alpha.*`) are published as GitHub prereleases; they are
+not selected by `/releases/latest`.
+
+## 9. Scope notes
 
 - MCP is deferred; the v1 interface is CLI + skill.
 - There is no `history --all` and no team-wide body browsing.

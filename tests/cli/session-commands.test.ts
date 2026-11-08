@@ -193,6 +193,30 @@ describe("session CLI commands", () => {
     expect(data["auto_bind"]).toMatchObject({ claimed: true });
   });
 
+  it("registers a host id outside the built-in registry", async () => {
+    vi.stubEnv("AGMSG_SESSION_ID", "");
+    const ctx = setup();
+
+    const data = await registerCommand(
+      [
+        "--name",
+        "third",
+        "--client",
+        "third-host",
+        "--project",
+        "/tmp/project",
+      ],
+      ctx,
+    );
+
+    expect(data["client"]).toBe("third-host");
+    expect(data["bind_directive"]).toContain(data["address"]);
+    expect(data["auto_bind"]).toMatchObject({
+      claimed: false,
+      reason: expect.stringContaining("no host descriptor"),
+    });
+  });
+
   it("suppresses the bind directive when an unverified claim holds the role", async () => {
     vi.stubEnv("AGMSG_SESSION_ID", "");
     vi.stubEnv("CLAUDE_CODE_SESSION_ID", "host-claude-1");

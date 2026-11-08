@@ -30,6 +30,8 @@ are assembled from the `Unreleased` section at tag time.
   matrix with a repeatable manual protocol.
 - Reliable-delivery contract and a `SIGKILL` crash-recovery suite covering
   send, notify, claim, ack and reply boundaries.
+- Host declarations in the adapter registry; core and the store accept any
+  registered host id instead of a closed two-product union.
 - `aechat init` and `aechat setup <host>`: create the store, check agmsg and
   install or refresh host skills.
 - `aechat register` claims the binding from inside Claude Code or Codex

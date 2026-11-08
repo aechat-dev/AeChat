@@ -82,16 +82,13 @@ function inspectionAllowsResume(
   if (status.state === "dead" || status.state === "released") {
     return { allowed: true, forced: false };
   }
-  // unknown: Claude Code may proceed with --force; other hosts have no
-  // peer-visible lock, so force is also their only explicit path.
+  // unknown: no host-neutral proof of death exists, so --force is the only
+  // explicit path for every adapter.
   if (!force) {
     return {
       allowed: false,
       forced: false,
-      reason:
-        session.client === "claude-code"
-          ? "cannot prove the old binding is dead; use --force"
-          : "this host has no peer-visible lock; use --force",
+      reason: "cannot prove the old binding is dead; use --force",
     };
   }
   return { allowed: true, forced: true };

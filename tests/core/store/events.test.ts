@@ -65,6 +65,25 @@ describe("event cursor", () => {
     const db = openDatabase(":memory:");
     databases.push(db);
     db.exec(`
+      CREATE TABLE sessions (
+        session_id TEXT PRIMARY KEY,
+        display_name TEXT NOT NULL,
+        client TEXT NOT NULL CHECK (client IN ('claude-code', 'codex', 'other')),
+        project TEXT NOT NULL,
+        conversation_id TEXT,
+        bound_scope TEXT NOT NULL DEFAULT 'none',
+        bound_at TEXT,
+        bound_checked_at TEXT,
+        capabilities_json TEXT,
+        last_seen_at TEXT NOT NULL,
+        host_seen_at TEXT,
+        resume_state TEXT NOT NULL DEFAULT 'idle',
+        resume_count INTEGER NOT NULL DEFAULT 0,
+        resumed_at TEXT,
+        created_at TEXT NOT NULL,
+        left_at TEXT,
+        host_seen_source TEXT
+      );
       CREATE TABLE events (
         event_id TEXT PRIMARY KEY,
         ts TEXT NOT NULL,

@@ -1,6 +1,6 @@
 import type { DatabaseSync } from "node:sqlite";
 
-export const SCHEMA_VERSION = 5;
+export const SCHEMA_VERSION = 6;
 
 const SCHEMA_SQL = `
 CREATE TABLE IF NOT EXISTS sessions (
@@ -194,12 +194,57 @@ CREATE INDEX IF NOT EXISTS events_session ON events(session_id, ts);
 CREATE INDEX IF NOT EXISTS events_message ON events(message_id, ts);
 `;
 
+/**
+ * Host ids are declared by adapters, so the store must not reject an id that
+ * does not exist yet. SQLite cannot drop a CHECK constraint in place; rebuild
+ * the table and let `foreign_key_check` validate the result.
+ */
+const SCHEMA_V6_SQL = `
+CREATE TABLE sessions_v6 (
+  session_id TEXT PRIMARY KEY,
+  display_name TEXT NOT NULL,
+  client TEXT NOT NULL,
+  project TEXT NOT NULL,
+  conversation_id TEXT,
+  bound_scope TEXT NOT NULL DEFAULT 'none'
+    CHECK (bound_scope IN ('conversation', 'host_role', 'none')),
+  bound_at TEXT,
+  bound_checked_at TEXT,
+  capabilities_json TEXT,
+  last_seen_at TEXT NOT NULL,
+  host_seen_at TEXT,
+  resume_state TEXT NOT NULL DEFAULT 'idle'
+    CHECK (resume_state IN ('idle', 'resume_pending')),
+  resume_count INTEGER NOT NULL DEFAULT 0,
+  resumed_at TEXT,
+  created_at TEXT NOT NULL,
+  left_at TEXT,
+  host_seen_source TEXT
+);
+INSERT INTO sessions_v6 (
+  session_id, display_name, client, project, conversation_id, bound_scope,
+  bound_at, bound_checked_at, capabilities_json, last_seen_at, host_seen_at,
+  resume_state, resume_count, resumed_at, created_at, left_at, host_seen_source
+)
+SELECT
+  session_id, display_name, client, project, conversation_id, bound_scope,
+  bound_at, bound_checked_at, capabilities_json, last_seen_at, host_seen_at,
+  resume_state, resume_count, resumed_at, created_at, left_at, host_seen_source
+FROM sessions;
+DROP TABLE sessions;
+ALTER TABLE sessions_v6 RENAME TO sessions;
+CREATE INDEX IF NOT EXISTS sessions_display_name ON sessions(display_name);
+CREATE INDEX IF NOT EXISTS sessions_conversation_id ON sessions(conversation_id);
+CREATE INDEX IF NOT EXISTS sessions_left_at ON sessions(left_at);
+`;
+
 const MIGRATIONS: Record<number, string> = {
   1: SCHEMA_SQL,
   2: SCHEMA_V2_SQL,
   3: SCHEMA_V3_SQL,
   4: SCHEMA_V4_SQL,
   5: SCHEMA_V5_SQL,
+  6: SCHEMA_V6_SQL,
 };
 
 /**
@@ -233,21 +278,40 @@ export function migrate(db: DatabaseSync): void {
     throw new Error(`unsupported database schema version ${version}`);
   }
 
-  while (version < SCHEMA_VERSION) {
-    const next = version + 1;
-    const sql = MIGRATIONS[next];
-    if (sql === undefined) {
-      throw new Error(`missing migration ${next}`);
+  const foreignKeys = db.prepare("PRAGMA foreign_keys").get() as
+    | Record<string, unknown>
+    | undefined;
+  const restoreForeignKeys = Number(foreignKeys?.["foreign_keys"] ?? 0) === 1;
+  if (restoreForeignKeys) {
+    // A table rebuild must drop a parent table. Validate every row after each
+    // migration and restore the connection setting even if one fails.
+    db.exec("PRAGMA foreign_keys = OFF");
+  }
+  try {
+    while (version < SCHEMA_VERSION) {
+      const next = version + 1;
+      const sql = MIGRATIONS[next];
+      if (sql === undefined) {
+        throw new Error(`missing migration ${next}`);
+      }
+      db.exec("BEGIN IMMEDIATE");
+      try {
+        db.exec(sql);
+        const broken = db.prepare("PRAGMA foreign_key_check").all();
+        if (broken.length > 0) {
+          throw new Error(`migration ${next} broke foreign keys`);
+        }
+        db.exec(`PRAGMA user_version = ${next}`);
+        db.exec("COMMIT");
+        version = next;
+      } catch (error) {
+        db.exec("ROLLBACK");
+        throw error;
+      }
     }
-    db.exec("BEGIN IMMEDIATE");
-    try {
-      db.exec(sql);
-      db.exec(`PRAGMA user_version = ${next}`);
-      db.exec("COMMIT");
-      version = next;
-    } catch (error) {
-      db.exec("ROLLBACK");
-      throw error;
+  } finally {
+    if (restoreForeignKeys) {
+      db.exec("PRAGMA foreign_keys = ON");
     }
   }
 }

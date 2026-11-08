@@ -1,11 +1,9 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { HOSTS, hostById, hostConfigDir } from "../adapters/hosts/registry.js";
 import { AechatError } from "../core/errors.js";
-
-export type HostId = "claude-code" | "codex";
 
 export interface HostPaths {
   configDir: string;
@@ -13,7 +11,7 @@ export interface HostPaths {
 }
 
 export interface InstallResult {
-  host: HostId;
+  host: string;
   path: string;
   action:
     | "installed"
@@ -22,10 +20,6 @@ export interface InstallResult {
     | "would-install"
     | "would-update";
   dry_run: boolean;
-}
-
-function envDir(value: string | undefined): string | undefined {
-  return value === undefined || value === "" ? undefined : value;
 }
 
 /**
@@ -38,13 +32,14 @@ export function skillSourceRoot(): string {
 }
 
 export function hostPaths(
-  host: HostId,
+  hostId: string,
   env: NodeJS.ProcessEnv = process.env,
 ): HostPaths {
-  const configDir =
-    host === "claude-code"
-      ? (envDir(env["CLAUDE_CONFIG_DIR"]) ?? join(homedir(), ".claude"))
-      : (envDir(env["CODEX_HOME"]) ?? join(homedir(), ".codex"));
+  const host = hostById(hostId);
+  if (host === undefined) {
+    throw new AechatError("invalid_input", `unknown host: ${hostId}`);
+  }
+  const configDir = hostConfigDir(host, env);
   return {
     configDir,
     skillFile: join(configDir, "skills", "aechat", "SKILL.md"),
@@ -65,21 +60,12 @@ function commandOnPath(
 }
 
 /** Hosts that look installed: a config directory or the CLI on PATH. */
-export function detectHosts(env: NodeJS.ProcessEnv = process.env): HostId[] {
-  const hosts: HostId[] = [];
-  if (
-    existsSync(hostPaths("claude-code", env).configDir) ||
-    commandOnPath("claude", env["PATH"])
-  ) {
-    hosts.push("claude-code");
-  }
-  if (
-    existsSync(hostPaths("codex", env).configDir) ||
-    commandOnPath("codex", env["PATH"])
-  ) {
-    hosts.push("codex");
-  }
-  return hosts;
+export function detectHosts(env: NodeJS.ProcessEnv = process.env): string[] {
+  return HOSTS.filter(
+    (host) =>
+      existsSync(hostConfigDir(host, env)) ||
+      commandOnPath(host.command, env["PATH"]),
+  ).map((host) => host.id);
 }
 
 /**
@@ -88,14 +74,18 @@ export function detectHosts(env: NodeJS.ProcessEnv = process.env): HostId[] {
  * skill in place.
  */
 export function installHostSkill(options: {
-  host: HostId;
+  host: string;
   sourceRoot?: string;
   env?: NodeJS.ProcessEnv;
   dryRun?: boolean;
 }): InstallResult {
+  const host = hostById(options.host);
+  if (host === undefined) {
+    throw new AechatError("invalid_input", `unknown host: ${options.host}`);
+  }
   const source = join(
     options.sourceRoot ?? skillSourceRoot(),
-    options.host,
+    host.id,
     "SKILL.md",
   );
   let content: string;
@@ -105,13 +95,13 @@ export function installHostSkill(options: {
     throw new AechatError("internal", `bundled skill is missing: ${source}`);
   }
 
-  const target = hostPaths(options.host, options.env).skillFile;
+  const target = hostPaths(host.id, options.env).skillFile;
   const exists = existsSync(target);
   const same = exists && readFileSync(target, "utf8") === content;
   const dryRun = options.dryRun === true;
   if (same) {
     return {
-      host: options.host,
+      host: host.id,
       path: target,
       action: "up-to-date",
       dry_run: dryRun,
@@ -123,7 +113,7 @@ export function installHostSkill(options: {
     writeFileSync(target, content, { encoding: "utf8", mode: 0o644 });
   }
   return {
-    host: options.host,
+    host: host.id,
     path: target,
     action: dryRun
       ? exists

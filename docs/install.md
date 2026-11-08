@@ -47,6 +47,9 @@ aechat setup claude-code    # or one explicitly
 aechat setup codex
 ```
 
+Host ids come from the adapter registry; the built-in ids are `claude-code`
+and `codex`. A new host adds a descriptor and a skill, not a core branch.
+
 The skill is instructions for the Agent, not an automatic permission grant.
 It requires explicit registration, JSON-first reads, an `ack` after processing,
 and treats all message text as agent-origin data.

@@ -70,7 +70,7 @@ const USAGE = `aechat — local-first session messaging
 Usage: aechat <command> [options]
 
 Commands:
-  register   --name <display> --client <claude-code|codex|other> [--project <path>] [--no-bind]
+  register   --name <display> --client <host|other> [--project <path>] [--no-bind]
   confirm    --session <uuid>
   whoami     --session <uuid> | --conversation <id>
   list       [--json] [--all] [--as <session>]
@@ -87,7 +87,7 @@ Commands:
   retry      --session <uuid> (--message <message-id> | --delivery <delivery-id>)
   doctor     [--json]
   init       [--json] [--dry-run]
-  setup      <claude-code|codex> [--json] [--dry-run]
+  setup      <host> [--json] [--dry-run]
   resume     --session <uuid> [--force]
   leave      --session <uuid>
   history    --session <uuid> [--limit <n>] [--json]

@@ -8,7 +8,8 @@ export type MessageId = string;
 export type DeliveryId = string;
 export type RequestId = string;
 
-export type Client = "claude-code" | "codex" | "other";
+/** A host id or "other"; host declarations live in the adapter layer. */
+export type Client = string;
 export type BoundScope = "conversation" | "host_role" | "none";
 export type ResumeState = "idle" | "resume_pending";
 export type TransportState =

@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { main } from "../../src/cli/main.js";
 import { openDatabase } from "../../src/core/store/db.js";
 import { EventRepository } from "../../src/core/store/events.js";
+import { SCHEMA_VERSION } from "../../src/core/store/schema.js";
 import { FakeTransportAdapter } from "../../src/core/transport/fake.js";
 import { createRuntime } from "../../src/runtime/runtime.js";
 
@@ -226,7 +227,7 @@ describe("ui bridge commands", () => {
     };
     expect(envelope.ok).toBe(true);
     expect(envelope.data.database.read_only).toBe(true);
-    expect(envelope.data.database.schema_version).toBe(5);
+    expect(envelope.data.database.schema_version).toBe(SCHEMA_VERSION);
     expect(envelope.data.database.quick_check).toBe("ok");
     expect(envelope.data.config.home).toBe(home);
     expect(envelope.data.config.db_path).toBe(join(home, "aechat.db"));

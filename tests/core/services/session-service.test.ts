@@ -110,6 +110,21 @@ describe("SessionService.register", () => {
     expect(names).toEqual(["register", "confirm"]);
   });
 
+  it("stores a host id that core does not declare", async () => {
+    const { service } = setup();
+
+    const result = await service.register({
+      displayName: "third",
+      client: "third-host",
+      project: "/tmp/project",
+    });
+
+    expect(result.session.client).toBe("third-host");
+    expect(service.whoami({ sessionId: result.session.sessionId }).client).toBe(
+      "third-host",
+    );
+  });
+
   it("allows duplicate display names", async () => {
     const { service } = setup();
     const input = {

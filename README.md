@@ -79,7 +79,7 @@ aechat init
 found, add `npm config get prefix`/bin to `PATH` and run `aechat init` again.
 
 `init` creates the database, checks agmsg and installs the skill for every
-detected host. Run `aechat setup <claude-code|codex>` to install one explicitly.
+detected host. Run `aechat setup <host>` to install one explicitly.
 Data defaults to `~/.aechat/aechat.db`; override it with `AECHAT_HOME` or
 `AECHAT_DB`.
 

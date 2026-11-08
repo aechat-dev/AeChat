@@ -1,0 +1,59 @@
+import { homedir } from "node:os";
+import { join } from "node:path";
+
+/**
+ * Host declarations live in the adapter layer. Core and the CLI consume this
+ * registry; adding a host must not require a new branch in either.
+ */
+export interface HostDescriptor {
+  id: string;
+  label: string;
+  command: string;
+  sessionEnv: string;
+  configEnv: string;
+  configDirName: string;
+}
+
+export const SHARED_SESSION_ENV = "AGMSG_SESSION_ID";
+
+export const HOSTS: readonly HostDescriptor[] = [
+  {
+    id: "claude-code",
+    label: "Claude Code",
+    command: "claude",
+    sessionEnv: "CLAUDE_CODE_SESSION_ID",
+    configEnv: "CLAUDE_CONFIG_DIR",
+    configDirName: ".claude",
+  },
+  {
+    id: "codex",
+    label: "Codex",
+    command: "codex",
+    sessionEnv: "CODEX_THREAD_ID",
+    configEnv: "CODEX_HOME",
+    configDirName: ".codex",
+  },
+];
+
+export function hostById(id: string): HostDescriptor | undefined {
+  return HOSTS.find((host) => host.id === id);
+}
+
+function nonEmpty(value: string | undefined): string | undefined {
+  return value === undefined || value === "" ? undefined : value;
+}
+
+export function hostConfigDir(
+  host: HostDescriptor,
+  env: NodeJS.ProcessEnv = process.env,
+): string {
+  return nonEmpty(env[host.configEnv]) ?? join(homedir(), host.configDirName);
+}
+
+/** The host session id used for actas claims; the shared override wins. */
+export function hostSessionId(
+  host: HostDescriptor,
+  env: NodeJS.ProcessEnv = process.env,
+): string | undefined {
+  return nonEmpty(env[SHARED_SESSION_ENV]) ?? nonEmpty(env[host.sessionEnv]);
+}

@@ -1,28 +1,20 @@
+import { hostById } from "../../adapters/hosts/registry.js";
 import { AechatError } from "../../core/errors.js";
-import { type HostId, installHostSkill } from "../../runtime/host-install.js";
+import { installHostSkill } from "../../runtime/host-install.js";
 import { parseArgs } from "../args.js";
 import type { CommandResult } from "../output.js";
-
-const HOSTS: HostId[] = ["claude-code", "codex"];
-
-function isHost(value: string): value is HostId {
-  return (HOSTS as string[]).includes(value);
-}
 
 export async function setupCommand(
   argv: readonly string[],
 ): Promise<CommandResult> {
   const [hostArg, ...rest] = argv;
   if (hostArg === undefined) {
-    throw new AechatError(
-      "invalid_input",
-      "usage: aechat setup <claude-code|codex>",
-    );
+    throw new AechatError("invalid_input", "usage: aechat setup <host>");
   }
-  if (!isHost(hostArg)) {
+  if (hostById(hostArg) === undefined) {
     throw new AechatError(
       "invalid_input",
-      `unknown host ${hostArg}; expected claude-code or codex`,
+      `unknown host ${hostArg}; expected a host declared by an adapter`,
     );
   }
   const args = parseArgs(rest);

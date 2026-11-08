@@ -1,3 +1,8 @@
+import {
+  hostById,
+  hostSessionId,
+  SHARED_SESSION_ENV,
+} from "../../adapters/hosts/registry.js";
 import { AechatError } from "../../core/errors.js";
 import type {
   ClaimResult,
@@ -5,8 +10,6 @@ import type {
 } from "../../core/services/session-service.js";
 import { parseArgs, requiredValue } from "../args.js";
 import type { CommandContext } from "./context.js";
-
-const CLIENTS = new Set(["claude-code", "codex", "other"]);
 
 function sessionDto(session: Session): Record<string, unknown> {
   return {
@@ -23,23 +26,10 @@ function sessionDto(session: Session): Record<string, unknown> {
   };
 }
 
-/**
- * The host session id agmsg uses for its actas locks. AGMSG_SESSION_ID is the
- * explicit override; otherwise Claude Code exports CLAUDE_CODE_SESSION_ID and
- * Codex exports CODEX_THREAD_ID.
- */
-function hostSessionEnv(client: "claude-code" | "codex"): {
-  name: string;
-  value?: string;
-} {
-  const shared = process.env["AGMSG_SESSION_ID"];
-  if (shared !== undefined && shared !== "") {
-    return { name: "AGMSG_SESSION_ID", value: shared };
-  }
-  const name =
-    client === "claude-code" ? "CLAUDE_CODE_SESSION_ID" : "CODEX_THREAD_ID";
-  const value = process.env[name];
-  return value === undefined || value === "" ? { name } : { name, value };
+const CLIENT_PATTERN = /^[a-z0-9][a-z0-9-]{0,31}$/;
+
+function isClient(value: string): boolean {
+  return value === "other" || CLIENT_PATTERN.test(value);
 }
 
 function autoBindView(result: ClaimResult): Record<string, unknown> {
@@ -59,10 +49,10 @@ export async function registerCommand(
   const args = parseArgs(argv);
   const displayName = requiredValue(args, "name");
   const client = requiredValue(args, "client");
-  if (!CLIENTS.has(client)) {
+  if (!isClient(client)) {
     throw new AechatError(
       "invalid_input",
-      `invalid --client ${client}; expected claude-code, codex or other`,
+      `invalid --client ${client}; expected a host id or other`,
     );
   }
   const project = args.values.get("project") ?? process.cwd();
@@ -71,25 +61,35 @@ export async function registerCommand(
   // shortcut: accepting one here would let a caller fake conversation binding.
   const result = await ctx.service.register({
     displayName,
-    client: client as "claude-code" | "codex" | "other",
+    client,
     project,
   });
 
   let autoClaim: ClaimResult | undefined;
   let skipReason: string | undefined;
+  const host = hostById(client);
   if (args.flags.has("no-bind")) {
     skipReason = "disabled by --no-bind";
   } else if (client === "other") {
     skipReason = "client other has no host session";
   } else {
-    const host = hostSessionEnv(client as "claude-code" | "codex");
-    if (host.value === undefined) {
-      skipReason = `no host session id (${host.name}) in the environment`;
+    const shared = process.env[SHARED_SESSION_ENV];
+    const hostSession =
+      host === undefined
+        ? shared === undefined || shared === ""
+          ? undefined
+          : shared
+        : hostSessionId(host);
+    if (hostSession === undefined) {
+      skipReason =
+        host === undefined
+          ? `no host descriptor for client ${client}; set ${SHARED_SESSION_ENV} to bind`
+          : `no host session id (${SHARED_SESSION_ENV} or ${host.sessionEnv}) in the environment`;
     } else {
       try {
         autoClaim = await ctx.service.claim(
           result.session.sessionId,
-          host.value,
+          hostSession,
         );
       } catch (error) {
         autoClaim = {

@@ -1,11 +1,11 @@
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 
+import { hostById } from "../../adapters/hosts/registry.js";
 import { openDatabase } from "../../core/store/db.js";
 import { migrate } from "../../core/store/schema.js";
 import {
   detectHosts,
-  type HostId,
   type InstallResult,
   installHostSkill,
 } from "../../runtime/host-install.js";
@@ -25,20 +25,13 @@ interface InitData {
 
 export type InitContext = Pick<CommandContext, "agmsgVersion">;
 
-function nextSteps(hosts: HostId[]): string[] {
-  const steps: string[] = [];
-  if (hosts.includes("claude-code")) {
-    steps.push(
-      'In Claude Code: aechat register --name "<name>" --client claude-code --project "$PWD"',
-    );
-  }
-  if (hosts.includes("codex")) {
-    steps.push(
-      'In Codex: aechat register --name "<name>" --client codex --project "$PWD"',
-    );
-  }
+function nextSteps(hosts: string[]): string[] {
+  const steps = hosts.map((host) => {
+    const label = hostById(host)?.label ?? host;
+    return `In ${label}: aechat register --name "<name>" --client ${host} --project "$PWD"`;
+  });
   if (steps.length === 0) {
-    steps.push("Install Claude Code or Codex, then run: aechat setup <host>");
+    steps.push("Install a supported host, then run: aechat setup <host>");
   }
   steps.push("Check the environment with: aechat doctor --json");
   return steps;

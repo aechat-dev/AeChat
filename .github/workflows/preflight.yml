@@ -1,0 +1,82 @@
+name: Preflight
+
+# Manual, full pre-release smoke test for a batch of dev changes. This is not
+# a required check: it verifies the packaged CLI and app the way a user
+# installs them, which the per-PR gates do not cover.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: preflight-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  preflight:
+    name: Pre-release smoke
+    runs-on: macos-15
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 11.25.0
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: TypeScript checks
+        run: pnpm check
+
+      - name: Swift format check
+        run: pnpm lint:swift
+
+      - name: Swift checks
+        run: ./scripts/check-macos.sh
+
+      - name: Build app
+        run: ./scripts/build-aechat-app.sh
+
+      - name: Verify signature
+        run: codesign --verify --deep --strict dist/AeChat.app
+
+      - name: Pack CLI
+        run: pnpm pack --pack-destination "$RUNNER_TEMP"
+
+      - name: Install packaged CLI
+        run: |
+          prefix="$RUNNER_TEMP/prefix"
+          npm install -g --prefix "$prefix" "$RUNNER_TEMP"/aechat-*.tgz
+          "$prefix/bin/aechat" --help >/dev/null
+          echo "AECHAT_BIN=$prefix/bin/aechat" >> "$GITHUB_ENV"
+
+      - name: Smoke doctor
+        env:
+          AECHAT_HOME: ${{ runner.temp }}/home
+        run: |
+          set -o pipefail
+          mkdir -p "$AECHAT_HOME"
+          "$AECHAT_BIN" doctor --json | node -e '
+            let body = "";
+            process.stdin.on("data", (chunk) => { body += chunk; });
+            process.stdin.on("end", () => {
+              const envelope = JSON.parse(body);
+              const report = envelope.data;
+              if (
+                envelope.ok !== true ||
+                !report?.node ||
+                !report.database ||
+                !report.transport
+              ) {
+                process.exit(1);
+              }
+            });
+          '

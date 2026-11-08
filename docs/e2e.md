@@ -75,6 +75,8 @@ limit resets (2026-11-09 13:51 on the current machine).
 
 Do not infer wakeup from a successful bind, a hook install or an agmsg
 subscription. Only an `ack` or `reply` proves the host processed the message.
+A user-triggered turn — including `claude -p` — proves the pull path, not idle
+wakeup.
 
 ## Recording results
 

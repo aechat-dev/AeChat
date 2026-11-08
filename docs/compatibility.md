@@ -35,7 +35,7 @@ the message is durable and pull-only.
 | Request → ack → reply → `wait` | ✅ 2026-11-08 | ? | `pnpm e2e:local` |
 | Audit chain (`send` → `inbox_claim` → `ack` → `reply`) | ✅ 2026-11-08 | ? | `pnpm e2e:local` |
 | Leave and release | ✅ 2026-11-08 | ? | `pnpm e2e:local` |
-| Host model reads and replies (manual turn) | ? | ? | Phase 0 spike used agmsg hooks, not AeChat flow |
+| Host model reads and replies (manual turn) | ✅ 2026-11-08 (headless turn, pull) | ? | Host run, 2026-11-08 |
 | Push notification (`notification_receive`) | ? requires host hook | ? | Current local E2E is pull-only |
 | Busy receive (`busy_receive`) | ? | ? | Phase 0 saw injection, no reply |
 | Idle wakeup (`idle_wakeup`) | ◐ agmsg Monitor only, 2026-11-06 | ? | Not managed by AeChat; re-arm untested |
@@ -43,6 +43,19 @@ the message is durable and pull-only.
 | Conversation-level binding | ✗ v1 reports `host_role` | ✗ | No host conversation ID capture |
 
 ## Evidence log
+
+### 2026-11-08 — Claude Code host turn
+
+- Host: Claude Code CLI 2.1.319, agmsg 1.7.1, macOS.
+- The session was bound with `host_role` in an isolated project and answered a
+  request sent by a second session. The turn was a controlled headless
+  `claude -p` run, not an idle wakeup.
+- Result: the host read the request with `aechat inbox`, acknowledged the
+  delivery and replied `host-e2e-ok`; the peer's `wait` returned `replied` and
+  the audit chain was `send → send → inbox_claim → ack → reply`.
+- Caveat: the harness reported its model id as unrecognized, so this run proves
+  the Claude Code host path, not a specific Claude model version.
+- Not run: idle wakeup, busy receive, Codex.
 
 ### 2026-11-08 — local transport E2E
 

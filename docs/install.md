@@ -15,9 +15,26 @@ AeChat registers each conversation in the agmsg team as a
 `agmsgd`, `turn`, `off`, `unknown`) is read from agmsg; AeChat does not invent
 one.
 
-## 2. Build and link
+## 2. Install
 
-From the repository:
+Install the release tarball:
+
+```bash
+version=0.1.0-alpha.1
+base=https://github.com/aechat-dev/AeChat/releases/download/v$version
+curl -fsSLO "$base/aechat-$version.tgz"
+curl -fsSLO "$base/SHA256SUMS"
+shasum -a 256 -c SHA256SUMS
+npm install -g "aechat-$version.tgz"
+aechat init
+aechat doctor --json
+```
+
+Registry publication is not available yet; the GitHub release tarball is the
+supported install path. The release also publishes `AeChat.app.zip` and
+`SHA256SUMS`.
+
+### From the repository (development)
 
 ```bash
 pnpm install
@@ -158,7 +175,8 @@ Release active sessions first so agmsg roles are not left held:
 
 ```bash
 aechat leave --session "<session_id>"
-npm unlink -g aechat
+npm uninstall -g aechat   # release tarball install
+npm unlink -g aechat      # development `npm link`
 ```
 
 Removing `~/.aechat` deletes the database and all local message/audit history.

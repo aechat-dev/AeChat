@@ -66,6 +66,21 @@ sequenceDiagram
 
 **Requirements:** macOS 14+, Node.js 24, pnpm 11, and agmsg 1.7.1 on `PATH`.
 
+Install the release tarball:
+
+```bash
+version=0.1.0-alpha.1
+base=https://github.com/aechat-dev/AeChat/releases/download/v$version
+curl -fsSLO "$base/aechat-$version.tgz"
+curl -fsSLO "$base/SHA256SUMS"
+shasum -a 256 -c SHA256SUMS
+npm install -g "aechat-$version.tgz"
+aechat init
+```
+
+Registry publication is not available yet, so install from the GitHub release
+tarball. For development, build and link the checkout instead:
+
 ```bash
 git clone https://github.com/aechat-dev/AeChat.git
 cd AeChat
@@ -179,7 +194,8 @@ processing.
 - Audit: SQLite `events` table, read with `aechat log`
 
 ```bash
-npm unlink -g aechat
+npm uninstall -g aechat   # release tarball install
+npm unlink -g aechat      # development `npm link`
 ```
 
 Removing `~/.aechat` deletes all local sessions, messages and audit events.

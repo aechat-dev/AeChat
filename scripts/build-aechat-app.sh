@@ -43,6 +43,20 @@ if [ -d "$CLI_DIST/skill" ]; then
   cp -R "$CLI_DIST/skill" "$APP/Contents/Resources/skill"
 fi
 
+ICON_SRC="$ROOT/docs/assets/icon.png"
+if [ -f "$ICON_SRC" ]; then
+  ICONSET="$(mktemp -d)/AppIcon.iconset"
+  mkdir -p "$ICONSET"
+  for size in 16 32 128 256 512; do
+    sips -z "$size" "$size" "$ICON_SRC" \
+      --out "$ICONSET/icon_${size}x${size}.png" >/dev/null
+    sips -z "$((size * 2))" "$((size * 2))" "$ICON_SRC" \
+      --out "$ICONSET/icon_${size}x${size}@2x.png" >/dev/null
+  done
+  iconutil -c icns "$ICONSET" -o "$APP/Contents/Resources/AppIcon.icns"
+  rm -rf "$(dirname "$ICONSET")"
+fi
+
 cat > "$APP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -52,6 +66,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
   <key>CFBundleDisplayName</key><string>AeChat</string>
   <key>CFBundleIdentifier</key><string>local.aechat.app</string>
   <key>CFBundleExecutable</key><string>AeChat</string>
+  <key>CFBundleIconFile</key><string>AppIcon</string>
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>CFBundleShortVersionString</key><string>0.0.0</string>
   <key>CFBundleVersion</key><string>1</string>

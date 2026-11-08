@@ -22,6 +22,7 @@ are assembled from the `Unreleased` section at tag time.
   path redaction.
 - Read-only macOS SwiftUI monitor built on the `ui-*` bridge: overview,
   sessions, chat timeline, request cards, inspector and live event stream.
+- Product icon for the app bundle and README.
 - Host skill templates for Claude Code and Codex.
 - Repository quality gates: Biome lint/format, `swift-format`, test audit,
   coverage floors and CI on Linux and macOS.

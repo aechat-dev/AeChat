@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/assets/icon.png" alt="AeChat icon" width="128">
+</p>
+
 # AeChat
 
 Local-first session messaging for AI agent hosts on macOS.

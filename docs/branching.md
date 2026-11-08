@@ -86,6 +86,9 @@ git tag -a v0.1.0-alpha.1 -m "AeChat v0.1.0-alpha.1"
 git push origin v0.1.0-alpha.1
 ```
 
-Tagging, artifact publication and release notes are owned by the release work
-tracked in issue #12. Do not create a release tag from `dev` or from a feature
-branch.
+Pushing the tag triggers `.github/workflows/release.yml`. The workflow verifies
+that the tag points at a commit on `main`, runs `pnpm check`, builds the CLI
+tarball and `SHA256SUMS`, builds and signs `AeChat.app.zip`, and creates the
+GitHub release from the matching CHANGELOG section. npm registry publication is
+not part of the workflow yet. Do not create a release tag from `dev` or from a
+feature branch.

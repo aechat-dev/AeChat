@@ -247,6 +247,21 @@ export class DeliveryService {
 
     let duplicate: SendResult | undefined;
     withImmediate(this.db, () => {
+      // Re-check inside the writer transaction: a concurrent leave may have
+      // cancelled the target after the pre-check above.
+      const currentTarget = this.sessions.get(input.toSession);
+      if (currentTarget === undefined) {
+        throw new AechatError(
+          "target_not_found",
+          `target session not found: ${input.toSession}`,
+        );
+      }
+      if (currentTarget.leftAt !== null) {
+        throw new AechatError(
+          "target_left",
+          `target has left: ${input.toSession}`,
+        );
+      }
       // Dedup lookup and insertion share one writer transaction. Two processes
       // using the same key serialize here: the loser sees the winner's row and
       // returns it (same target) or gets invalid_input (different target)
@@ -530,17 +545,17 @@ export class DeliveryService {
               : { reason: "lease_exhausted", attempts: transition.attempts },
         });
       },
+      onClaim: (delivery) => {
+        this.events?.record({
+          event: "inbox_claim",
+          sessionId: input.sessionId,
+          messageId: delivery.messageId,
+          deliveryId: delivery.deliveryId,
+          ts: at,
+          data: { attempts: delivery.attempts },
+        });
+      },
     });
-    for (const delivery of claimed) {
-      this.events?.record({
-        event: "inbox_claim",
-        sessionId: input.sessionId,
-        messageId: delivery.messageId,
-        deliveryId: delivery.deliveryId,
-        ts: at,
-        data: { attempts: delivery.attempts },
-      });
-    }
     return this.toItems(claimed);
   }
 

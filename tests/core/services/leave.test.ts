@@ -129,6 +129,16 @@ describe("SessionService.leave", () => {
     );
   });
 
+  it("writes one leave event when two leaves race", async () => {
+    const { service, events } = setup();
+
+    await Promise.all([service.leave("b"), service.leave("b")]);
+
+    expect(
+      events.listForSession("b").filter((event) => event.event === "leave"),
+    ).toHaveLength(1);
+  });
+
   it("releases the binding and marks the session left", async () => {
     const { service, delivery, transport, sessions, bindings, messages } =
       setup();

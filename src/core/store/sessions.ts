@@ -258,12 +258,13 @@ export class SessionRepository {
     return Number(result.changes) > 0;
   }
 
-  markLeft(id: SessionId, at: string): void {
-    this.db
+  markLeft(id: SessionId, at: string): boolean {
+    const result = this.db
       .prepare(
         "UPDATE sessions SET left_at = ?, resume_state = 'idle' WHERE session_id = ? AND left_at IS NULL",
       )
       .run(at, id);
+    return Number(result.changes) > 0;
   }
 }
 

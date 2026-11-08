@@ -419,6 +419,7 @@ export class DeliveryRepository {
     leaseSeconds: number;
     maxAttempts?: number;
     onTransition?: (transition: DeliveryTransition) => void;
+    onClaim?: (delivery: ClaimedDelivery) => void;
   }): ClaimedDelivery[] {
     const maxAttempts = input.maxAttempts ?? 3;
     const leaseExpiresAt = new Date(
@@ -526,7 +527,9 @@ export class DeliveryRepository {
           )
           .run(token, leaseExpiresAt, input.now, deliveryId);
         const delivery = this.get(deliveryId) as DeliveryRecord;
-        claimed.push({ ...delivery, deliveryToken: token });
+        const item = { ...delivery, deliveryToken: token };
+        claimed.push(item);
+        input.onClaim?.(item);
       }
       return claimed;
     });

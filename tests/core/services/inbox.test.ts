@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { DeliveryService } from "../../../src/core/services/delivery-service.js";
 import { openDatabase } from "../../../src/core/store/db.js";
@@ -16,7 +16,7 @@ import { FakeTransportAdapter } from "../../../src/core/transport/fake.js";
 
 const databases: Array<{ close(): void }> = [];
 
-function setup() {
+function setup(options: { events?: EventRepository } = {}) {
   const db = openDatabase(":memory:");
   databases.push(db);
   migrate(db);
@@ -24,7 +24,7 @@ function setup() {
   const bindings = new TransportBindingRepository(db);
   const messages = new MessageRepository(db);
   const deliveries = new DeliveryRepository(db);
-  const events = new EventRepository(db);
+  const events = options.events ?? new EventRepository(db);
   const transport = new FakeTransportAdapter();
   let tick = 0;
   const now = () =>
@@ -109,6 +109,29 @@ describe("DeliveryService.inbox", () => {
     expect(JSON.parse(expire?.dataJson ?? "{}")).toMatchObject({
       reason: "ttl",
     });
+  });
+
+  it("rolls back the claim when the inbox_claim event cannot be written", async () => {
+    const events = {
+      record: vi.fn((input: { event: string }) => {
+        if (input.event === "inbox_claim") {
+          throw new Error("event write failed");
+        }
+        return "event";
+      }),
+    } as unknown as EventRepository;
+    const { service, deliveries } = setup({ events });
+    const sent = await service.send({
+      fromSession: "from-session",
+      toSession: "to-session",
+      kind: "notify",
+      body: "claim me",
+    });
+
+    await expect(
+      service.inbox({ sessionId: "to-session", limit: 1 }),
+    ).rejects.toThrow("event write failed");
+    expect(deliveries.get(sent.deliveryId)?.status).toBe("notified");
   });
 
   it("records a dead_letter event after the lease and attempt limit", async () => {

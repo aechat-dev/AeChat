@@ -516,7 +516,11 @@ export class SessionService {
 
     const at = this.now();
     const write = (): void => {
-      this.sessions.markLeft(sessionId, at);
+      // A concurrent leave may have committed first; do not duplicate the
+      // audit rows for a transition this call did not perform.
+      if (!this.sessions.markLeft(sessionId, at)) {
+        return;
+      }
       if (binding !== undefined) {
         this.bindings.updateState(binding.bindingId, "released", at);
       }

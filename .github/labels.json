@@ -1,0 +1,57 @@
+[
+  {
+    "name": "area: cli",
+    "color": "1D76DB",
+    "description": "Command surface, arguments and output"
+  },
+  {
+    "name": "area: native-app",
+    "color": "5319E7",
+    "description": "SwiftUI monitor and ui-* bridge"
+  },
+  {
+    "name": "area: transport",
+    "color": "0E8A16",
+    "description": "agmsg transport and host binding"
+  },
+  {
+    "name": "area: audit",
+    "color": "FBCA04",
+    "description": "Events, redaction and audit queries"
+  },
+  {
+    "name": "area: docs",
+    "color": "0075CA",
+    "description": "README, install and contributor docs"
+  },
+  {
+    "name": "status: needs-triage",
+    "color": "E4E669",
+    "description": "Not yet assessed by a maintainer"
+  },
+  {
+    "name": "status: needs-info",
+    "color": "D876E3",
+    "description": "Waiting for reproduction or environment details"
+  },
+  {
+    "name": "status: blocked",
+    "color": "B60205",
+    "description": "Waiting on an external dependency or decision"
+  },
+  {
+    "name": "breaking change",
+    "color": "D93F0B",
+    "description": "Changes an existing CLI, JSON or schema contract"
+  },
+  {
+    "name": "security",
+    "color": "EE0701",
+    "description": "Hardening work; vulnerabilities go through SECURITY.md"
+  },
+  {
+    "name": "dependencies",
+    "color": "0366D6",
+    "description": "Dependency updates"
+  }
+]

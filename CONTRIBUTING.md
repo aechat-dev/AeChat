@@ -7,8 +7,12 @@ audit guarantees below are considered stable.
 
 ## Before you start
 
+- Read [docs/start-here.md](docs/start-here.md) for the repository map and the
+  first commands to run.
 - Read [README.md](README.md) for the product model and [docs/install.md](docs/install.md)
   for installation and host binding.
+- Use [docs/contributor-verification.md](docs/contributor-verification.md) to
+  choose the evidence a change needs.
 - For anything larger than a bug fix, open an issue first so the design and the
   phase boundary can be agreed on before code is written.
 - Report security issues privately, per [SECURITY.md](SECURITY.md). Do not open

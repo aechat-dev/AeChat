@@ -1,0 +1,19 @@
+# Code owners for paths that can change what runs with repository secrets
+# or what gets published.
+#
+# CODEOWNERS only *enforces* review when branch protection on `main` enables
+# "Require review from Code Owners". Until then, this file documents ownership
+# and makes the intent explicit.
+#
+# Replace @linnene with a team once the organization has more maintainers.
+
+# Default owner until the project has a maintainer team.
+* @linnene
+
+# Workflows can read repository secrets and decide what ships.
+/.github/workflows/ @linnene
+/.github/actions/ @linnene
+
+# Release and packaging paths.
+/scripts/build-aechat-app.sh @linnene
+/scripts/check-macos.sh @linnene

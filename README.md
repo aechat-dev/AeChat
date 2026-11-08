@@ -178,6 +178,11 @@ until that evidence path exists.
 
 ## Contributing
 
+New contributors start with [docs/start-here.md](docs/start-here.md). It maps
+the repository, lists the first commands to run, and explains what reviewers
+look for. [docs/contributor-verification.md](docs/contributor-verification.md)
+defines the evidence expected for each kind of change.
+
 Development setup, layering rules, test commands and commit conventions are in
 [CONTRIBUTING.md](CONTRIBUTING.md). Security issues must be reported privately
 per [SECURITY.md](SECURITY.md), not in a public issue.

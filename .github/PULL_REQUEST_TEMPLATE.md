@@ -1,32 +1,45 @@
 ## Summary
 
-<!-- What problem does this change solve, and why now? -->
+<!-- What problem does this solve, and what can a user or host do after it? -->
 
 ## Related issue
 
-<!-- Link the issue or design discussion. Use "None" when there is no issue. -->
+<!-- Fixes #1234, or "None". -->
 
 ## Changes
 
-<!-- List the key changes and the affected layers. -->
+<!-- Key changes and affected layers. Keep unrelated work out. -->
 
-## Verification
+## Testing
 
-<!-- Paste the commands and their results; do not only check the boxes. -->
+<!--
+Separate what you added from what you ran. A test that exists but did not run
+is not evidence.
 
-- [ ] `pnpm typecheck`
-- [ ] `pnpm test`
-- [ ] `swift build --package-path apps/macos` (when Swift changes)
-- [ ] `swift run --package-path apps/macos AeChatChecks` (when Swift changes)
-- [ ] `./scripts/build-aechat-app.sh` (when packaging changes)
+Added:
+- test name, what behavior it pins
 
-## Risks and rollback
+Observed:
+- `pnpm check` -> result
+- command run -> actual output
 
-<!-- Known limits, migration impact, or how to revert. -->
+Not run:
+- what you only read or skipped, and why
+-->
+
+## Changelog
+
+<!-- One user-visible line, or "none" for internal-only changes. -->
+
+## Proof
+
+<!-- Before/after screenshots or a short clip for UI changes. Otherwise say why not. -->
 
 ## Checklist
 
-- [ ] The change is focused and does not mix unrelated work.
-- [ ] I added or updated tests for the changed behavior.
-- [ ] No database, logs, build output, credentials or personal data are included.
-- [ ] Capability claims are limited to what has been verified in a real host.
+- [ ] The change is focused; unrelated work is in another pull request.
+- [ ] Tests were added or updated, or Testing explains why not.
+- [ ] `pnpm check` passes; Swift changes also pass `swift build`, `AeChatChecks` and `pnpm lint:swift`.
+- [ ] Host capability and wakeup claims are limited to observed evidence.
+- [ ] No secrets, personal paths, databases, logs or build output are included.
+- [ ] Public behavior changes are reflected in README or `docs/`.

@@ -186,7 +186,8 @@ Leave sessions first if their transport bindings should be released.
 ## Documentation
 
 [Install and operate](docs/install.md) · [Start here](docs/start-here.md) ·
-[Host compatibility](docs/compatibility.md) · [E2E verification](docs/e2e.md) ·
+[Roadmap](docs/roadmap.md) · [Host compatibility](docs/compatibility.md) ·
+[E2E verification](docs/e2e.md) ·
 [Contributor verification](docs/contributor-verification.md) ·
 [Changelog](CHANGELOG.md)
 

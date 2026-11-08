@@ -30,7 +30,9 @@ the message is durable and pull-only.
 | Scenario | Claude Code | Codex | Evidence |
 |---|---|---|---|
 | Register two isolated sessions | ✅ 2026-11-08 | ? | `pnpm e2e:local` |
+| Automatic binding from the host session | ✅ 2026-11-08 | ? | `pnpm e2e:local`; host run |
 | Bind with `bound_scope=host_role` | ✅ 2026-11-08 | ? | `pnpm e2e:local`; Codex claim not confirmed |
+| Host initiates a request and waits for the reply | ✅ 2026-11-08 | ? | Host run, 2026-11-08 |
 | Durable send + pull (`inbox`) | ✅ 2026-11-08 | ? | `pnpm e2e:local` |
 | Request → ack → reply → `wait` | ✅ 2026-11-08 | ? | `pnpm e2e:local` |
 | Audit chain (`send` → `inbox_claim` → `ack` → `reply`) | ✅ 2026-11-08 | ? | `pnpm e2e:local` |
@@ -43,6 +45,21 @@ the message is durable and pull-only.
 | Conversation-level binding | ✗ v1 reports `host_role` | ✗ | No host conversation ID capture |
 
 ## Evidence log
+
+### 2026-11-08 — Claude Code auto-bind and outbound request
+
+- Host: Claude Code CLI 2.1.319, agmsg 1.7.1, Node 24, macOS.
+- A headless `claude -p` turn ran `aechat register` inside an isolated
+  `AECHAT_HOME` and temporary agmsg team. Registration read
+  `CLAUDE_CODE_SESSION_ID`, claimed the role and returned
+  `binding_state=bound`, `bound_scope=host_role`,
+  `transportClaimState=accepted` and `bind_directive=null`.
+- The host then sent a request to a peer, the peer acknowledged and replied,
+  and the host's `wait` returned `replied` with body `peer-reply-ok`.
+- Caveat: a user-triggered headless turn, not idle wakeup or busy receive. The
+  harness reported its model id as unrecognized, so this proves the host path,
+  not a specific Claude model version.
+- Not run: Codex, idle wakeup, busy receive.
 
 ### 2026-11-08 — Claude Code host turn
 
@@ -62,8 +79,9 @@ the message is durable and pull-only.
 - Command: `pnpm build && pnpm e2e:local`
 - Environment: macOS, Node 24.21.0, agmsg 1.7.1, two `claude-code` identities
   in an isolated `AECHAT_HOME` and temporary agmsg team.
-- Result: two sessions bound with `host_role`; request/reply completed; audit
-  chain `send → send → inbox_claim → ack → reply`; both sessions left cleanly.
+- Result: two sessions auto-bound from `CLAUDE_CODE_SESSION_ID` with
+  `host_role`; request/reply completed; audit chain
+  `send → send → inbox_claim → ack → reply`; both sessions left cleanly.
 - Delivery was pull-only (`send_status=stored`) because no host hook was
   installed. That is the expected behavior for this harness.
 

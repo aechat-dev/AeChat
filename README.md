@@ -71,12 +71,13 @@ git clone https://github.com/aechat-dev/AeChat.git
 cd AeChat
 pnpm install
 pnpm build
-pnpm link --global
+pnpm add -g .
 aechat init
 ```
 
-If `pnpm link --global` reports that its global bin directory is not on
-`PATH`, run `pnpm setup`, restart the shell, then link again.
+`pnpm add -g .` installs this checkout as a global package. If `aechat` is not
+found afterwards, run `pnpm setup`, restart the shell, then run `aechat init`
+again.
 
 `init` creates the database, checks agmsg and installs the skill for every
 detected host. Run `aechat setup <claude-code|codex>` to install one explicitly.
@@ -177,7 +178,7 @@ processing.
 - Audit: SQLite `events` table, read with `aechat log`
 
 ```bash
-pnpm unlink --global aechat
+pnpm remove -g aechat
 ```
 
 Removing `~/.aechat` deletes all local sessions, messages and audit events.

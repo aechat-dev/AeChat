@@ -22,14 +22,15 @@ From the repository:
 ```bash
 pnpm install
 pnpm build
-pnpm link --global
+pnpm add -g .
 aechat init
 aechat doctor --json
 ```
 
-If `pnpm link --global` reports that its global bin directory is not on
-`PATH`, run `pnpm setup`, restart the shell, then link again. The same applies
-to a fresh pnpm installation where `pnpm bin -g` is not yet in `PATH`.
+`pnpm add -g .` installs this checkout as a global package. If `aechat` is not
+found afterwards, run `pnpm setup`, restart the shell, then run `aechat init`
+again. The global bin directory is reported by `pnpm bin -g` and must be on
+`PATH`.
 
 `init` creates the database, checks agmsg and installs the host skill for every
 detected host. `doctor` reports the Node version, agmsg version and support
@@ -145,7 +146,7 @@ Release active sessions first so agmsg roles are not left held:
 
 ```bash
 aechat leave --session "<session_id>"
-pnpm unlink --global aechat
+pnpm remove -g aechat
 ```
 
 Removing `~/.aechat` deletes the database and all local message/audit history.

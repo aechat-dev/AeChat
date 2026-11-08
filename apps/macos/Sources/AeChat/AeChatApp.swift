@@ -43,19 +43,8 @@ struct RootView: View {
             }
         }
         .toolbar {
-            ToolbarItem(placement: .status) {
-                Text(state.binaryHint)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-            }
             ToolbarItem(placement: .primaryAction) {
                 HStack(spacing: 8) {
-                    Label("Read-only", systemImage: "lock.fill")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .help("AeChat never sends, replies or acknowledges messages.")
                     SettingsLink {
                         Label("Settings", systemImage: "gearshape")
                     }

@@ -50,9 +50,11 @@ aechat setup codex
 ```
 
 Host ids come from the adapter registry; the built-in ids are `claude-code`
-and `codex`. A new host adds a descriptor (including its config directory and
-hook file) and a skill; core and the CLI need no host branch. Host-specific
-transport hints, such as the agmsg bind directive, stay in the adapter layer.
+and `codex`. A host id must match `[a-z0-9][a-z0-9-]{0,31}`; core rejects
+anything else before registration touches the transport. A new host adds a
+descriptor (including its config directory and hook file) and a skill; core
+and the CLI need no host branch. Host-specific transport hints, such as the
+agmsg bind directive, stay in the adapter layer.
 
 The skill is instructions for the Agent, not an automatic permission grant.
 It requires explicit registration, JSON-first reads, an `ack` after processing,

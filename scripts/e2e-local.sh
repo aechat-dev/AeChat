@@ -47,32 +47,34 @@ trap cleanup EXIT
 command -v jq >/dev/null || fail "jq is required"
 [ -x "$AGMSG_DIR/scripts/actas-claim.sh" ] || fail "agmsg scripts not found at $AGMSG_DIR"
 
+# Register through the same host-session path a real Claude Code conversation
+# uses: CLAUDE_CODE_SESSION_ID drives the actas claim, so no manual bind step.
 register() {
-  local name="$1" project="$2" client="$3"
-  aechat register --name "$name" --client "$client" --project "$project" --json
+  local name="$1" project="$2" host_sid="$3"
+  AGMSG_SESSION_ID= CLAUDE_CODE_SESSION_ID="$host_sid" CODEX_THREAD_ID= \
+    aechat register --name "$name" --client claude-code \
+      --project "$project" --json
 }
 
-bind() {
-  local project="$1" client="$2" address="$3" session="$4"
-  "$AGMSG_DIR/scripts/actas-claim.sh" \
-    "$project" "$client" "$address" "$session" >/dev/null 2>&1
+assert_auto_bound() {
+  local label="$1" reg="$2"
+  [ "$(jq -r '.data.binding_state' <<<"$reg")" = "bound" ] \
+    || fail "session $label did not auto-bind: $reg"
+  [ "$(jq -r '.data.bound_scope' <<<"$reg")" = "host_role" ] \
+    || fail "session $label did not report host_role: $reg"
+  [ "$(jq -r '.data.auto_bind.transportClaimState' <<<"$reg")" = "accepted" ] \
+    || fail "session $label claim was not accepted: $reg"
+  [ "$(jq -r '.data.bind_directive' <<<"$reg")" = "null" ] \
+    || fail "session $label still returned a bind directive: $reg"
 }
 
-reg_a="$(register e2e-a "$WORK/project-a" claude-code)"
+reg_a="$(register e2e-a "$WORK/project-a" "e2e-$STAMP-a")"
 sid_a="$(jq -r '.data.session_id' <<<"$reg_a")"
-addr_a="$(jq -r '.data.address' <<<"$reg_a")"
-bind "$WORK/project-a" claude-code "$addr_a" "e2e-$STAMP-a"
-confirm_a="$(aechat confirm --session "$sid_a" --json)"
-[ "$(jq -r '.data.bound_scope' <<<"$confirm_a")" = "host_role" ] \
-  || fail "session A did not bind with host_role: $confirm_a"
+assert_auto_bound A "$reg_a"
 
-reg_b="$(register e2e-b "$WORK/project-b" claude-code)"
+reg_b="$(register e2e-b "$WORK/project-b" "e2e-$STAMP-b")"
 sid_b="$(jq -r '.data.session_id' <<<"$reg_b")"
-addr_b="$(jq -r '.data.address' <<<"$reg_b")"
-bind "$WORK/project-b" claude-code "$addr_b" "e2e-$STAMP-b"
-confirm_b="$(aechat confirm --session "$sid_b" --json)"
-[ "$(jq -r '.data.bound_scope' <<<"$confirm_b")" = "host_role" ] \
-  || fail "session B did not bind with host_role: $confirm_b"
+assert_auto_bound B "$reg_b"
 
 sent="$(aechat send --session "$sid_a" --to-session "$sid_b" \
   --request --deadline 300 --body "e2e request $STAMP" --json)"
@@ -111,10 +113,10 @@ summary="$(jq -n \
   --arg send_status "$send_status" \
   --argjson chain "$events" \
   '{team: $team, sessions: {a: $session_a, b: $session_b},
-    binding: "host_role", send_status: $send_status,
+    binding: "host_role", auto_bind: true, send_status: $send_status,
     request: "replied", audit_chain: $chain,
     notification: (if $send_status == "notified" then "pushed" else "pull-only" end)}')"
 
 mkdir -p "$ROOT/reports"
 printf '%s\n' "$summary" | tee "$ROOT/reports/e2e-local.json"
-echo "e2e: PASS (transport, binding, request/reply, audit, leave)"
+echo "e2e: PASS (transport, auto-bind, request/reply, audit, leave)"

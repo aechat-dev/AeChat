@@ -12,8 +12,10 @@ pnpm e2e:local
 
 The script creates an isolated `AECHAT_HOME` and a temporary agmsg team, then:
 
-1. registers two `claude-code` identities;
-2. binds both with a live actas claim and confirms `bound_scope=host_role`;
+1. registers two `claude-code` identities with `CLAUDE_CODE_SESSION_ID` set,
+   exercising the automatic actas claim;
+2. asserts each registration reports `binding_state=bound`,
+   `bound_scope=host_role`, `transportClaimState=accepted` and no bind directive;
 3. sends a request, pulls it, acknowledges it, replies and waits for the reply;
 4. asserts the audit chain and leaves both sessions;
 5. writes `reports/e2e-local.json` and deletes the temporary team.
@@ -50,7 +52,8 @@ limit resets (2026-11-09 13:51 on the current machine).
 
 1. In the host conversation, register:
    `aechat register --name host-a --client claude-code --project <project>`
-2. Run the returned bind directive in that conversation.
+2. It should bind automatically. If `bind_directive` is non-null, run that
+   directive in the same conversation.
 3. Confirm from the shell: `aechat confirm --session <host_a_id>`.
 4. From a second session, send a request:
    `aechat send --session <peer_id> --to-session <host_a_id> --request --deadline 300 --body "e2e: reply with host-e2e-ok"`

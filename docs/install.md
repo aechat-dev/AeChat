@@ -175,8 +175,8 @@ commands only after confirming they are test data.
   `bound_scope=host_role` and `whoami --conversation` is only usable for rows
   that already carry a conversation ID.
 - `aechat probe --session "<session_id>"` records one adapter observation and
-  returns the raw row (`observed_level`, plus null `busy_receive`/`idle_wakeup`
-  when unproven). `list --json` is the normalized view: its
+  returns a normalized observation (`observed_level`, plus null
+  `busy_receive`/`idle_wakeup` when unproven). `list --json` is the normalized view: its
   `capabilities.wakeup_level` reflects that probe and `supported` turns nulls
   into false. The agmsg adapter still returns `unknown` until it can prove a
   level, so a real L3 observation from the Phase 0 spike is not converted into

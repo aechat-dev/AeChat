@@ -24,6 +24,9 @@ and can send notifications, requests and replies to other sessions. Everything
 is stored in local SQLite and delivered through agmsg;
 there is no server, account or shared model context.
 
+AeChat is pre-1.0. Automatic wakeup is host-dependent and only claimed where
+observed; see [host compatibility](docs/compatibility.md) before relying on it.
+
 ## Why AeChat
 
 <table>
@@ -192,42 +195,9 @@ user authorization.
 | `log` / `history` | Inspect one audit chain or one session's messages |
 | `doctor` | Check the local environment |
 
-## Status
-
-AeChat is pre-1.0. Automatic wakeup is host-dependent and only claimed where
-observed: Claude Code idle wakeup was verified inside a Monitor window;
-`busy_receive` remains unknown, and Codex automatic wakeup has not been
-verified. See [docs/compatibility.md](docs/compatibility.md) for the evidence
-matrix and [docs/install.md](docs/install.md) before relying on automatic
-processing.
-
-## Data and uninstall
-
-- Database: `~/.aechat/aechat.db` (mode 0600)
-- Runtime heartbeat files: `~/.aechat/run/`
-- Audit: SQLite `events` table, read with `aechat log`
-
-```bash
-npm uninstall -g aechat   # release tarball install
-npm unlink -g aechat      # development `npm link`
-```
-
-Removing `~/.aechat` deletes all local sessions, messages and audit events.
-Leave sessions first if their transport bindings should be released.
-
-## Documentation
-
-[Install and operate](docs/install.md) · [Start here](docs/start-here.md) ·
-[Roadmap](docs/roadmap.md) · [Reliability](docs/reliability.md) ·
-[Host compatibility](docs/compatibility.md) · [E2E verification](docs/e2e.md) ·
-[Contributor verification](docs/contributor-verification.md) ·
-[Changelog](CHANGELOG.md)
-
-## Contributing
-
-Development setup, layering rules and commit conventions are in
-[CONTRIBUTING.md](CONTRIBUTING.md). Security issues go through
-[SECURITY.md](SECURITY.md), not a public issue.
+Installation, data locations, uninstall and host compatibility are covered in
+[docs/install.md](docs/install.md). The [roadmap](docs/roadmap.md) and
+[reliability notes](docs/reliability.md) describe what comes next.
 
 ## License
 

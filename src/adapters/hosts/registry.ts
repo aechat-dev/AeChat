@@ -12,6 +12,8 @@ export interface HostDescriptor {
   sessionEnv: string;
   configEnv: string;
   configDirName: string;
+  /** Settings/hook file inside the host config directory. */
+  hookFile: string;
 }
 
 export const SHARED_SESSION_ENV = "AGMSG_SESSION_ID";
@@ -24,6 +26,7 @@ export const HOSTS: readonly HostDescriptor[] = [
     sessionEnv: "CLAUDE_CODE_SESSION_ID",
     configEnv: "CLAUDE_CONFIG_DIR",
     configDirName: ".claude",
+    hookFile: "settings.json",
   },
   {
     id: "codex",
@@ -32,6 +35,7 @@ export const HOSTS: readonly HostDescriptor[] = [
     sessionEnv: "CODEX_THREAD_ID",
     configEnv: "CODEX_HOME",
     configDirName: ".codex",
+    hookFile: "config.toml",
   },
 ];
 
@@ -48,6 +52,11 @@ export function hostConfigDir(
   env: NodeJS.ProcessEnv = process.env,
 ): string {
   return nonEmpty(env[host.configEnv]) ?? join(homedir(), host.configDirName);
+}
+
+/** Where each host keeps its hook/settings file, resolved per environment. */
+export function hostHookPaths(env: NodeJS.ProcessEnv = process.env): string[] {
+  return HOSTS.map((host) => join(hostConfigDir(host, env), host.hookFile));
 }
 
 /** The host session id used for actas claims; the shared override wins. */

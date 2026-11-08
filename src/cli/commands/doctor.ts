@@ -2,6 +2,7 @@ import { accessSync, constants, readFileSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
+import { hostHookPaths } from "../../adapters/hosts/registry.js";
 import { openDatabase } from "../../core/store/db.js";
 import { parseArgs } from "../args.js";
 import type { CommandContext } from "./context.js";
@@ -63,10 +64,7 @@ export async function doctorCommand(
     // leave both false
   }
 
-  const hookPaths = [
-    join(homedir(), ".claude", "settings.json"),
-    join(homedir(), ".codex", "config.toml"),
-  ];
+  const hookPaths = hostHookPaths();
   const configuredHooks = hookPaths.filter((path) => {
     const text = checkedRead(path);
     return text !== null && /agmsg|aechat/i.test(text);

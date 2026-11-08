@@ -127,7 +127,7 @@ switch (scenario) {
     process.kill(process.pid, "SIGKILL");
     break;
   case "ack_after_commit": {
-    await send("notify");
+    await send("request");
     const [item] = await delivery.inbox({ sessionId: "to", limit: 1 });
     delivery.ack({
       sessionId: "to",

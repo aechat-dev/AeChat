@@ -1,7 +1,7 @@
 # End-to-end verification
 
-AeChat has two E2E layers. Run the automated layer on every release candidate;
-run the host layer before claiming host support.
+AeChat has three E2E layers. Run the automated and crash layers on every
+release candidate; run the host layer before claiming host support.
 
 ## 1. Automated transport E2E
 

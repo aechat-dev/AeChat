@@ -25,8 +25,10 @@ request:   open ──reply──▶ replied
               └──cancel / leave──▶ cancelled
 ```
 
-Every state change and its audit event commit in the same SQLite transaction.
-`aechat log` reads the resulting chain in time order.
+Message, delivery and request lifecycle transitions commit their audit event
+in the same SQLite transaction. Retry and resume bookkeeping are separate and
+may emit their own events. `aechat log` reads the resulting chain in time
+order.
 
 ## What each state means
 

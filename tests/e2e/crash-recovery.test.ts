@@ -33,7 +33,7 @@ function crash(scenario: string): {
   const result = spawnSync(
     process.execPath,
     ["--import", "tsx", fixture, scenario, dbPath],
-    { cwd: root, encoding: "utf8" },
+    { cwd: root, encoding: "utf8", timeout: 30_000 },
   );
   expect(result.signal).toBe("SIGKILL");
   const db = openDatabase(dbPath);
@@ -109,10 +109,11 @@ describe("crash recovery", () => {
     }
   });
 
-  it("keeps an acknowledgement after a crash", () => {
-    const { db, deliveries, events } = crash("ack_after_commit");
+  it("keeps an acknowledgement and the open request after a crash", () => {
+    const { db, deliveries, requests, events } = crash("ack_after_commit");
     try {
       expect(deliveries.get("id-2")?.status).toBe("acked");
+      expect(requests.get("id-1")?.status).toBe("open");
       expect(
         events.listForMessage("id-1").map((event) => event.event),
       ).toContain("ack");
@@ -121,11 +122,14 @@ describe("crash recovery", () => {
     }
   });
 
-  it("keeps a reply and its request transition after a crash", () => {
-    const { db, messages, requests, events } = crash("reply_after_commit");
+  it("keeps a reply, its delivery and its request transition after a crash", () => {
+    const { db, messages, deliveries, requests, events } =
+      crash("reply_after_commit");
     try {
       expect(requests.get("id-1")?.status).toBe("replied");
       expect(messages.get("id-3")?.body).toBe("crash reply");
+      expect(deliveries.get("id-4")?.messageId).toBe("id-3");
+      expect(deliveries.get("id-4")?.status).toBe("notified");
       expect(
         events.listForMessage("id-1").map((event) => event.event),
       ).toContain("reply");

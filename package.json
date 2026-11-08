@@ -24,7 +24,8 @@
     "test:watch": "vitest",
     "test:audit": "node scripts/check-tests.mjs",
     "test:coverage": "vitest run --coverage",
-    "check": "pnpm typecheck && pnpm lint && pnpm test:audit && pnpm test:coverage"
+    "check": "pnpm typecheck && pnpm lint && pnpm test:audit && pnpm test:coverage",
+    "e2e:local": "bash scripts/e2e-local.sh"
   },
   "devDependencies": {
     "@biomejs/biome": "2.6.6",

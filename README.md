@@ -160,7 +160,8 @@ user authorization.
 AeChat is pre-1.0. Automatic wakeup is host-dependent and only claimed where
 observed: Claude Code idle wakeup was verified inside a Monitor window;
 `busy_receive` remains unknown, and Codex automatic wakeup has not been
-verified. See [docs/install.md](docs/install.md) before relying on automatic
+verified. See [docs/compatibility.md](docs/compatibility.md) for the evidence
+matrix and [docs/install.md](docs/install.md) before relying on automatic
 processing.
 
 ## Data and uninstall
@@ -179,6 +180,7 @@ Leave sessions first if their transport bindings should be released.
 ## Documentation
 
 [Install and operate](docs/install.md) · [Start here](docs/start-here.md) ·
+[Host compatibility](docs/compatibility.md) · [E2E verification](docs/e2e.md) ·
 [Contributor verification](docs/contributor-verification.md) ·
 [Changelog](CHANGELOG.md)
 

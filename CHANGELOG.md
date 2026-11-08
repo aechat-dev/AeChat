@@ -26,6 +26,8 @@ are assembled from the `Unreleased` section at tag time.
 - Host skill templates for Claude Code and Codex.
 - Repository quality gates: Biome lint/format, `swift-format`, test audit,
   coverage floors and CI on Linux and macOS.
+- Local transport E2E harness (`pnpm e2e:local`) and a dated host compatibility
+  matrix with a repeatable manual protocol.
 
 ### Security
 

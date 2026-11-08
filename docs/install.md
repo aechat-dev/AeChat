@@ -110,6 +110,9 @@ Codex automatic wakeup has no model-turn evidence yet; the Phase 0 test was
 blocked by the Codex usage limit. Do not include Codex wakeup in an acceptance
 claim until it is retested.
 
+The current evidence matrix and the repeatable verification protocol are in
+[compatibility.md](compatibility.md) and [e2e.md](e2e.md).
+
 ## 6. Data, backup and upgrade
 
 - Database: `~/.aechat/aechat.db`, owner-only mode 0600.

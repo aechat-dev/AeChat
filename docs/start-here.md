@@ -61,6 +61,10 @@ open dist/AeChat.app
 You need Node.js 24 and pnpm 11. agmsg 1.7.1 is required only for transport
 integration and real-host verification; unit tests use the fake transport.
 
+Before claiming host support, run the protocol in
+[e2e.md](e2e.md) and update the evidence in
+[compatibility.md](compatibility.md).
+
 ## Making a change
 
 1. Open an issue for anything larger than a bug fix. Describe the behavior and

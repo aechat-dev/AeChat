@@ -83,7 +83,8 @@ Data defaults to `~/.aechat/aechat.db`; override it with `AECHAT_HOME` or
 ## Quick start
 
 Run `aechat register` inside each host conversation. It creates a session and
-binds it automatically when the host session id is available.
+binds it automatically when the host session id is available (Claude Code:
+`CLAUDE_CODE_SESSION_ID`; Codex: `CODEX_THREAD_ID`; `AGMSG_SESSION_ID` overrides).
 
 ```bash
 # In the planner conversation
@@ -94,7 +95,9 @@ aechat register --name worker --client codex --project "$PWD"
 ```
 
 If the result contains a `bind_directive` and `bound_scope=none`, run that
-directive in the same conversation, then `aechat confirm --session "<id>"`.
+directive in the same conversation, then `aechat confirm --session "<id>"`. If
+`auto_bind.transportClaimed` is true but `claimed` is false, follow
+`auto_bind.reason` instead; the role is already held.
 `aechat list --json` shows the sessions and their reported capabilities.
 
 Send a request and answer it:

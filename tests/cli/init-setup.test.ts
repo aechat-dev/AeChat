@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import type { CommandContext } from "../../src/cli/commands/context.js";
 import { initCommand } from "../../src/cli/commands/init.js";
 import { setupCommand } from "../../src/cli/commands/setup.js";
+import { main } from "../../src/cli/main.js";
 
 const keys = [
   "AECHAT_HOME",
@@ -96,10 +97,81 @@ describe("init and setup", () => {
     mkdirSync(join(root, "claude"), { recursive: true });
 
     await initCommand(["--json"], ctx());
-    const result = await setupCommand(["claude-code", "--json"], ctx());
+    const result = await setupCommand(["claude-code", "--json"]);
     expect(result.data).toMatchObject({
       action: "up-to-date",
       host: "claude-code",
+    });
+  });
+
+  it("reports planned actions in a dry run without touching the disk", async () => {
+    const root = tempRoot();
+    const home = join(root, "home");
+    const claude = join(root, "claude");
+    mkdirSync(claude, { recursive: true });
+    setEnv({
+      AECHAT_HOME: home,
+      CLAUDE_CONFIG_DIR: claude,
+      CODEX_HOME: join(root, "codex"),
+      PATH: "",
+    });
+
+    const result = await initCommand(["--json", "--dry-run"], ctx());
+    const data = result.data as {
+      dry_run: boolean;
+      hosts: Array<{ action: string; dry_run: boolean; path: string }>;
+    };
+
+    expect(data.dry_run).toBe(true);
+    expect(data.hosts[0]).toMatchObject({
+      action: "would-install",
+      dry_run: true,
+    });
+    expect(existsSync(home)).toBe(false);
+    expect(existsSync(join(claude, "skills"))).toBe(false);
+  });
+
+  it("dispatches init/setup dry runs before opening the store", async () => {
+    const root = tempRoot();
+    const home = join(root, "home");
+    const claude = join(root, "claude");
+    mkdirSync(claude, { recursive: true });
+    setEnv({
+      AECHAT_HOME: home,
+      CLAUDE_CONFIG_DIR: claude,
+      CODEX_HOME: join(root, "codex"),
+      PATH: "",
+    });
+
+    const writes: string[] = [];
+    const original = process.stdout.write;
+    process.stdout.write = ((chunk: string | Uint8Array) => {
+      writes.push(
+        typeof chunk === "string" ? chunk : Buffer.from(chunk).toString(),
+      );
+      return true;
+    }) as typeof process.stdout.write;
+    try {
+      expect(await main(["init", "--dry-run", "--json"])).toBe(0);
+      expect(await main(["setup", "claude-code", "--dry-run", "--json"])).toBe(
+        0,
+      );
+    } finally {
+      process.stdout.write = original;
+    }
+
+    expect(existsSync(home)).toBe(false);
+    expect(existsSync(join(claude, "skills"))).toBe(false);
+    const init = JSON.parse(writes[0] ?? "") as {
+      data: { dry_run: boolean };
+    };
+    expect(init.data.dry_run).toBe(true);
+    const setup = JSON.parse(writes[1] ?? "") as {
+      data: { action: string; dry_run: boolean };
+    };
+    expect(setup.data).toMatchObject({
+      action: "would-install",
+      dry_run: true,
     });
   });
 

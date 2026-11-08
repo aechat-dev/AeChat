@@ -21,6 +21,7 @@ import type {
   Client,
   SessionRecord,
   TransportBindingRecord,
+  TransportState,
 } from "../types.js";
 
 export type Session = SessionRecord;
@@ -45,8 +46,13 @@ export interface ConfirmResult {
 }
 
 export interface ClaimResult {
+  /** True only when a live binding was confirmed, not when the claim ran. */
   claimed: boolean;
   boundScope: BoundScope;
+  /** True when the transport accepted the claim command. */
+  transportClaimed: boolean;
+  bindingState: TransportState;
+  session: Session;
   reason?: string;
 }
 
@@ -220,6 +226,9 @@ export class SessionService {
       return {
         claimed: false,
         boundScope: "none",
+        transportClaimed: false,
+        bindingState: record.state,
+        session,
         reason: "transport does not support host-session claims",
       };
     }
@@ -232,11 +241,65 @@ export class SessionService {
       return {
         claimed: false,
         boundScope: "none",
+        transportClaimed: false,
+        bindingState: record.state,
+        session,
         reason: result.error ?? "transport claim failed",
       };
     }
-    const confirmed = await this.confirm(sessionId);
-    return { claimed: true, boundScope: confirmed.boundScope };
+
+    let confirmed: ConfirmResult;
+    try {
+      confirmed = await this.confirm(sessionId);
+    } catch (error) {
+      // The claim command succeeded, so the role may be held even though the
+      // proof failed. Never tell the caller to run the bind directive here:
+      // it would collide with this session's own lock. A later confirm can
+      // still turn the claim into a live binding.
+      const detail = error instanceof Error ? error.message : String(error);
+      return {
+        claimed: false,
+        boundScope: "none",
+        transportClaimed: true,
+        bindingState: this.currentBindingState(sessionId, record.state),
+        session: this.currentSession(sessionId),
+        reason:
+          `transport accepted the claim but binding verification failed: ${detail}; ` +
+          `run aechat confirm --session ${sessionId}, or aechat leave --session ${sessionId} and register again`,
+      };
+    }
+
+    const bindingState = this.currentBindingState(sessionId, record.state);
+    if (confirmed.boundScope === "none" || bindingState !== "bound") {
+      return {
+        claimed: false,
+        boundScope: "none",
+        transportClaimed: true,
+        bindingState,
+        session: confirmed.session,
+        reason:
+          `transport accepted the claim but no live binding was confirmed; ` +
+          `run aechat confirm --session ${sessionId}, or aechat leave --session ${sessionId} and register again`,
+      };
+    }
+    return {
+      claimed: true,
+      boundScope: confirmed.boundScope,
+      transportClaimed: true,
+      bindingState,
+      session: confirmed.session,
+    };
+  }
+
+  private currentBindingState(
+    sessionId: string,
+    fallback: TransportState,
+  ): TransportState {
+    return this.bindings.listForSession(sessionId).at(-1)?.state ?? fallback;
+  }
+
+  private currentSession(sessionId: string): Session {
+    return this.sessions.get(sessionId) as Session;
   }
 
   async confirm(sessionId: string): Promise<ConfirmResult> {

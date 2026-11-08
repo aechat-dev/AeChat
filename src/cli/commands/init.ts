@@ -17,10 +17,13 @@ import type { CommandContext } from "./context.js";
 interface InitData {
   home: string;
   database: string;
+  dry_run: boolean;
   agmsg: { version: string | null; ok: boolean; error?: string };
   hosts: InstallResult[];
   next_steps: string[];
 }
+
+export type InitContext = Pick<CommandContext, "agmsgVersion">;
 
 function nextSteps(hosts: HostId[]): string[] {
   const steps: string[] = [];
@@ -42,7 +45,10 @@ function nextSteps(hosts: HostId[]): string[] {
 }
 
 function renderText(data: InitData): string {
-  const lines = ["AeChat initialized", `  database: ${data.database}`];
+  const lines = [
+    data.dry_run ? "AeChat init (dry run)" : "AeChat initialized",
+    `  database: ${data.database}`,
+  ];
   lines.push(
     data.agmsg.ok
       ? `  agmsg: ${data.agmsg.version}`
@@ -63,22 +69,22 @@ function renderText(data: InitData): string {
 
 export async function initCommand(
   argv: readonly string[],
-  ctx: CommandContext,
+  ctx: InitContext,
 ): Promise<CommandResult> {
   const args = parseArgs(argv);
   const dryRun = args.flags.has("dry-run");
   const json = args.flags.has("json");
   const paths = resolvePaths();
 
-  mkdirSync(paths.home, { recursive: true, mode: 0o700 });
-  const db = openDatabase(paths.dbPath);
-  try {
-    migrate(db);
-  } finally {
-    db.close();
-  }
   if (!dryRun) {
+    mkdirSync(paths.home, { recursive: true, mode: 0o700 });
     mkdirSync(join(paths.home, "logs"), { recursive: true, mode: 0o700 });
+    const db = openDatabase(paths.dbPath);
+    try {
+      migrate(db);
+    } finally {
+      db.close();
+    }
   }
 
   let agmsg: InitData["agmsg"] = { version: null, ok: false };
@@ -100,6 +106,7 @@ export async function initCommand(
   const data: InitData = {
     home: paths.home,
     database: paths.dbPath,
+    dry_run: dryRun,
     agmsg,
     hosts: installed,
     next_steps: nextSteps(hosts),

@@ -5,7 +5,7 @@ import {
   rmSync,
   writeFileSync,
 } from "node:fs";
-import { tmpdir } from "node:os";
+import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { afterEach, describe, expect, it } from "vitest";
@@ -54,6 +54,15 @@ describe("host skill installation", () => {
     );
   });
 
+  it("treats empty config directory overrides as unset", () => {
+    expect(hostPaths("claude-code", { CLAUDE_CONFIG_DIR: "" }).skillFile).toBe(
+      join(homedir(), ".claude", "skills", "aechat", "SKILL.md"),
+    );
+    expect(hostPaths("codex", { CODEX_HOME: "" }).skillFile).toBe(
+      join(homedir(), ".codex", "skills", "aechat", "SKILL.md"),
+    );
+  });
+
   it("installs, reports up-to-date, and refreshes a changed skill", () => {
     const root = tempRoot();
     const sourceRoot = sourceWithSkills(root);
@@ -88,7 +97,8 @@ describe("host skill installation", () => {
       env,
       dryRun: true,
     });
-    expect(result.action).toBe("installed");
+    expect(result.action).toBe("would-install");
+    expect(result.dry_run).toBe(true);
     expect(() => readFileSync(result.path, "utf8")).toThrow();
   });
 

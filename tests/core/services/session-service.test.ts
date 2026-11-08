@@ -262,7 +262,66 @@ describe("SessionService.claim", () => {
 
     await expect(
       service.claim(registered.session.sessionId, "host-session-1"),
-    ).resolves.toEqual({ claimed: true, boundScope: "host_role" });
+    ).resolves.toMatchObject({
+      claimed: true,
+      boundScope: "host_role",
+      transportClaimed: true,
+      bindingState: "bound",
+    });
+  });
+
+  it("does not call a claim successful without a live binding", async () => {
+    const { service, transport } = setup({ bindMode: "none" });
+    Object.assign(transport, {
+      claim: async () => ({ ok: true }),
+    });
+    const registered = await service.register({
+      displayName: "dev",
+      client: "claude-code",
+      project: "/tmp/project",
+    });
+
+    const result = await service.claim(
+      registered.session.sessionId,
+      "host-session-1",
+    );
+
+    expect(result).toMatchObject({
+      claimed: false,
+      boundScope: "none",
+      transportClaimed: true,
+      bindingState: "failed",
+    });
+    expect(result.reason).toContain("no live binding");
+  });
+
+  it("reports a held role when confirmation throws after the claim", async () => {
+    const { service, transport } = setup();
+    Object.assign(transport, {
+      claim: async () => ({ ok: true }),
+      bind: async () => {
+        throw new Error("bind verification failed");
+      },
+    });
+    const registered = await service.register({
+      displayName: "dev",
+      client: "claude-code",
+      project: "/tmp/project",
+    });
+
+    const result = await service.claim(
+      registered.session.sessionId,
+      "host-session-1",
+    );
+
+    expect(result).toMatchObject({
+      claimed: false,
+      boundScope: "none",
+      transportClaimed: true,
+      bindingState: "pending",
+    });
+    expect(result.reason).toContain("binding verification failed");
+    expect(result.reason).toContain("aechat confirm");
   });
 
   it("keeps the binding unclaimed when the adapter refuses", async () => {
@@ -278,9 +337,11 @@ describe("SessionService.claim", () => {
 
     await expect(
       service.claim(registered.session.sessionId, "host-session-1"),
-    ).resolves.toEqual({
+    ).resolves.toMatchObject({
       claimed: false,
       boundScope: "none",
+      transportClaimed: false,
+      bindingState: "pending",
       reason: "held by another session",
     });
   });
@@ -295,9 +356,11 @@ describe("SessionService.claim", () => {
 
     await expect(
       service.claim(registered.session.sessionId, "host-session-1"),
-    ).resolves.toEqual({
+    ).resolves.toMatchObject({
       claimed: false,
       boundScope: "none",
+      transportClaimed: false,
+      bindingState: "pending",
       reason: "transport does not support host-session claims",
     });
   });

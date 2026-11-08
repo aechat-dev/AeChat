@@ -26,6 +26,10 @@ available. If the result has a non-null `bind_directive` and
 aechat confirm --session "<session_id>"
 ```
 
+If `auto_bind.transportClaimed` is true but `auto_bind.claimed` is false, the
+role may already be held by this session: do not run another `actas`; follow
+`auto_bind.reason` (`aechat confirm` or `aechat leave`).
+
 `bound_scope` is evidence, not a promise of wakeup. Codex wakeup is not assumed:
 use `aechat list --json` and report only the capability values the service
 actually returns.

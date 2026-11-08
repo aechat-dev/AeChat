@@ -30,8 +30,10 @@ are assembled from the `Unreleased` section at tag time.
   matrix with a repeatable manual protocol.
 - `aechat init` and `aechat setup <host>`: create the store, check agmsg and
   install or refresh host skills.
-- `aechat register` claims the binding from inside Claude Code automatically and
-  falls back to the bind directive when the host session is unavailable.
+- `aechat register` claims the binding from inside Claude Code or Codex
+  automatically (`CLAUDE_CODE_SESSION_ID` / `CODEX_THREAD_ID`, with
+  `AGMSG_SESSION_ID` overriding) and falls back to the bind directive when no
+  claim succeeded and no role is held.
 
 ### Security
 

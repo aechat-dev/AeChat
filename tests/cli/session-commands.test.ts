@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { listCommand } from "../../src/cli/commands/list.js";
 import { registerCommand } from "../../src/cli/commands/register.js";
 import { whoamiCommand } from "../../src/cli/commands/whoami.js";
@@ -100,10 +100,12 @@ function setup(
     audit,
     transport,
     sessionQuery,
+    now: () => "2026-11-06T12:00:00.000Z",
   };
 }
 
 afterEach(() => {
+  vi.unstubAllEnvs();
   while (databases.length > 0) {
     databases.pop()?.close();
   }
@@ -111,6 +113,9 @@ afterEach(() => {
 
 describe("session CLI commands", () => {
   it("register returns a session id and bind directive", async () => {
+    vi.stubEnv("AGMSG_SESSION_ID", "");
+    vi.stubEnv("CLAUDE_CODE_SESSION_ID", "");
+    vi.stubEnv("CODEX_THREAD_ID", "");
     const {
       service,
       delivery,
@@ -140,6 +145,106 @@ describe("session CLI commands", () => {
     expect(data["session_id"]).toBeTypeOf("string");
     expect(data["bind_directive"]).toContain(data["address"]);
     expect(data["bound_scope"]).toBe("none");
+    expect(data["auto_bind"]).toMatchObject({
+      claimed: false,
+      reason: expect.stringContaining("no host session id"),
+    });
+  });
+
+  it("auto-binds from a Claude Code host session", async () => {
+    vi.stubEnv("AGMSG_SESSION_ID", "");
+    vi.stubEnv("CLAUDE_CODE_SESSION_ID", "host-claude-1");
+    const ctx = setup();
+    Object.assign(ctx.transport, {
+      claim: async () => ({ ok: true }),
+    });
+
+    const data = await registerCommand(
+      ["--name", "dev", "--client", "claude-code", "--project", "/tmp/project"],
+      ctx,
+    );
+
+    expect(data["bound_state"]).toBe("valid");
+    expect(data["bound_scope"]).toBe("host_role");
+    expect(data["binding_state"]).toBe("bound");
+    expect(data["bind_directive"]).toBeNull();
+    expect(data["auto_bind"]).toMatchObject({
+      claimed: true,
+      transportClaimed: true,
+      bindingState: "bound",
+    });
+  });
+
+  it("auto-binds from a Codex thread id", async () => {
+    vi.stubEnv("AGMSG_SESSION_ID", "");
+    vi.stubEnv("CODEX_THREAD_ID", "thread-1");
+    const ctx = setup();
+    Object.assign(ctx.transport, {
+      claim: async () => ({ ok: true }),
+    });
+
+    const data = await registerCommand(
+      ["--name", "dev", "--client", "codex", "--project", "/tmp/project"],
+      ctx,
+    );
+
+    expect(data["bound_state"]).toBe("valid");
+    expect(data["bound_scope"]).toBe("host_role");
+    expect(data["auto_bind"]).toMatchObject({ claimed: true });
+  });
+
+  it("suppresses the bind directive when an unverified claim holds the role", async () => {
+    vi.stubEnv("AGMSG_SESSION_ID", "");
+    vi.stubEnv("CLAUDE_CODE_SESSION_ID", "host-claude-1");
+    const ctx = setup({ bindMode: "none" });
+    Object.assign(ctx.transport, {
+      claim: async () => ({ ok: true }),
+    });
+
+    const data = await registerCommand(
+      ["--name", "dev", "--client", "claude-code", "--project", "/tmp/project"],
+      ctx,
+    );
+
+    expect(data["bound_state"]).toBe("invalid");
+    expect(data["binding_state"]).toBe("failed");
+    expect(data["bind_directive"]).toBeNull();
+    expect(data["auto_bind"]).toMatchObject({
+      claimed: false,
+      transportClaimed: true,
+    });
+  });
+
+  it("honors --no-bind and client=other without attempting a claim", async () => {
+    vi.stubEnv("CLAUDE_CODE_SESSION_ID", "host-claude-1");
+    const ctx = setup();
+
+    const noBind = await registerCommand(
+      [
+        "--name",
+        "dev",
+        "--client",
+        "claude-code",
+        "--project",
+        "/tmp/project",
+        "--no-bind",
+      ],
+      ctx,
+    );
+    expect(noBind["bind_directive"]).toContain(noBind["address"]);
+    expect(noBind["auto_bind"]).toMatchObject({
+      claimed: false,
+      reason: "disabled by --no-bind",
+    });
+
+    const other = await registerCommand(
+      ["--name", "other", "--client", "other", "--project", "/tmp/project"],
+      ctx,
+    );
+    expect(other["auto_bind"]).toMatchObject({
+      claimed: false,
+      reason: "client other has no host session",
+    });
   });
 
   it("whoami --conversation works without --session", async () => {

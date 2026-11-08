@@ -2,6 +2,7 @@
 import { realpathSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { AechatError } from "../core/errors.js";
+import { resolveTransport } from "../runtime/options.js";
 import { createReadOnlyRuntime } from "../runtime/read-only-runtime.js";
 import { createRuntime } from "../runtime/runtime.js";
 import { UiQueryService } from "../runtime/ui-query-service.js";
@@ -150,6 +151,21 @@ export async function main(argv: readonly string[]): Promise<number> {
         runtime.close();
       }
     }
+    // Bootstrap commands must not open the store: `--dry-run` is defined as
+    // no side effects, and a plain `setup` should not create a database.
+    if (command === "init" || command === "setup") {
+      const { agmsgVersion } = resolveTransport();
+      const data =
+        command === "init"
+          ? await initCommand(
+              rest,
+              agmsgVersion === undefined ? {} : { agmsgVersion },
+            )
+          : await setupCommand(rest);
+      render(data);
+      return isCommandResult(data) ? (data.exitCode ?? 0) : 0;
+    }
+
     const ctx = createRuntime();
     try {
       let data: unknown;
@@ -195,12 +211,6 @@ export async function main(argv: readonly string[]): Promise<number> {
           break;
         case "doctor":
           data = await doctorCommand(rest, ctx);
-          break;
-        case "init":
-          data = await initCommand(rest, ctx);
-          break;
-        case "setup":
-          data = await setupCommand(rest, ctx);
           break;
         case "resume":
           data = await resumeCommand(rest, ctx);

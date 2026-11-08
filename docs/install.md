@@ -54,8 +54,10 @@ aechat register --name "reviewer" --client claude-code --project "$PWD"
 ```
 
 When `register` runs inside the host and the host session id is available, it
-claims the binding automatically. If the result has `bound_scope=none` and a
-non-null `bind_directive`, run that directive in the same conversation:
+claims the binding automatically. Claude Code exports `CLAUDE_CODE_SESSION_ID`;
+Codex exports `CODEX_THREAD_ID`; `AGMSG_SESSION_ID` overrides both. If the
+result has `bound_scope=none` and a non-null `bind_directive`, run that
+directive in the same conversation:
 
 - Claude Code: `/agmsg actas <address>`
 - Codex: `$agmsg actas <address>`
@@ -65,6 +67,10 @@ Then confirm from the shell:
 ```bash
 aechat confirm --session "<session_id>"
 ```
+
+If `auto_bind.transportClaimed` is true but `auto_bind.claimed` is false, the
+claim ran but no live binding was confirmed; do not run another `actas`. Follow
+`auto_bind.reason` (`aechat confirm`, or `aechat leave` then register again).
 
 `confirm` only reports `bound` when agmsg has a live actas lock for that
 address. A successful agmsg team join without a live lock is not a valid

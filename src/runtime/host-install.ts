@@ -15,7 +15,17 @@ export interface HostPaths {
 export interface InstallResult {
   host: HostId;
   path: string;
-  action: "installed" | "updated" | "up-to-date";
+  action:
+    | "installed"
+    | "updated"
+    | "up-to-date"
+    | "would-install"
+    | "would-update";
+  dry_run: boolean;
+}
+
+function envDir(value: string | undefined): string | undefined {
+  return value === undefined || value === "" ? undefined : value;
 }
 
 /**
@@ -33,8 +43,8 @@ export function hostPaths(
 ): HostPaths {
   const configDir =
     host === "claude-code"
-      ? (env["CLAUDE_CONFIG_DIR"] ?? join(homedir(), ".claude"))
-      : (env["CODEX_HOME"] ?? join(homedir(), ".codex"));
+      ? (envDir(env["CLAUDE_CONFIG_DIR"]) ?? join(homedir(), ".claude"))
+      : (envDir(env["CODEX_HOME"]) ?? join(homedir(), ".codex"));
   return {
     configDir,
     skillFile: join(configDir, "skills", "aechat", "SKILL.md"),
@@ -98,17 +108,30 @@ export function installHostSkill(options: {
   const target = hostPaths(options.host, options.env).skillFile;
   const exists = existsSync(target);
   const same = exists && readFileSync(target, "utf8") === content;
+  const dryRun = options.dryRun === true;
   if (same) {
-    return { host: options.host, path: target, action: "up-to-date" };
+    return {
+      host: options.host,
+      path: target,
+      action: "up-to-date",
+      dry_run: dryRun,
+    };
   }
 
-  if (options.dryRun !== true) {
+  if (!dryRun) {
     mkdirSync(dirname(target), { recursive: true });
     writeFileSync(target, content, { encoding: "utf8", mode: 0o644 });
   }
   return {
     host: options.host,
     path: target,
-    action: exists ? "updated" : "installed",
+    action: dryRun
+      ? exists
+        ? "would-update"
+        : "would-install"
+      : exists
+        ? "updated"
+        : "installed",
+    dry_run: dryRun,
   };
 }

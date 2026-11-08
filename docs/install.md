@@ -17,7 +17,26 @@ one.
 
 ## 2. Install
 
-Install the release tarball:
+Install with the release installer:
+
+```bash
+curl -fsSLO https://raw.githubusercontent.com/aechat-dev/AeChat/main/scripts/install.sh
+bash install.sh
+aechat init
+aechat doctor --json
+```
+
+`bash install.sh --help` lists the options: `--version <tag>` for an exact
+release, `--stable` to skip prereleases, `--prefix <dir>` for a non-default
+install root, and `--dry-run` to print the plan.
+
+Registry publication is not available yet; the installer uses the GitHub
+release tarball and verifies `SHA256SUMS`. The release also publishes
+`AeChat.app.zip`. The app is ad-hoc signed, not notarized: if macOS quarantines
+a downloaded copy, open it once with right-click → Open, or remove the attribute
+with `xattr -d com.apple.quarantine AeChat.app`.
+
+### Manual install
 
 ```bash
 version=0.1.0-alpha.1
@@ -29,12 +48,6 @@ npm install -g "aechat-$version.tgz"
 aechat init
 aechat doctor --json
 ```
-
-Registry publication is not available yet; the GitHub release tarball is the
-supported install path. The release also publishes `AeChat.app.zip` and
-`SHA256SUMS`. The app is ad-hoc signed, not notarized: if macOS quarantines a
-downloaded copy, open it once with right-click → Open, or remove the attribute
-with `xattr -d com.apple.quarantine AeChat.app`.
 
 ### From the repository (development)
 

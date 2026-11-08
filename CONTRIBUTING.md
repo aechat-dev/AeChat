@@ -109,6 +109,19 @@ host should require a new adapter, not a change to the messaging core.
 - Keep pull requests focused. Large refactors and behavior changes should be
   split into reviewable phases.
 
+## Branches, CI and releases
+
+- `main` is the stable line and the only release source. It accepts pull
+  requests from `dev`, never direct commits, force pushes or deletions.
+- `dev` is the integration line. Feature and fix pull requests target `dev`.
+- `TypeScript` runs on every pull request and on pushes to `main` and `dev`.
+  `macOS app` runs on release pull requests into `main`, pushes to `dev`,
+  nightly and manually. Feature pull requests stay on the fast TypeScript gate.
+- Releases are tagged from `main` after the release pull request merges. The
+  release process and artifact publication are tracked in issue #12.
+- The full branch model, required checks and repository settings are in
+  [docs/branching.md](docs/branching.md).
+
 ## Review
 
 Changes are reviewed by a separate reviewer role. The reviewer checks the

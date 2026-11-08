@@ -8,7 +8,7 @@ body:
     attributes:
       value: |
         Do not report security vulnerabilities here. Use the private process in
-        [SECURITY.md](https://github.com/linnene/AeChat/blob/main/SECURITY.md).
+        [SECURITY.md](https://github.com/aechat-dev/AeChat/blob/main/SECURITY.md).
 
   - type: textarea
     id: what-happened

@@ -199,7 +199,7 @@ export class RequestService {
         deliveryId: completed.deliveryId,
         requestId: input.requestId,
         ts: at,
-        data: { kind: "reply" },
+        data: { kind: "reply", toSession: completed.requesterSession },
       });
       if (completed.requestAlreadyAcked !== true) {
         this.events?.record({

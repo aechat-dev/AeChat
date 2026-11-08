@@ -338,6 +338,19 @@ func testEventPolicy() throws {
         selectedMessageId: nil
     )
     check(tick == EventDecision(), "a tick is handled by the reconcile timer")
+
+    var stale = EventPolicy(observedSeq: 10)
+    stale.reset(to: 5)
+    let afterStale = try stale.decide(
+        event: event(
+            """
+            {"kind":"event","seq":11,"event":"ack","ts":"2026-11-08T00:00:09.000Z","level":"info","session_id":"s-a","message_id":null,"delivery_id":null,"request_id":null,"data":null}
+            """),
+        snapshotSeq: 5,
+        threadSessionIds: [],
+        selectedMessageId: nil
+    )
+    check(!afterStale.gap, "an older snapshot does not move the cursor back")
 }
 
 func testNewestNodeWins() throws {

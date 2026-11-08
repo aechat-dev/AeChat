@@ -482,7 +482,7 @@ final class AppState: ObservableObject {
         doctor = nil
         doctorError = nil
         snapshotGeneration += 1
-        eventPolicy.reset(to: 0)
+        eventPolicy.clear()
         stream.reset()
         streamConnected = false
         Task {

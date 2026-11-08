@@ -25,7 +25,8 @@ still make its own side effects idempotent.
 - CLI + skill integration for Claude Code and Codex over agmsg.
 - Session identity, discovery, notifications, requests and replies.
 - SQLite persistence with an append-only audit trail.
-- Read-only macOS monitor.
+- Read-only macOS monitor: communication health and activity, not a chat
+  client. It has no composer and does not manage agents.
 - One-command first-run setup (`aechat init`) and automatic binding when the
   host session id is available.
 

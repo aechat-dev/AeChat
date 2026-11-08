@@ -38,7 +38,7 @@ export async function probeCommand(
     probe_id: probe.probeId,
     client: probe.client,
     client_version: probe.clientVersion,
-    wakeup_level: wakeupLevelOf(probe.observedLevel),
+    observed_level: wakeupLevelOf(probe.observedLevel),
     busy_receive: probe.busyReceive,
     idle_wakeup: probe.idleWakeup,
     observed_at: probe.observedAt,

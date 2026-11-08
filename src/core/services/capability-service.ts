@@ -112,6 +112,12 @@ export class CapabilityService {
         `session not found: ${sessionId}`,
       );
     }
+    if (session.leftAt !== null) {
+      throw new AechatError(
+        "resume_unsafe",
+        `session has left; create a new session: ${sessionId}`,
+      );
+    }
     const binding = this.bindings.listForSession(sessionId).at(-1);
     if (binding === undefined) {
       throw new AechatError(

@@ -255,7 +255,7 @@ describe("probe command", () => {
       session_id: registered.session.sessionId,
       client: "claude-code",
       client_version: "2.0.0",
-      wakeup_level: "L2",
+      observed_level: "L2",
       busy_receive: true,
       idle_wakeup: false,
       observed_at: "2026-11-07T00:00:01.000Z",
@@ -279,9 +279,50 @@ describe("probe command", () => {
       ctx,
     );
 
-    expect(data["wakeup_level"]).toBe("unknown");
+    expect(data["observed_level"]).toBe("unknown");
     expect(data["busy_receive"]).toBeNull();
     expect(data["idle_wakeup"]).toBeNull();
+  });
+
+  it("feeds the next list report from the recorded probe", async () => {
+    const { ctx, service, transport } = setup();
+    const registered = await service.register({
+      displayName: "probe",
+      client: "claude-code",
+      project: "/tmp/probe",
+    });
+    vi.spyOn(transport, "probe").mockResolvedValue({
+      observedLevel: "L2",
+      pull: true,
+      wait: true,
+      notificationReceive: true,
+      busyReceive: true,
+      idleWakeup: false,
+      evidence: {},
+      at: "2026-11-07T00:00:01.000Z",
+    });
+    await probeCommand(["--session", registered.session.sessionId], ctx);
+
+    const data = await listCommand(["--json"], ctx);
+    const sessions = data["sessions"] as Array<Record<string, unknown>>;
+    expect(sessions[0]?.["capabilities"]).toMatchObject({
+      wakeup_level: "L2",
+      supported: { busy_receive: true, idle_wakeup: false },
+    });
+  });
+
+  it("refuses to probe a session that has left", async () => {
+    const { ctx, service } = setup();
+    const registered = await service.register({
+      displayName: "probe",
+      client: "claude-code",
+      project: "/tmp/probe",
+    });
+    await service.leave(registered.session.sessionId);
+
+    await expect(
+      probeCommand(["--session", registered.session.sessionId], ctx),
+    ).rejects.toMatchObject({ code: "resume_unsafe" });
   });
 
   it("rejects a missing or malformed session id", async () => {

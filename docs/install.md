@@ -23,28 +23,22 @@ From the repository:
 pnpm install
 pnpm build
 pnpm link --global
+aechat init
 aechat doctor --json
 ```
 
-`doctor` reports the Node version, agmsg version and support flag, database
-health/mode, log directory, transport bindings and host hook paths. It does not
-change session state. A missing agmsg is a hard transport failure in v1;
-registration cannot produce a usable binding without it.
+`init` creates the database, checks agmsg and installs the host skill for every
+detected host. `doctor` reports the Node version, agmsg version and support
+flag, database health/mode, log directory, transport bindings and host hook
+paths. It does not change session state. A missing agmsg is a hard transport
+failure in v1; registration cannot produce a usable binding without it.
 
 ## 3. Install the host skill (optional, recommended)
 
-Claude Code:
-
 ```bash
-mkdir -p ~/.claude/skills/aechat
-cp skills/claude-code/SKILL.md ~/.claude/skills/aechat/SKILL.md
-```
-
-Codex:
-
-```bash
-mkdir -p ~/.codex/skills/aechat
-cp skills/codex/SKILL.md ~/.codex/skills/aechat/SKILL.md
+aechat init                 # installs every detected host
+aechat setup claude-code    # or one explicitly
+aechat setup codex
 ```
 
 The skill is instructions for the Agent, not an automatic permission grant.
@@ -59,8 +53,9 @@ Each host conversation registers separately:
 aechat register --name "reviewer" --client claude-code --project "$PWD"
 ```
 
-The JSON result contains `session_id`, `address`, `binding_state` and
-`bind_directive`. Run the bind directive in the same host conversation:
+When `register` runs inside the host and the host session id is available, it
+claims the binding automatically. If the result has `bound_scope=none` and a
+non-null `bind_directive`, run that directive in the same conversation:
 
 - Claude Code: `/agmsg actas <address>`
 - Codex: `$agmsg actas <address>`

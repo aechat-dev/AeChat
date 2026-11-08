@@ -19,6 +19,7 @@ function fakeCli(overrides: Partial<AgmsgCliPort> = {}): AgmsgCliPort {
   return {
     version: vi.fn(async () => "1.7.1"),
     join: vi.fn(async () => ({ ok: true, stderr: "" })),
+    claim: vi.fn(async () => ({ ok: true, stderr: "" })),
     notify: vi.fn(async () => ({ ok: true, stderr: "" })),
     teamJson: vi.fn(async () => ({ agents: {} })),
     deliveryStatus: vi.fn(async () => ({ mode: "monitor" })),

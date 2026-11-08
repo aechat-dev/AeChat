@@ -139,6 +139,20 @@ export class AgmsgAdapter implements TransportAdapter {
     };
   }
 
+  async claim(
+    session: SessionRef,
+    binding: TransportBinding,
+    hostSessionId: string,
+  ): Promise<NotifyResult> {
+    const result = await this.cli.claim({
+      project: session.project,
+      client: session.client,
+      address: binding.address,
+      sessionId: hostSessionId,
+    });
+    return result.ok ? { ok: true } : { ok: false, error: result.stderr };
+  }
+
   async notify(
     binding: TransportBinding,
     notification: {

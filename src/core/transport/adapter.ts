@@ -86,6 +86,15 @@ export interface TransportAdapter {
     binding: TransportBinding,
     notification: PointerNotification,
   ): Promise<NotifyResult>;
+  /**
+   * Claim the binding from inside the host conversation. Adapters that cannot
+   * take a host session id omit this; register then returns a bind directive.
+   */
+  claim?(
+    session: SessionRef,
+    binding: TransportBinding,
+    hostSessionId: string,
+  ): Promise<NotifyResult>;
   inspect(binding: TransportBinding): Promise<TransportStatus>;
   release(binding: TransportBinding): Promise<void>;
   probe(binding: TransportBinding): Promise<CapabilityEvidence>;

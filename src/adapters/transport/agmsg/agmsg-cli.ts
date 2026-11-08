@@ -29,6 +29,13 @@ export interface JoinInput {
   project: string;
 }
 
+export interface ClaimInput {
+  project: string;
+  client: string;
+  address: string;
+  sessionId: string;
+}
+
 export interface NotifyInput {
   team: string;
   from: string;
@@ -45,6 +52,7 @@ export interface DoctorStatus {
 export interface AgmsgCliPort {
   version(): Promise<string>;
   join(input: JoinInput): Promise<CommandResult>;
+  claim(input: ClaimInput): Promise<CommandResult>;
   notify(input: NotifyInput): Promise<CommandResult>;
   teamJson(team: string): Promise<TeamJson>;
   deliveryStatus(client: string, project: string): Promise<{ mode: string }>;
@@ -147,6 +155,16 @@ export class AgmsgCli implements AgmsgCliPort {
       input.address,
       input.client,
       input.project,
+    ]);
+    return { ok: result.exitCode === 0, stderr: result.stderr.trim() };
+  }
+
+  async claim(input: ClaimInput): Promise<CommandResult> {
+    const result = await this.exec("actas-claim.sh", [
+      input.project,
+      input.client,
+      input.address,
+      input.sessionId,
     ]);
     return { ok: result.exitCode === 0, stderr: result.stderr.trim() };
   }

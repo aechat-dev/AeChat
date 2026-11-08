@@ -44,6 +44,12 @@ export interface ConfirmResult {
   boundScope: BoundScope;
 }
 
+export interface ClaimResult {
+  claimed: boolean;
+  boundScope: BoundScope;
+  reason?: string;
+}
+
 export type WhoamiInput = { sessionId: string } | { conversationId: string };
 
 export type SessionListEntry = Session & {
@@ -182,6 +188,55 @@ export class SessionService {
       await this.transport.release(binding).catch(() => undefined);
       throw error;
     }
+  }
+
+  /**
+   * Try to turn a freshly registered binding into a live one from inside the
+   * host conversation. The adapter receives the host session id; a transport
+   * without that capability leaves the caller with the bind directive.
+   */
+  async claim(sessionId: string, hostSessionId: string): Promise<ClaimResult> {
+    const session = this.sessions.get(sessionId);
+    if (session === undefined) {
+      throw new AechatError(
+        "session_not_found",
+        `session not found: ${sessionId}`,
+      );
+    }
+    if (session.leftAt !== null) {
+      throw new AechatError(
+        "resume_unsafe",
+        `session has left; create a new session: ${sessionId}`,
+      );
+    }
+    const record = this.bindings.listForSession(sessionId).at(-1);
+    if (record === undefined) {
+      throw new AechatError(
+        "transport_unavailable",
+        `session has no transport binding: ${sessionId}`,
+      );
+    }
+    if (this.transport.claim === undefined) {
+      return {
+        claimed: false,
+        boundScope: "none",
+        reason: "transport does not support host-session claims",
+      };
+    }
+    const result = await this.transport.claim(
+      sessionRef(session),
+      adapterBinding(record),
+      hostSessionId,
+    );
+    if (!result.ok) {
+      return {
+        claimed: false,
+        boundScope: "none",
+        reason: result.error ?? "transport claim failed",
+      };
+    }
+    const confirmed = await this.confirm(sessionId);
+    return { claimed: true, boundScope: confirmed.boundScope };
   }
 
   async confirm(sessionId: string): Promise<ConfirmResult> {

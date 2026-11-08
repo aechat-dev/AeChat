@@ -43,10 +43,37 @@ export async function registerCommand(
     project,
   });
 
+  const hostSessionId =
+    args.flags.has("no-bind") || client === "other"
+      ? undefined
+      : client === "claude-code"
+        ? process.env["CLAUDE_CODE_SESSION_ID"]
+        : process.env["CODEX_SESSION_ID"];
+
+  let autoClaim: Awaited<ReturnType<typeof ctx.service.claim>> | undefined;
+  if (hostSessionId !== undefined && hostSessionId !== "") {
+    try {
+      autoClaim = await ctx.service.claim(
+        result.session.sessionId,
+        hostSessionId,
+      );
+    } catch (error) {
+      autoClaim = {
+        claimed: false,
+        boundScope: "none",
+        reason: error instanceof Error ? error.message : String(error),
+      };
+    }
+  }
+  const bound = autoClaim?.claimed === true;
+
   return {
     ...sessionDto(result.session),
     address: result.binding.address,
-    binding_state: result.binding.state,
-    bind_directive: result.bindDirective,
+    bound_state: bound ? "valid" : "invalid",
+    bound_scope: bound ? (autoClaim?.boundScope ?? "none") : "none",
+    binding_state: bound ? "bound" : result.binding.state,
+    bind_directive: bound ? null : result.bindDirective,
+    ...(autoClaim === undefined ? {} : { auto_bind: autoClaim }),
   };
 }

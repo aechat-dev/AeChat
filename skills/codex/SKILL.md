@@ -18,8 +18,9 @@ lost, do not infer one from the current directory or the most recent activity;
 ask the user or register a new session. Every later command must include
 `--session <uuid>`.
 
-After registering, run the returned `bind_directive` in this conversation and
-then:
+After registering, `aechat` binds automatically when the host session id is
+available. If the result has a non-null `bind_directive` and
+`bound_scope=none`, run that directive in this conversation and then:
 
 ```bash
 aechat confirm --session "<session_id>"

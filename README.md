@@ -72,28 +72,30 @@ cd AeChat
 pnpm install
 pnpm build
 pnpm link --global
-aechat doctor --json
+aechat init
 ```
 
-`doctor` checks Node, agmsg, the database and transport bindings without
-changing session state. Data defaults to `~/.aechat/aechat.db`; override it with
-`AECHAT_HOME` or `AECHAT_DB`.
+`init` creates the database, checks agmsg and installs the skill for every
+detected host. Run `aechat setup <claude-code|codex>` to install one explicitly.
+Data defaults to `~/.aechat/aechat.db`; override it with `AECHAT_HOME` or
+`AECHAT_DB`.
 
 ## Quick start
 
-Register each host conversation separately. The command returns a `session_id`
-and a bind directive; run the directive in that conversation, then confirm.
+Run `aechat register` inside each host conversation. It creates a session and
+binds it automatically when the host session id is available.
 
 ```bash
-# Planner conversation
+# In the planner conversation
 aechat register --name planner --client claude-code --project "$PWD"
-#   run the returned bind_directive in Claude Code, then:
-aechat confirm --session "<planner_id>"
 
-# Worker conversation
+# In the worker conversation
 aechat register --name worker --client codex --project "$PWD"
-aechat confirm --session "<worker_id>"
 ```
+
+If the result contains a `bind_directive` and `bound_scope=none`, run that
+directive in the same conversation, then `aechat confirm --session "<id>"`.
+`aechat list --json` shows the sessions and their reported capabilities.
 
 Send a request and answer it:
 
@@ -125,14 +127,12 @@ acknowledges or claims deliveries. If the CLI is not found automatically, use
 
 ## Host skill
 
-```bash
-# Claude Code
-mkdir -p ~/.claude/skills/aechat
-cp skills/claude-code/SKILL.md ~/.claude/skills/aechat/SKILL.md
+`aechat init` installs the skill for every detected host. To install one
+explicitly:
 
-# Codex
-mkdir -p ~/.codex/skills/aechat
-cp skills/codex/SKILL.md ~/.codex/skills/aechat/SKILL.md
+```bash
+aechat setup claude-code
+aechat setup codex
 ```
 
 The skill tells the agent to register explicitly, prefer `--json`, acknowledge

@@ -12,6 +12,7 @@ import { doctorCommand } from "./commands/doctor.js";
 import { heartbeatCommand } from "./commands/heartbeat.js";
 import { historyCommand } from "./commands/history.js";
 import { inboxCommand } from "./commands/inbox.js";
+import { initCommand } from "./commands/init.js";
 import { leaveCommand } from "./commands/leave.js";
 import { listCommand } from "./commands/list.js";
 import { logCommand } from "./commands/log.js";
@@ -20,6 +21,7 @@ import { replyCommand } from "./commands/reply.js";
 import { resumeCommand } from "./commands/resume.js";
 import { retryCommand } from "./commands/retry.js";
 import { sendCommand } from "./commands/send.js";
+import { setupCommand } from "./commands/setup.js";
 import { showCommand } from "./commands/show.js";
 import { uiDoctorCommand } from "./commands/ui-doctor.js";
 import { uiEventsCommand } from "./commands/ui-events.js";
@@ -53,6 +55,8 @@ const COMMANDS = new Set([
   "cancel",
   "retry",
   "doctor",
+  "init",
+  "setup",
   "resume",
   "leave",
   "history",
@@ -65,7 +69,7 @@ const USAGE = `aechat — local-first session messaging
 Usage: aechat <command> [options]
 
 Commands:
-  register   --name <display> --client <claude-code|codex|other> [--project <path>]
+  register   --name <display> --client <claude-code|codex|other> [--project <path>] [--no-bind]
   confirm    --session <uuid>
   whoami     --session <uuid> | --conversation <id>
   list       [--json] [--all] [--as <session>]
@@ -81,6 +85,8 @@ Commands:
   cancel     --session <uuid> --request <request-id>
   retry      --session <uuid> (--message <message-id> | --delivery <delivery-id>)
   doctor     [--json]
+  init       [--json] [--dry-run]
+  setup      <claude-code|codex> [--json] [--dry-run]
   resume     --session <uuid> [--force]
   leave      --session <uuid>
   history    --session <uuid> [--limit <n>] [--json]
@@ -189,6 +195,12 @@ export async function main(argv: readonly string[]): Promise<number> {
           break;
         case "doctor":
           data = await doctorCommand(rest, ctx);
+          break;
+        case "init":
+          data = await initCommand(rest, ctx);
+          break;
+        case "setup":
+          data = await setupCommand(rest, ctx);
           break;
         case "resume":
           data = await resumeCommand(rest, ctx);

@@ -47,6 +47,7 @@ Two rules matter more than the rest:
 pnpm install
 pnpm check                    # typecheck, lint, test audit, coverage
 pnpm build
+aechat init                   # database, agmsg check, host skills
 swift build --package-path apps/macos
 swift run --package-path apps/macos AeChatChecks
 ```

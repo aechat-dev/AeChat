@@ -28,6 +28,10 @@ are assembled from the `Unreleased` section at tag time.
   coverage floors and CI on Linux and macOS.
 - Local transport E2E harness (`pnpm e2e:local`) and a dated host compatibility
   matrix with a repeatable manual protocol.
+- `aechat init` and `aechat setup <host>`: create the store, check agmsg and
+  install or refresh host skills.
+- `aechat register` claims the binding from inside Claude Code automatically and
+  falls back to the bind directive when the host session is unavailable.
 
 ### Security
 

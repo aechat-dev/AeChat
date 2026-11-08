@@ -247,3 +247,58 @@ describe("SessionService.list and heartbeat", () => {
     );
   });
 });
+
+describe("SessionService.claim", () => {
+  it("claims from a host session and confirms host_role", async () => {
+    const { service, transport } = setup();
+    Object.assign(transport, {
+      claim: async () => ({ ok: true }),
+    });
+    const registered = await service.register({
+      displayName: "dev",
+      client: "claude-code",
+      project: "/tmp/project",
+    });
+
+    await expect(
+      service.claim(registered.session.sessionId, "host-session-1"),
+    ).resolves.toEqual({ claimed: true, boundScope: "host_role" });
+  });
+
+  it("keeps the binding unclaimed when the adapter refuses", async () => {
+    const { service, transport } = setup();
+    Object.assign(transport, {
+      claim: async () => ({ ok: false, error: "held by another session" }),
+    });
+    const registered = await service.register({
+      displayName: "dev",
+      client: "claude-code",
+      project: "/tmp/project",
+    });
+
+    await expect(
+      service.claim(registered.session.sessionId, "host-session-1"),
+    ).resolves.toEqual({
+      claimed: false,
+      boundScope: "none",
+      reason: "held by another session",
+    });
+  });
+
+  it("reports transports without claim support", async () => {
+    const { service } = setup();
+    const registered = await service.register({
+      displayName: "dev",
+      client: "claude-code",
+      project: "/tmp/project",
+    });
+
+    await expect(
+      service.claim(registered.session.sessionId, "host-session-1"),
+    ).resolves.toEqual({
+      claimed: false,
+      boundScope: "none",
+      reason: "transport does not support host-session claims",
+    });
+  });
+});

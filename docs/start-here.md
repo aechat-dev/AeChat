@@ -6,8 +6,9 @@ client name. Messages, requests, replies, delivery state and audit events live
 in a local SQLite database; the transport only moves notifications between
 hosts.
 
-Read [README.md](../README.md) for the product model and
-[docs/install.md](install.md) for installation and host binding.
+Installation and host binding are covered in [install.md](install.md); the
+command reference is in [cli.md](cli.md). The sections below describe the
+product model and the development workflow.
 
 ## Architecture at a glance
 
@@ -26,6 +27,22 @@ Two rules matter more than the rest:
    gain a branch for a specific client.
 2. Capability claims must match evidence from a real host. "The subscription
    succeeded" is not the same as "the model processed a message".
+
+## How a request travels
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant P as Planner (Claude Code)
+    participant A as AeChat (local SQLite)
+    participant W as Worker (Codex)
+
+    P->>A: send request, deadline 300s
+    A->>W: notify
+    W->>A: ack delivery
+    W->>A: reply with result
+    A->>P: wait returns the correlated reply
+```
 
 ## Repository map
 

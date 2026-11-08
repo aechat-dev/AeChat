@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
-  CapabilityService,
   type CapabilityInput,
+  CapabilityService,
 } from "../../../src/core/services/capability-service.js";
 import { openDatabase } from "../../../src/core/store/db.js";
 import { ProbeRepository } from "../../../src/core/store/probes.js";
@@ -11,8 +11,11 @@ import {
   SessionRepository,
   TransportBindingRepository,
 } from "../../../src/core/store/sessions.js";
-import type { SessionRecord, TransportBindingRecord } from "../../../src/core/types.js";
 import { FakeTransportAdapter } from "../../../src/core/transport/fake.js";
+import type {
+  SessionRecord,
+  TransportBindingRecord,
+} from "../../../src/core/types.js";
 
 const databases: Array<{ close(): void }> = [];
 
@@ -24,7 +27,12 @@ function setup(options: { mode?: string } = {}) {
   const bindings = new TransportBindingRepository(db);
   const probes = new ProbeRepository(db);
   const transport = new FakeTransportAdapter({ mode: options.mode ?? "test" });
-  const service = new CapabilityService({ sessions, bindings, probes, transport });
+  const service = new CapabilityService({
+    sessions,
+    bindings,
+    probes,
+    transport,
+  });
 
   const session = sessions.create({
     sessionId: "session-1",

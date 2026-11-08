@@ -6,7 +6,9 @@ import { AechatError, exitCodeFor } from "../../src/core/errors.js";
 function capture(stream: NodeJS.WriteStream): string[] {
   const chunks: string[] = [];
   vi.spyOn(stream, "write").mockImplementation((chunk: string | Uint8Array) => {
-    chunks.push(typeof chunk === "string" ? chunk : Buffer.from(chunk).toString("utf8"));
+    chunks.push(
+      typeof chunk === "string" ? chunk : Buffer.from(chunk).toString("utf8"),
+    );
     return true;
   });
   return chunks;
@@ -35,7 +37,9 @@ describe("output envelope", () => {
   it("fail emits { ok: false, error: { code, message } } and exit code 5 for not_actor", () => {
     const stderr = capture(process.stderr);
 
-    expect(() => fail("not_actor", "only the sender may do this")).toThrow(AechatError);
+    expect(() => fail("not_actor", "only the sender may do this")).toThrow(
+      AechatError,
+    );
 
     const envelope = JSON.parse(stderr.join("")) as {
       ok: boolean;
@@ -54,13 +58,19 @@ describe("output envelope", () => {
   it("fail includes details only when provided", () => {
     const stderr = capture(process.stderr);
 
-    expect(() => fail("invalid_input", "bad", { field: "name" })).toThrow(AechatError);
-    const withDetails = JSON.parse(stderr.join("")) as { error: Record<string, unknown> };
+    expect(() => fail("invalid_input", "bad", { field: "name" })).toThrow(
+      AechatError,
+    );
+    const withDetails = JSON.parse(stderr.join("")) as {
+      error: Record<string, unknown>;
+    };
     expect(withDetails.error["details"]).toEqual({ field: "name" });
 
     stderr.length = 0;
     expect(() => fail("invalid_input", "bad")).toThrow(AechatError);
-    const withoutDetails = JSON.parse(stderr.join("")) as { error: Record<string, unknown> };
+    const withoutDetails = JSON.parse(stderr.join("")) as {
+      error: Record<string, unknown>;
+    };
     expect("details" in withoutDetails.error).toBe(false);
   });
 });

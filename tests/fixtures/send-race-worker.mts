@@ -27,14 +27,11 @@ const { EventRepository } = await load("src/core/store/events.ts");
 const { DeliveryRepository, MessageRepository } = await load(
   "src/core/store/messages.ts",
 );
-const { migrate } = await load("src/core/store/schema.ts");
 const { SessionRepository, TransportBindingRepository } = await load(
   "src/core/store/sessions.ts",
 );
 const { FakeTransportAdapter } = await load("src/core/transport/fake.ts");
-const { DeliveryService } = await load(
-  "src/core/services/delivery-service.ts",
-);
+const { DeliveryService } = await load("src/core/services/delivery-service.ts");
 
 const db = openDatabase(dbPath);
 const sessions = new SessionRepository(db);

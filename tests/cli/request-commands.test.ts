@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-
+import { SessionQueryService } from "../../src/app/session-query.js";
 import { cancelCommand } from "../../src/cli/commands/cancel.js";
 import type { CommandContext } from "../../src/cli/commands/context.js";
 import { replyCommand } from "../../src/cli/commands/reply.js";
@@ -7,10 +7,9 @@ import { retryCommand } from "../../src/cli/commands/retry.js";
 import { sendCommand } from "../../src/cli/commands/send.js";
 import { waitCommand } from "../../src/cli/commands/wait.js";
 import type { CommandResult } from "../../src/cli/output.js";
-import { SessionQueryService } from "../../src/app/session-query.js";
-import { DeliveryService } from "../../src/core/services/delivery-service.js";
 import { AuditService } from "../../src/core/services/audit-service.js";
 import { CapabilityService } from "../../src/core/services/capability-service.js";
+import { DeliveryService } from "../../src/core/services/delivery-service.js";
 import { RequestService } from "../../src/core/services/request-service.js";
 import { ResumeService } from "../../src/core/services/resume-service.js";
 import { SessionService } from "../../src/core/services/session-service.js";
@@ -175,14 +174,7 @@ describe("request CLI commands", () => {
     });
 
     const replied = (await replyCommand(
-      [
-        "--session",
-        target,
-        "--request",
-        request.messageId,
-        "--body",
-        "answer",
-      ],
+      ["--session", target, "--request", request.messageId, "--body", "answer"],
       ctx,
     )) as Record<string, unknown>;
     expect(replied["request_id"]).toBe(request.messageId);
@@ -258,14 +250,7 @@ describe("request CLI commands", () => {
     });
     await expect(
       replyCommand(
-        [
-          "--session",
-          target,
-          "--request",
-          request.messageId,
-          "--body",
-          "late",
-        ],
+        ["--session", target, "--request", request.messageId, "--body", "late"],
         ctx,
       ),
     ).rejects.toMatchObject({ code: "request_cancelled" });

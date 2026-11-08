@@ -1,7 +1,6 @@
 import type { DatabaseSync } from "node:sqlite";
 
 import { AechatError } from "../errors.js";
-import { nowIso } from "../time.js";
 import { withImmediate } from "../store/db.js";
 import type { EventRepository } from "../store/events.js";
 import type { DeliveryRepository } from "../store/messages.js";
@@ -9,13 +8,14 @@ import type {
   SessionRepository,
   TransportBindingRepository,
 } from "../store/sessions.js";
-import type { SessionRecord, TransportBindingRecord } from "../types.js";
+import { nowIso } from "../time.js";
 import type {
   BindResult,
   SessionRef,
   TransportAdapter,
   TransportStatus,
 } from "../transport/adapter.js";
+import type { SessionRecord, TransportBindingRecord } from "../types.js";
 import { adapterBinding } from "./capability-service.js";
 import { DEFAULT_TTL, deriveStatus } from "./session-status.js";
 
@@ -164,9 +164,16 @@ export class ResumeService {
         "session is still online; resume requires an offline or unknown old host",
       );
     }
-    const decision = inspectionAllowsResume(inspected, session, input.force === true);
+    const decision = inspectionAllowsResume(
+      inspected,
+      session,
+      input.force === true,
+    );
     if (!decision.allowed) {
-      throw new AechatError("resume_unsafe", decision.reason ?? "resume unsafe");
+      throw new AechatError(
+        "resume_unsafe",
+        decision.reason ?? "resume unsafe",
+      );
     }
     if (!this.sessions.beginResume(input.sessionId)) {
       const latest = this.sessions.get(input.sessionId);
@@ -199,7 +206,10 @@ export class ResumeService {
   async confirm(sessionId: string): Promise<SessionRecord> {
     const session = this.sessions.get(sessionId);
     if (session === undefined) {
-      throw new AechatError("session_not_found", `session not found: ${sessionId}`);
+      throw new AechatError(
+        "session_not_found",
+        `session not found: ${sessionId}`,
+      );
     }
     if (session.leftAt !== null) {
       throw new AechatError("resume_unsafe", `session has left: ${sessionId}`);
@@ -240,7 +250,9 @@ export class ResumeService {
     const at = this.now();
     const current = this.sessions.get(sessionId);
     if (current?.leftAt !== null && current?.leftAt !== undefined) {
-      await this.transport.release(adapterBinding(binding)).catch(() => undefined);
+      await this.transport
+        .release(adapterBinding(binding))
+        .catch(() => undefined);
       this.sessions.failResume(sessionId);
       throw new AechatError("resume_unsafe", `session has left: ${sessionId}`);
     }

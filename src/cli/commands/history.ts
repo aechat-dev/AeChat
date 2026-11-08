@@ -10,7 +10,10 @@ function limitFromArgs(args: ReturnType<typeof parseArgs>): number {
   }
   const limit = Number(raw);
   if (!Number.isInteger(limit) || limit <= 0 || limit > 100) {
-    throw new AechatError("invalid_input", "--limit must be an integer in 1..100");
+    throw new AechatError(
+      "invalid_input",
+      "--limit must be an integer in 1..100",
+    );
   }
   return limit;
 }

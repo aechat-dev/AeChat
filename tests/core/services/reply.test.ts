@@ -125,7 +125,9 @@ describe("RequestService.reply", () => {
     ).toBe("2026-11-07T00:00:00.000Z");
 
     const inbox = await delivery.inbox({ sessionId: "requester", limit: 10 });
-    expect(inbox.map((item) => item.message.messageId)).toContain(reply.messageId);
+    expect(inbox.map((item) => item.message.messageId)).toContain(
+      reply.messageId,
+    );
   });
 
   it("reply after deadline returns request_expired without a prior read", async () => {
@@ -174,9 +176,14 @@ describe("RequestService.reply", () => {
       body: "answer again",
     });
 
-    expect(second).toEqual({ messageId: first.messageId, alreadyReplied: true });
+    expect(second).toEqual({
+      messageId: first.messageId,
+      alreadyReplied: true,
+    });
     expect(messages.listForSession("target")).toHaveLength(2);
-    expect(requests.get(request.messageId)?.replyMessageId).toBe(first.messageId);
+    expect(requests.get(request.messageId)?.replyMessageId).toBe(
+      first.messageId,
+    );
   });
 
   it("non-target reply returns not_actor", async () => {

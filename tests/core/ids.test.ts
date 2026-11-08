@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import { newId } from "../../src/core/ids.js";
 
-const UUID_V7 = /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+const UUID_V7 =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 
 describe("newId", () => {
   it("returns UUIDv7 strings with the version and variant nibbles set", () => {

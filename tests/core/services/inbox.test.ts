@@ -27,7 +27,8 @@ function setup() {
   const events = new EventRepository(db);
   const transport = new FakeTransportAdapter();
   let tick = 0;
-  const now = () => `2026-11-06T00:0${Math.floor(tick / 60)}:${String(tick++ % 60).padStart(2, "0")}.000Z`;
+  const now = () =>
+    `2026-11-06T00:0${Math.floor(tick / 60)}:${String(tick++ % 60).padStart(2, "0")}.000Z`;
   const service = new DeliveryService({
     db,
     messages,
@@ -170,14 +171,20 @@ describe("DeliveryService.wait", () => {
       body: "hello",
     });
 
-    const items = await service.wait({ sessionId: "to-session", timeoutSeconds: 1 });
+    const items = await service.wait({
+      sessionId: "to-session",
+      timeoutSeconds: 1,
+    });
     expect(items).toHaveLength(1);
   });
 
   it("returns null after timeout when there is nothing to claim", async () => {
     const { service } = setup();
     const started = Date.now();
-    const items = await service.wait({ sessionId: "to-session", timeoutSeconds: 0.2 });
+    const items = await service.wait({
+      sessionId: "to-session",
+      timeoutSeconds: 0.2,
+    });
     expect(items).toBeNull();
     expect(Date.now() - started).toBeGreaterThanOrEqual(150);
   });

@@ -134,7 +134,8 @@ describe("DeliveryService.show", () => {
     });
 
     expect(
-      service.show({ sessionId: "from-session", messageId: sent.messageId }).body,
+      service.show({ sessionId: "from-session", messageId: sent.messageId })
+        .body,
     ).toBe("hello");
     expect(() =>
       service.show({ sessionId: "to-session", messageId: sent.messageId }),

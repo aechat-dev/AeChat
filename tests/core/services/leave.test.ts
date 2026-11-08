@@ -83,7 +83,16 @@ function setup() {
     });
   }
 
-  return { service, delivery, resume, transport, sessions, bindings, requests, messages };
+  return {
+    service,
+    delivery,
+    resume,
+    transport,
+    sessions,
+    bindings,
+    requests,
+    messages,
+  };
 }
 
 afterEach(() => {
@@ -94,7 +103,8 @@ afterEach(() => {
 
 describe("SessionService.leave", () => {
   it("releases the binding and marks the session left", async () => {
-    const { service, delivery, transport, sessions, bindings, messages } = setup();
+    const { service, delivery, transport, sessions, bindings, messages } =
+      setup();
     const sent = await delivery.send({
       fromSession: "a",
       toSession: "b",

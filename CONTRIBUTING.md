@@ -70,12 +70,24 @@ host should require a new adapter, not a change to the messaging core.
   `tests/core` cover redaction.
 - Never commit a database, logs, build output, `.env` files or host credentials.
 
-## Tests
+## Tests and quality gates
 
 - Write the failing test first, watch it fail for the expected reason, then
   implement the smallest change that makes it pass.
-- `pnpm typecheck` and `pnpm test` must pass before a commit.
-- Changes to Swift code must pass `swift build` and `AeChatChecks`.
+- `pnpm check` runs every gate: typecheck, Biome lint/format, test audit and
+  coverage. It must pass before a commit.
+- `pnpm typecheck` must pass; do not suppress errors with `any` or unchecked
+  casts.
+- `pnpm lint` (Biome) enforces formatting and lint rules for TypeScript, JSON
+  and scripts. Run `pnpm lint:fix` before committing.
+- `pnpm test:audit` rejects committed `.only`, `.skip` and `.todo` tests.
+  Skipped tests hide behavior that is no longer verified.
+- `pnpm test:coverage` enforces the coverage floors: 75% statements, 65%
+  branches, 85% functions, 75% lines. New behavior needs tests; do not lower a
+  threshold to make a change pass without recording why.
+- Changes to Swift code must pass `swift build`, `AeChatChecks` and
+  `pnpm lint:swift` (swift-format with the repository config). Run
+  `pnpm format:swift` to apply the formatter.
 - Changes to packaging must pass `./scripts/build-aechat-app.sh` and
   `codesign --verify --deep --strict dist/AeChat.app`.
 

@@ -1,15 +1,14 @@
 import { afterEach, describe, expect, it } from "vitest";
-
-import { inboxCommand } from "../../src/cli/commands/inbox.js";
+import { SessionQueryService } from "../../src/app/session-query.js";
+import type { CommandContext } from "../../src/cli/commands/context.js";
 import { historyCommand } from "../../src/cli/commands/history.js";
+import { inboxCommand } from "../../src/cli/commands/inbox.js";
 import { logCommand } from "../../src/cli/commands/log.js";
 import { sendCommand } from "../../src/cli/commands/send.js";
-import type { CommandContext } from "../../src/cli/commands/context.js";
 import type { CommandResult } from "../../src/cli/output.js";
-import { SessionQueryService } from "../../src/app/session-query.js";
-import { DeliveryService } from "../../src/core/services/delivery-service.js";
 import { AuditService } from "../../src/core/services/audit-service.js";
 import { CapabilityService } from "../../src/core/services/capability-service.js";
+import { DeliveryService } from "../../src/core/services/delivery-service.js";
 import { RequestService } from "../../src/core/services/request-service.js";
 import { ResumeService } from "../../src/core/services/resume-service.js";
 import { SessionService } from "../../src/core/services/session-service.js";
@@ -165,10 +164,13 @@ describe("delivery CLI commands", () => {
       if (line === "---END---") {
         continue;
       }
-      if (line.includes("---END---") || line.includes("---BEGIN AE CHAT MESSAGE")) {
-        expect(line.startsWith("\\") || line.startsWith("---BEGIN AE CHAT MESSAGE ")).toBe(
-          true,
-        );
+      if (
+        line.includes("---END---") ||
+        line.includes("---BEGIN AE CHAT MESSAGE")
+      ) {
+        expect(
+          line.startsWith("\\") || line.startsWith("---BEGIN AE CHAT MESSAGE "),
+        ).toBe(true);
       }
     }
   });
@@ -258,7 +260,8 @@ describe("delivery CLI commands", () => {
   });
 
   it("log --message reconstructs the chain without exposing the body", async () => {
-    const { ctx, delivery, addSession } = setup();    const from = await addSession("sender");
+    const { ctx, delivery, addSession } = setup();
+    const from = await addSession("sender");
     const to = await addSession("receiver");
     const sent = await delivery.send({
       fromSession: from,
@@ -300,7 +303,6 @@ describe("delivery CLI commands", () => {
     });
     deliveries.markNotifyFailed(
       sent.deliveryId,
-      "2026-11-06T12:00:00.000Z",
       "Authorization: Basic basic-secret /Users/alice/.aechat/secret",
     );
 
@@ -315,7 +317,8 @@ describe("delivery CLI commands", () => {
   });
 
   it("history returns only the requested session's messages", async () => {
-    const { ctx, delivery, addSession } = setup();    const a = await addSession("a");
+    const { ctx, delivery, addSession } = setup();
+    const a = await addSession("a");
     const b = await addSession("b");
     const c = await addSession("c");
     await delivery.send({

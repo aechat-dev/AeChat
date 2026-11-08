@@ -2,16 +2,15 @@ import { spawn } from "node:child_process";
 import { mkdtempSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { fileURLToPath } from "node:url";
 import { setTimeout as delay } from "node:timers/promises";
+import { fileURLToPath } from "node:url";
 
 import { afterEach, describe, expect, it } from "vitest";
-
+import type { CommandContext } from "../../src/cli/commands/context.js";
 import {
   heartbeatCommand,
   heartbeatPidPath,
 } from "../../src/cli/commands/heartbeat.js";
-import type { CommandContext } from "../../src/cli/commands/context.js";
 import { SessionService } from "../../src/core/services/session-service.js";
 import { openDatabase } from "../../src/core/store/db.js";
 import { migrate } from "../../src/core/store/schema.js";

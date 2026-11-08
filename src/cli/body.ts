@@ -18,8 +18,12 @@ export function bodyFromArgs(args: ParsedArgs): string {
   try {
     return readFileSync(bodyFile as string, "utf8");
   } catch (error) {
-    throw new AechatError("invalid_input", `cannot read --body-file: ${bodyFile}`, {
-      cause: error instanceof Error ? error.message : String(error),
-    });
+    throw new AechatError(
+      "invalid_input",
+      `cannot read --body-file: ${bodyFile}`,
+      {
+        cause: error instanceof Error ? error.message : String(error),
+      },
+    );
   }
 }

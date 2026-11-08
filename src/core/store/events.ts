@@ -1,7 +1,6 @@
 import type { DatabaseSync } from "node:sqlite";
-
-import { redactErrorDetail } from "../log-redaction.js";
 import { newId } from "../ids.js";
+import { redactErrorDetail } from "../log-redaction.js";
 import { nowIso } from "../time.js";
 
 export interface RecordEventInput {
@@ -132,9 +131,7 @@ export class EventRepository {
       throw new Error("event limit must be a positive integer");
     }
     const rows = this.db
-      .prepare(
-        "SELECT * FROM events WHERE seq > ? ORDER BY seq LIMIT ?",
-      )
+      .prepare("SELECT * FROM events WHERE seq > ? ORDER BY seq LIMIT ?")
       .all(after, limit) as Row[];
     return rows.map(eventFromRow);
   }

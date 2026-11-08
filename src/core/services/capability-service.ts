@@ -1,13 +1,16 @@
 import { AechatError } from "../errors.js";
-import type { SessionRepository, TransportBindingRepository } from "../store/sessions.js";
-import type { TransportBindingRecord, SessionRecord } from "../types.js";
+import type { ProbeRecord, ProbeRepository } from "../store/probes.js";
+import type {
+  SessionRepository,
+  TransportBindingRepository,
+} from "../store/sessions.js";
 import type {
   CapabilityEvidence,
   TransportAdapter,
   TransportBinding,
 } from "../transport/adapter.js";
+import type { SessionRecord, TransportBindingRecord } from "../types.js";
 import type { BoundState, SessionStatus } from "./session-status.js";
-import type { ProbeRecord, ProbeRepository } from "../store/probes.js";
 
 export interface CapabilitySet {
   pull: boolean;
@@ -55,7 +58,9 @@ function parseEvidence(json: string | null): Record<string, unknown> {
   }
 }
 
-export function adapterBinding(record: TransportBindingRecord): TransportBinding {
+export function adapterBinding(
+  record: TransportBindingRecord,
+): TransportBinding {
   return {
     transport: record.transport,
     address: record.address,
@@ -67,7 +72,9 @@ export function adapterBinding(record: TransportBindingRecord): TransportBinding
   };
 }
 
-function levelOf(probe: ProbeRecord | undefined): CapabilityReport["wakeup_level"] {
+function levelOf(
+  probe: ProbeRecord | undefined,
+): CapabilityReport["wakeup_level"] {
   const level = probe?.observedLevel;
   return level === "L0" || level === "L1" || level === "L2" || level === "L3"
     ? level
@@ -96,7 +103,10 @@ export class CapabilityService {
   async probe(sessionId: string): Promise<ProbeRecord> {
     const session = this.sessions.get(sessionId);
     if (session === undefined) {
-      throw new AechatError("session_not_found", `session not found: ${sessionId}`);
+      throw new AechatError(
+        "session_not_found",
+        `session not found: ${sessionId}`,
+      );
     }
     const binding = this.bindings.listForSession(sessionId).at(-1);
     if (binding === undefined) {

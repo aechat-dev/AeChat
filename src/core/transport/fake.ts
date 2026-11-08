@@ -42,12 +42,16 @@ export class FakeTransportAdapter implements TransportAdapter {
     this.mode = options.mode ?? "test";
   }
 
-  register(session: SessionRef, desiredAddress?: string): Promise<TransportBinding> {
+  register(
+    session: SessionRef,
+    desiredAddress?: string,
+  ): Promise<TransportBinding> {
     if (this.registerFails) {
       return Promise.reject(new Error("fake register failure"));
     }
     const address =
-      desiredAddress ?? `aechat-${(this.addressCounter++).toString(16).padStart(12, "0")}`;
+      desiredAddress ??
+      `aechat-${(this.addressCounter++).toString(16).padStart(12, "0")}`;
     return Promise.resolve({
       transport: this.name,
       address,
@@ -80,7 +84,10 @@ export class FakeTransportAdapter implements TransportAdapter {
     let boundScope: BoundScope;
     if (this.bindMode === "none") {
       boundScope = "none";
-    } else if (this.bindMode === "conversation" && conversationId !== undefined) {
+    } else if (
+      this.bindMode === "conversation" &&
+      conversationId !== undefined
+    ) {
       boundScope = "conversation";
     } else {
       boundScope = "host_role";
@@ -90,7 +97,8 @@ export class FakeTransportAdapter implements TransportAdapter {
     return Promise.resolve({
       state,
       boundScope,
-      conversationId: boundScope === "conversation" ? (conversationId ?? null) : null,
+      conversationId:
+        boundScope === "conversation" ? (conversationId ?? null) : null,
       evidence: {
         sessionId: session.sessionId,
         address: binding.address,
@@ -101,7 +109,9 @@ export class FakeTransportAdapter implements TransportAdapter {
 
   notify(): Promise<NotifyResult> {
     return Promise.resolve(
-      this.notifyFails ? { ok: false, error: "fake notify failure" } : { ok: true },
+      this.notifyFails
+        ? { ok: false, error: "fake notify failure" }
+        : { ok: true },
     );
   }
 

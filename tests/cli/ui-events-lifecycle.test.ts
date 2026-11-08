@@ -1,13 +1,12 @@
 import { spawn } from "node:child_process";
+import { once } from "node:events";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { once } from "node:events";
 
 import { afterEach, describe, expect, it } from "vitest";
 
 import { openDatabase } from "../../src/core/store/db.js";
-import { EventRepository } from "../../src/core/store/events.js";
 import { migrate } from "../../src/core/store/schema.js";
 
 const dirs: string[] = [];
@@ -56,42 +55,38 @@ function seedEvents(count: number): { home: string; dbPath: string } {
 }
 
 describe("ui-events lifecycle", () => {
-  it(
-    "exits on SIGTERM while stdout backpressure is blocking",
-    async () => {
-      const { home, dbPath } = seedEvents(20_000);
-      const child = spawn(
-        join(process.cwd(), "node_modules", ".bin", "tsx"),
-        ["src/cli/main.ts", "ui-events", "--after", "0"],
-        {
-          cwd: process.cwd(),
-          env: { ...process.env, AECHAT_HOME: home, AECHAT_DB: dbPath },
-          stdio: ["ignore", "pipe", "pipe"],
-          detached: true,
-        },
-      );
-      children.push(child);
-      // Deliberately do not read stdout: the pipe fills and writeLine blocks.
+  it("exits on SIGTERM while stdout backpressure is blocking", async () => {
+    const { home, dbPath } = seedEvents(20_000);
+    const child = spawn(
+      join(process.cwd(), "node_modules", ".bin", "tsx"),
+      ["src/cli/main.ts", "ui-events", "--after", "0"],
+      {
+        cwd: process.cwd(),
+        env: { ...process.env, AECHAT_HOME: home, AECHAT_DB: dbPath },
+        stdio: ["ignore", "pipe", "pipe"],
+        detached: true,
+      },
+    );
+    children.push(child);
+    // Deliberately do not read stdout: the pipe fills and writeLine blocks.
 
-      await new Promise((resolve) => setTimeout(resolve, 1200));
-      expect(child.exitCode).toBeNull();
+    await new Promise((resolve) => setTimeout(resolve, 1200));
+    expect(child.exitCode).toBeNull();
 
-      const exited = once(child, "exit");
-      // tsx runs the CLI in a child process; signal the whole group.
-      process.kill(-(child.pid as number), "SIGTERM");
-      const result = await Promise.race([
-        exited,
-        new Promise<"timeout">((resolve) =>
-          setTimeout(() => resolve("timeout"), 1500),
-        ),
-      ]);
+    const exited = once(child, "exit");
+    // tsx runs the CLI in a child process; signal the whole group.
+    process.kill(-(child.pid as number), "SIGTERM");
+    const result = await Promise.race([
+      exited,
+      new Promise<"timeout">((resolve) =>
+        setTimeout(() => resolve("timeout"), 1500),
+      ),
+    ]);
 
-      child.stdout?.destroy();
-      child.stderr?.destroy();
+    child.stdout?.destroy();
+    child.stderr?.destroy();
 
-      expect(result).not.toBe("timeout");
-      expect(child.exitCode).toBe(0);
-    },
-    15_000,
-  );
+    expect(result).not.toBe("timeout");
+    expect(child.exitCode).toBe(0);
+  }, 15_000);
 });

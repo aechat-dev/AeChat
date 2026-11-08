@@ -4,10 +4,13 @@ import { join } from "node:path";
 
 import { afterEach, describe, expect, it } from "vitest";
 
-import { createReadOnlyRuntime, type ReadOnlyRuntime } from "../../src/app/read-only-runtime.js";
+import {
+  createReadOnlyRuntime,
+  type ReadOnlyRuntime,
+} from "../../src/app/read-only-runtime.js";
 import { createRuntime } from "../../src/app/runtime.js";
-import { UiQueryService } from "../../src/app/ui-query-service.js";
 import { uiEventStream } from "../../src/app/ui-event-stream.js";
+import { UiQueryService } from "../../src/app/ui-query-service.js";
 import { FakeTransportAdapter } from "../../src/core/transport/fake.js";
 
 const dirs: string[] = [];
@@ -120,9 +123,9 @@ describe("UiQueryService.snapshot", () => {
 
     const snapshot = await ui.snapshot();
 
-    expect(snapshot.sessions.map((session) => session.session_id).sort()).toEqual(
-      [a, b].sort(),
-    );
+    expect(
+      snapshot.sessions.map((session) => session.session_id).sort(),
+    ).toEqual([a, b].sort());
     expect(snapshot.counts.sessions).toBe(2);
     expect(snapshot.event_seq).toBe(runtime.events.latestSeq());
     expect(snapshot.threads).toHaveLength(1);
@@ -139,7 +142,8 @@ describe("UiQueryService.snapshot", () => {
   });
 });
 
-describe("UiQueryService.messages", () => {  it("pages newest-first with a stable cursor and pair filter", async () => {
+describe("UiQueryService.messages", () => {
+  it("pages newest-first with a stable cursor and pair filter", async () => {
     const { a, b, notifyId, requestId, replyId, ui } = await fixture();
 
     const page = ui.messages({ sessionId: a, counterpartId: b, limit: 2 });
@@ -166,16 +170,16 @@ describe("UiQueryService.messages", () => {  it("pages newest-first with a stabl
       before: page.next_before as string,
       limit: 2,
     });
-    expect(next.messages.map((message) => message.message_id)).toEqual([notifyId]);
+    expect(next.messages.map((message) => message.message_id)).toEqual([
+      notifyId,
+    ]);
     expect(next.next_before).toBeNull();
   });
 
   it("rejects unknown sessions and invalid limits", async () => {
     const { a, ui } = await fixture();
     expect(() => ui.messages({ sessionId: "missing" })).toThrow();
-    expect(() =>
-      ui.messages({ sessionId: a, counterpartId: a }),
-    ).toThrow();
+    expect(() => ui.messages({ sessionId: a, counterpartId: a })).toThrow();
     expect(() => ui.messages({ sessionId: a, limit: 0 })).toThrow();
     expect(() => ui.messages({ sessionId: a, limit: 201 })).toThrow();
     expect(() => ui.messages({ sessionId: a, before: "bad" })).toThrow();
@@ -214,7 +218,9 @@ describe("effective request status", () => {
     expect(snapshot.threads[0]?.pending_requests).toBe(0);
 
     const page = ui.messages({ sessionId: a, counterpartId: b, limit: 50 });
-    const request = page.messages.find((message) => message.message_id === messageId);
+    const request = page.messages.find(
+      (message) => message.message_id === messageId,
+    );
     expect(request).toMatchObject({
       kind: "request",
       request_status: "expired",
@@ -245,15 +251,17 @@ describe("read-only guarantee", () => {
     const entry = ui.log({ messageId: notifyId });
 
     expect(entry.chain.length).toBeGreaterThan(0);
-    expect(runtime.events.listAfter(0).map((event) => event.seq)).toEqual(eventsBefore);
+    expect(runtime.events.listAfter(0).map((event) => event.seq)).toEqual(
+      eventsBefore,
+    );
     expect(runtime.deliveries.getByMessageId(notifyId)).toEqual(deliveryBefore);
     expect(runtime.sessions.get(a)).toEqual(sessionBefore);
-    expect(runtime.events.listAfter(0).some((event) => event.event === "log_read")).toBe(
-      false,
-    );
-    expect(runtime.events.listAfter(0).some((event) => event.event === "list")).toBe(
-      false,
-    );
+    expect(
+      runtime.events.listAfter(0).some((event) => event.event === "log_read"),
+    ).toBe(false);
+    expect(
+      runtime.events.listAfter(0).some((event) => event.event === "list"),
+    ).toBe(false);
   });
 });
 

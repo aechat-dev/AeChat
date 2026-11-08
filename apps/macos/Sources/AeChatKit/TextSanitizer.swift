@@ -14,10 +14,9 @@ public enum AgentText {
             }
             // Bidirectional overrides and zero-width controls can reorder or
             // hide text; they have no place in an agent message body.
-            if (0x200B...0x200F).contains(value) ||
-                (0x202A...0x202E).contains(value) ||
-                (0x2066...0x2069).contains(value) ||
-                value == 0xFEFF {
+            if (0x200B...0x200F).contains(value) || (0x202A...0x202E).contains(value)
+                || (0x2066...0x2069).contains(value) || value == 0xFEFF
+            {
                 return false
             }
             return true

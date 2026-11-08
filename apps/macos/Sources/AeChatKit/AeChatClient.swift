@@ -14,7 +14,8 @@ public enum AeChatClientError: LocalizedError {
         case .binaryNotFound:
             return "aechat CLI not found. Set AECHAT_BIN or install aechat on PATH."
         case .nodeNotFound:
-            return "Node.js not found for the bundled aechat CLI. Set AECHAT_NODE or install node on PATH."
+            return
+                "Node.js not found for the bundled aechat CLI. Set AECHAT_NODE or install node on PATH."
         case .launchFailed(let message):
             return "Could not launch aechat: \(message)"
         case .api(let code, let message):
@@ -85,7 +86,8 @@ public struct AeChatClient {
 
         if let bundled = Bundle.main.resourceURL?
             .appendingPathComponent("cli/cli/main.js"),
-           FileManager.default.isExecutableFile(atPath: bundled.path) {
+            FileManager.default.isExecutableFile(atPath: bundled.path)
+        {
             return bundled
         }
 
@@ -123,7 +125,8 @@ public struct AeChatClient {
         }
         defer { try? handle.close() }
         let data = (try? handle.read(upToCount: 128)) ?? Data()
-        let firstLine = String(data: data, encoding: .utf8)?
+        let firstLine =
+            String(data: data, encoding: .utf8)?
             .split(separator: "\n", maxSplits: 1)
             .first ?? ""
         return firstLine.hasPrefix("#!") && firstLine.contains("node")
@@ -171,10 +174,11 @@ public struct AeChatClient {
         ]
         var candidates: [URL] = []
         for suite in suites {
-            let entries = (try? FileManager.default.contentsOfDirectory(
-                at: suite,
-                includingPropertiesForKeys: nil
-            )) ?? []
+            let entries =
+                (try? FileManager.default.contentsOfDirectory(
+                    at: suite,
+                    includingPropertiesForKeys: nil
+                )) ?? []
             for entry in entries.sorted(by: {
                 Self.isNewerVersion($0.lastPathComponent, than: $1.lastPathComponent)
             }) {
@@ -315,7 +319,8 @@ public struct AeChatClient {
             do {
                 try process.run()
             } catch {
-                continuation.finish(throwing: AeChatClientError.launchFailed(error.localizedDescription))
+                continuation.finish(
+                    throwing: AeChatClientError.launchFailed(error.localizedDescription))
             }
         }
     }
@@ -422,8 +427,10 @@ public struct AeChatClient {
     }
 
     static func error(from result: ExecutionResult) -> Error {
-        if let envelope = try? decoder().decode(APIEnvelope<EmptyPayload>.self, from: result.stderr),
-           let apiError = envelope.error {
+        if let envelope = try? decoder().decode(
+            APIEnvelope<EmptyPayload>.self, from: result.stderr),
+            let apiError = envelope.error
+        {
             return AeChatClientError.api(code: apiError.code, message: apiError.message)
         }
         return AeChatClientError.processFailed(

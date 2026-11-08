@@ -5,11 +5,11 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { openDatabase } from "../../../src/core/store/db.js";
-import { migrate } from "../../../src/core/store/schema.js";
 import {
   DeliveryRepository,
   MessageRepository,
 } from "../../../src/core/store/messages.js";
+import { migrate } from "../../../src/core/store/schema.js";
 import {
   SessionRepository,
   TransportBindingRepository,
@@ -172,7 +172,9 @@ describe("DeliveryRepository claim", () => {
       leaseSeconds: 30,
     });
 
-    expect(claimed.map((delivery) => delivery.deliveryId)).toEqual(["delivery-1"]);
+    expect(claimed.map((delivery) => delivery.deliveryId)).toEqual([
+      "delivery-1",
+    ]);
     expect(deliveries.get("delivery-2")?.status).toBe("expired");
   });
 
@@ -226,12 +228,18 @@ describe("DeliveryRepository claim", () => {
     });
     const token = claimed?.deliveryToken as string;
 
-    expect(deliveries.ack(token, "other-session", "2026-11-06T00:01:10.000Z")).toBe(
-      false,
-    );
-    expect(deliveries.ack(token, "to-session", "2026-11-06T00:01:10.000Z")).toBe(true);
-    expect(deliveries.ack(token, "to-session", "2026-11-06T00:01:11.000Z")).toBe(true);
+    expect(
+      deliveries.ack(token, "other-session", "2026-11-06T00:01:10.000Z"),
+    ).toBe(false);
+    expect(
+      deliveries.ack(token, "to-session", "2026-11-06T00:01:10.000Z"),
+    ).toBe(true);
+    expect(
+      deliveries.ack(token, "to-session", "2026-11-06T00:01:11.000Z"),
+    ).toBe(true);
     expect(deliveries.get("delivery-1")?.status).toBe("acked");
-    expect(deliveries.get("delivery-1")?.ackedAt).toBe("2026-11-06T00:01:11.000Z");
+    expect(deliveries.get("delivery-1")?.ackedAt).toBe(
+      "2026-11-06T00:01:11.000Z",
+    );
   });
 });

@@ -9,6 +9,7 @@ node_modules/
 dist/
 build/
 coverage/
+reports/
 *.tsbuildinfo
 npm-debug.log*
 pnpm-debug.log*

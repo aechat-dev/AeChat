@@ -14,7 +14,7 @@ final class AppState: ObservableObject {
     @Published var selectedSessionId: String?
     @Published private(set) var binaryPath: String?
 
-    @Published private(set) var messages: [UiMessage] = [] // newest first
+    @Published private(set) var messages: [UiMessage] = []  // newest first
     @Published private(set) var nextBefore: String?
     @Published private(set) var isLoadingMessages = false
     @Published private(set) var hasLoadedAllOlder = false
@@ -74,7 +74,8 @@ final class AppState: ObservableObject {
     var perspectiveSessionId: String? {
         guard let thread = activeThread else { return nil }
         if let selectedSessionId,
-           thread.participants.contains(where: { $0.sessionId == selectedSessionId }) {
+            thread.participants.contains(where: { $0.sessionId == selectedSessionId })
+        {
             return selectedSessionId
         }
         return thread.participants.first?.sessionId
@@ -143,7 +144,8 @@ final class AppState: ObservableObject {
     private func apply(snapshot fresh: UiSnapshot) {
         snapshot = fresh
         if let key = selectedThreadKey,
-           !fresh.threads.contains(where: { $0.key == key }) {
+            !fresh.threads.contains(where: { $0.key == key })
+        {
             clearThreadSelection()
         }
     }
@@ -163,9 +165,10 @@ final class AppState: ObservableObject {
     func selectSession(_ id: String?) {
         selectedSessionId = id
         guard let id,
-              let thread = snapshot?.threads.first(where: {
-                  $0.participants.contains { $0.sessionId == id }
-              }) else {
+            let thread = snapshot?.threads.first(where: {
+                $0.participants.contains { $0.sessionId == id }
+            })
+        else {
             clearThreadSelection()
             return
         }
@@ -216,8 +219,8 @@ final class AppState: ObservableObject {
     func loadMessages(reset: Bool, markSeen: Bool = true) async {
         let generation = loadGeneration
         guard let client, let thread = activeThread,
-              let perspective = perspectiveSessionId,
-              let counterpart = thread.participants.first(where: { $0.sessionId != perspective })
+            let perspective = perspectiveSessionId,
+            let counterpart = thread.participants.first(where: { $0.sessionId != perspective })
         else {
             return
         }
@@ -355,9 +358,10 @@ final class AppState: ObservableObject {
         guard fallbackTask == nil else { return }
         fallbackTask = Task { [weak self] in
             while !Task.isCancelled {
-                let configured = UserDefaults.standard.object(
-                    forKey: "AeChatRefreshInterval"
-                ) as? Double
+                let configured =
+                    UserDefaults.standard.object(
+                        forKey: "AeChatRefreshInterval"
+                    ) as? Double
                 let seconds = max(2, configured ?? 10)
                 try? await Task.sleep(
                     nanoseconds: UInt64(seconds * 1_000_000_000)
@@ -392,10 +396,11 @@ final class AppState: ObservableObject {
             return
         }
         if let thread = activeThread,
-           let sessionId = line.sessionId,
-           line.messageId != nil,
-           line.event == "send" || line.event == "reply",
-           thread.participants.contains(where: { $0.sessionId == sessionId }) {
+            let sessionId = line.sessionId,
+            line.messageId != nil,
+            line.event == "send" || line.event == "reply",
+            thread.participants.contains(where: { $0.sessionId == sessionId })
+        {
             hasNewActivity = true
             scheduleActiveReload()
         }

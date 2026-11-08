@@ -38,8 +38,13 @@ function sessionFromRow(row: Row): SessionRecord {
     capabilitiesJson: nullableString(row["capabilities_json"]),
     lastSeenAt: requiredString(row["last_seen_at"], "last_seen_at"),
     hostSeenAt: nullableString(row["host_seen_at"]),
-    hostSeenSource: nullableString(row["host_seen_source"]) as HostSeenSource | null,
-    resumeState: requiredString(row["resume_state"], "resume_state") as ResumeState,
+    hostSeenSource: nullableString(
+      row["host_seen_source"],
+    ) as HostSeenSource | null,
+    resumeState: requiredString(
+      row["resume_state"],
+      "resume_state",
+    ) as ResumeState,
     resumeCount: Number(row["resume_count"] ?? 0),
     resumedAt: nullableString(row["resumed_at"]),
     createdAt: requiredString(row["created_at"], "created_at"),

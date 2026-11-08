@@ -1,14 +1,16 @@
 import { AechatError } from "../errors.js";
-import { redactErrorDetail } from "../log-redaction.js";
-import type { DeliveryRepository, MessageRepository } from "../store/messages.js";
-import type { RequestRepository } from "../store/requests.js";
 import type { EventRepository } from "../store/events.js";
+import type {
+  DeliveryRepository,
+  MessageRepository,
+} from "../store/messages.js";
+import type { RequestRepository } from "../store/requests.js";
 import type { SessionRepository } from "../store/sessions.js";
 import {
-  AuditQueryService,
   type AuditChainEvent,
   type AuditLogEntry,
   type AuditLogInput,
+  AuditQueryService,
 } from "./audit-query.js";
 
 export type { AuditChainEvent, AuditLogEntry, AuditLogInput };
@@ -103,7 +105,9 @@ export class AuditService {
     });
   }
 
-  history(input: { sessionId: string; limit?: number }): { messages: HistoryItem[] } {
+  history(input: { sessionId: string; limit?: number }): {
+    messages: HistoryItem[];
+  } {
     if (this.sessions.get(input.sessionId) === undefined) {
       throw new AechatError(
         "session_not_found",
@@ -124,8 +128,7 @@ export class AuditService {
         return {
           messageId: message.messageId,
           kind: message.kind,
-          direction:
-            message.fromSession === input.sessionId ? "out" : "in",
+          direction: message.fromSession === input.sessionId ? "out" : "in",
           fromSession: message.fromSession,
           toSession: message.toSession,
           requestId: message.requestId,

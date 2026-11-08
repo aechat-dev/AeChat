@@ -66,7 +66,8 @@ describe("redactErrorDetail", () => {
     expect(text).toContain("[path]");
   });
 
-  it("truncates to 2 KiB after redaction", () => {    const text = redactErrorDetail(
+  it("truncates to 2 KiB after redaction", () => {
+    const text = redactErrorDetail(
       `token=super-secret ${"x".repeat(5000)} hidden-tail`,
     ) as string;
 

@@ -16,7 +16,10 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
     if (arg === undefined || !arg.startsWith("--")) {
-      throw new AechatError("invalid_input", `unexpected argument: ${arg ?? ""}`);
+      throw new AechatError(
+        "invalid_input",
+        `unexpected argument: ${arg ?? ""}`,
+      );
     }
     const key = arg.slice(2);
     if (key === "") {
@@ -42,6 +45,9 @@ export function requiredValue(args: ParsedArgs, key: string): string {
   return value;
 }
 
-export function optionalValue(args: ParsedArgs, key: string): string | undefined {
+export function optionalValue(
+  args: ParsedArgs,
+  key: string,
+): string | undefined {
   return args.values.get(key);
 }

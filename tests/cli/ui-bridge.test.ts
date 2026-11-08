@@ -34,7 +34,9 @@ function restoreEnv(): void {
 function capture(stream: NodeJS.WriteStream): string[] {
   const chunks: string[] = [];
   vi.spyOn(stream, "write").mockImplementation((chunk: string | Uint8Array) => {
-    chunks.push(typeof chunk === "string" ? chunk : Buffer.from(chunk).toString("utf8"));
+    chunks.push(
+      typeof chunk === "string" ? chunk : Buffer.from(chunk).toString("utf8"),
+    );
     return true;
   });
   return chunks;
@@ -129,11 +131,13 @@ describe("ui bridge commands", () => {
       meta: { schema: number };
     };
     expect(envelope.ok).toBe(true);
-    expect(envelope.data.sessions.map((session) => session.session_id).sort()).toEqual(
-      [a, b].sort(),
-    );
+    expect(
+      envelope.data.sessions.map((session) => session.session_id).sort(),
+    ).toEqual([a, b].sort());
     expect(envelope.data.threads).toHaveLength(1);
-    expect(envelope.data.threads[0]?.last_message.preview).toBe("bridge message");
+    expect(envelope.data.threads[0]?.last_message.preview).toBe(
+      "bridge message",
+    );
     expect(envelope.data.counts.sessions).toBe(2);
     expect(envelope.data.event_seq).toBeGreaterThan(0);
 
@@ -212,7 +216,11 @@ describe("ui bridge commands", () => {
     const envelope = JSON.parse(stdout.join("")) as {
       ok: boolean;
       data: {
-        database: { read_only: boolean; schema_version: number; quick_check: string };
+        database: {
+          read_only: boolean;
+          schema_version: number;
+          quick_check: string;
+        };
         config: { home: string; db_path: string };
         transport: { name: string };
       };

@@ -3,21 +3,25 @@ import type { DatabaseSync } from "node:sqlite";
 import { AechatError } from "../errors.js";
 import { newId } from "../ids.js";
 import { validateDisplayName } from "../names.js";
+import { withImmediate } from "../store/db.js";
+import type { EventRepository } from "../store/events.js";
+import type { RequestRepository } from "../store/requests.js";
+import type {
+  SessionRepository,
+  TransportBindingRepository,
+} from "../store/sessions.js";
 import { nowIso } from "../time.js";
-import type { BoundScope, Client, SessionRecord } from "../types.js";
 import type {
   SessionRef,
   TransportAdapter,
   TransportBinding,
 } from "../transport/adapter.js";
 import type {
-  SessionRepository,
-  TransportBindingRepository,
-} from "../store/sessions.js";
-import type { EventRepository } from "../store/events.js";
-import type { RequestRepository } from "../store/requests.js";
-import { withImmediate } from "../store/db.js";
-import type { TransportBindingRecord } from "../types.js";
+  BoundScope,
+  Client,
+  SessionRecord,
+  TransportBindingRecord,
+} from "../types.js";
 
 export type Session = SessionRecord;
 
@@ -40,9 +44,7 @@ export interface ConfirmResult {
   boundScope: BoundScope;
 }
 
-export type WhoamiInput =
-  | { sessionId: string }
-  | { conversationId: string };
+export type WhoamiInput = { sessionId: string } | { conversationId: string };
 
 export type SessionListEntry = Session & {
   transport: TransportBindingRecord | null;
@@ -185,7 +187,10 @@ export class SessionService {
   async confirm(sessionId: string): Promise<ConfirmResult> {
     const session = this.sessions.get(sessionId);
     if (session === undefined) {
-      throw new AechatError("session_not_found", `session not found: ${sessionId}`);
+      throw new AechatError(
+        "session_not_found",
+        `session not found: ${sessionId}`,
+      );
     }
     if (session.leftAt !== null) {
       throw new AechatError(
@@ -210,7 +215,9 @@ export class SessionService {
     );
     const current = this.sessions.get(sessionId);
     if (current?.leftAt !== null && current?.leftAt !== undefined) {
-      await this.transport.release(adapterBinding(record)).catch(() => undefined);
+      await this.transport
+        .release(adapterBinding(record))
+        .catch(() => undefined);
       throw new AechatError(
         "resume_unsafe",
         `session left while confirming: ${sessionId}`,
@@ -331,7 +338,10 @@ export class SessionService {
   async leave(sessionId: string): Promise<void> {
     const session = this.sessions.get(sessionId);
     if (session === undefined) {
-      throw new AechatError("session_not_found", `session not found: ${sessionId}`);
+      throw new AechatError(
+        "session_not_found",
+        `session not found: ${sessionId}`,
+      );
     }
     if (session.leftAt !== null) {
       return;
@@ -370,7 +380,10 @@ export class SessionService {
 
   heartbeat(sessionId: string, at: string = this.now()): void {
     if (this.sessions.get(sessionId) === undefined) {
-      throw new AechatError("session_not_found", `session not found: ${sessionId}`);
+      throw new AechatError(
+        "session_not_found",
+        `session not found: ${sessionId}`,
+      );
     }
     this.sessions.touch(sessionId, at, { host: true, hostSource: "heartbeat" });
     this.events?.record({ event: "heartbeat", sessionId, data: { at } });

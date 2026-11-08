@@ -12,7 +12,9 @@ struct SessionsView: View {
                 ContentUnavailableView(
                     "aechat not found",
                     systemImage: "terminal",
-                    description: Text("Set AECHAT_BIN, put aechat on PATH, or choose the binary from the error banner.")
+                    description: Text(
+                        "Set AECHAT_BIN, put aechat on PATH, or choose the binary from the error banner."
+                    )
                 )
             } else if state.sessions.isEmpty && !state.isLoading {
                 ContentUnavailableView(

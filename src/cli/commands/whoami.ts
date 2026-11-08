@@ -1,6 +1,6 @@
 import { AechatError } from "../../core/errors.js";
-import type { CommandContext } from "./context.js";
 import { parseArgs } from "../args.js";
+import type { CommandContext } from "./context.js";
 
 export function whoamiCommand(
   argv: readonly string[],

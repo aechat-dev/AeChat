@@ -30,7 +30,9 @@ struct MessageRow: View {
             .padding(10)
             .background(
                 RoundedRectangle(cornerRadius: 10)
-                    .fill(isOutgoing ? Color.accentColor.opacity(0.16) : Color.secondary.opacity(0.10))
+                    .fill(
+                        isOutgoing ? Color.accentColor.opacity(0.16) : Color.secondary.opacity(0.10)
+                    )
             )
             .contentShape(Rectangle())
             .onTapGesture {
@@ -65,7 +67,8 @@ struct MessageRow: View {
     private var bodyText: some View {
         let body = Display.sanitizedBody(message.body)
         let tooLong = body.count > 420
-        let visible = tooLong && !expansion.expanded
+        let visible =
+            tooLong && !expansion.expanded
             ? String(body.prefix(420)) + "…"
             : body
         return VStack(alignment: .leading, spacing: 4) {

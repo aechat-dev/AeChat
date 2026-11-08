@@ -1,11 +1,8 @@
-import type { InboxItem } from "../../core/services/delivery-service.js";
 import { AechatError } from "../../core/errors.js";
+import type { InboxItem } from "../../core/services/delivery-service.js";
 import { optionalValue, parseArgs, requiredValue } from "../args.js";
-import {
-  formatInboxText,
-  formatMessageText,
-} from "../message-format.js";
 import { inboxItemDto, messageDto } from "../message-dto.js";
+import { formatInboxText, formatMessageText } from "../message-format.js";
 import type { CommandResult } from "../output.js";
 import type { CommandContext } from "./context.js";
 

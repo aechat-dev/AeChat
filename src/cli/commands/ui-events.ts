@@ -1,5 +1,5 @@
-import { AechatError } from "../../core/errors.js";
 import { uiEventStream } from "../../app/ui-event-stream.js";
+import { AechatError } from "../../core/errors.js";
 import { parseArgs, requiredValue } from "../args.js";
 import type { UiCommandContext } from "./ui-context.js";
 
@@ -40,7 +40,10 @@ export async function uiEventsCommand(
   const args = parseArgs(argv);
   const after = Number(requiredValue(args, "after"));
   if (!Number.isInteger(after) || after < 0) {
-    throw new AechatError("invalid_input", "--after must be a non-negative integer");
+    throw new AechatError(
+      "invalid_input",
+      "--after must be a non-negative integer",
+    );
   }
 
   const controller = new AbortController();

@@ -121,52 +121,44 @@ afterEach(() => {
 });
 
 describe("send dedup across processes", () => {
-  it(
-    "both processes return the same message for the same target",
-    async () => {
-      const dir = prepareDatabase();
-      const startFile = join(dir, "start");
-      const first = runWorker(dir, "to-a", startFile);
-      const second = runWorker(dir, "to-a", startFile);
-      writeFileSync(startFile, "go");
+  it("both processes return the same message for the same target", async () => {
+    const dir = prepareDatabase();
+    const startFile = join(dir, "start");
+    const first = runWorker(dir, "to-a", startFile);
+    const second = runWorker(dir, "to-a", startFile);
+    writeFileSync(startFile, "go");
 
-      const results = await Promise.all([first, second]);
-      expect(results.every((result) => result.ok)).toBe(true);
-      expect(results[0]?.messageId).toBeTypeOf("string");
-      expect(results[1]?.messageId).toBe(results[0]?.messageId);
+    const results = await Promise.all([first, second]);
+    expect(results.every((result) => result.ok)).toBe(true);
+    expect(results[0]?.messageId).toBeTypeOf("string");
+    expect(results[1]?.messageId).toBe(results[0]?.messageId);
 
-      const db = openDatabase(join(dir, "aechat.db"));
-      const count = db
-        .prepare("SELECT COUNT(*) AS n FROM messages")
-        .get() as { n: number };
-      db.close();
-      expect(count.n).toBe(1);
-    },
-    15_000,
-  );
+    const db = openDatabase(join(dir, "aechat.db"));
+    const count = db.prepare("SELECT COUNT(*) AS n FROM messages").get() as {
+      n: number;
+    };
+    db.close();
+    expect(count.n).toBe(1);
+  }, 15_000);
 
-  it(
-    "a different target with the same key loses with invalid_input",
-    async () => {
-      const dir = prepareDatabase();
-      const startFile = join(dir, "start");
-      const first = runWorker(dir, "to-a", startFile);
-      const second = runWorker(dir, "to-b", startFile);
-      writeFileSync(startFile, "go");
+  it("a different target with the same key loses with invalid_input", async () => {
+    const dir = prepareDatabase();
+    const startFile = join(dir, "start");
+    const first = runWorker(dir, "to-a", startFile);
+    const second = runWorker(dir, "to-b", startFile);
+    writeFileSync(startFile, "go");
 
-      const results = await Promise.all([first, second]);
-      const failed = results.filter((result) => !result.ok);
-      expect(failed).toHaveLength(1);
-      expect(failed[0]?.code).toBe("invalid_input");
-      expect(results.filter((result) => result.ok)).toHaveLength(1);
+    const results = await Promise.all([first, second]);
+    const failed = results.filter((result) => !result.ok);
+    expect(failed).toHaveLength(1);
+    expect(failed[0]?.code).toBe("invalid_input");
+    expect(results.filter((result) => result.ok)).toHaveLength(1);
 
-      const db = openDatabase(join(dir, "aechat.db"));
-      const count = db
-        .prepare("SELECT COUNT(*) AS n FROM messages")
-        .get() as { n: number };
-      db.close();
-      expect(count.n).toBe(1);
-    },
-    15_000,
-  );
+    const db = openDatabase(join(dir, "aechat.db"));
+    const count = db.prepare("SELECT COUNT(*) AS n FROM messages").get() as {
+      n: number;
+    };
+    db.close();
+    expect(count.n).toBe(1);
+  }, 15_000);
 });

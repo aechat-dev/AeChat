@@ -12,8 +12,10 @@ struct SettingsView: View {
         Form {
             Section {
                 Label {
-                    Text("AeChat is a read-only monitor. It never sends, replies, acknowledges or claims deliveries.")
-                        .font(.callout)
+                    Text(
+                        "AeChat is a read-only monitor. It never sends, replies, acknowledges or claims deliveries."
+                    )
+                    .font(.callout)
                 } icon: {
                     Image(systemName: "lock.shield")
                         .foregroundStyle(.green)
@@ -65,9 +67,11 @@ struct SettingsView: View {
             }
 
             Section("Notes") {
-                Text("Snapshot polling while the live stream is down uses the fallback interval above. Message bodies are agent text and are never executed or auto-linked.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                Text(
+                    "Snapshot polling while the live stream is down uses the fallback interval above. Message bodies are agent text and are never executed or auto-linked."
+                )
+                .font(.caption)
+                .foregroundStyle(.secondary)
             }
         }
         .formStyle(.grouped)
@@ -91,12 +95,18 @@ struct SettingsView: View {
             fact("Schema", doctor.database.schemaVersion.map(String.init) ?? "—")
             fact("Quick check", doctor.database.quickCheck ?? "—")
             fact("Store", doctor.database.readOnly ? "read-only" : "writable")
-            fact("Logs", "\(doctor.logs.path) · exists=\(doctor.logs.exists) writable=\(doctor.logs.writable) mode=\(doctor.logs.mode ?? "—")")
+            fact(
+                "Logs",
+                "\(doctor.logs.path) · exists=\(doctor.logs.exists) writable=\(doctor.logs.writable) mode=\(doctor.logs.mode ?? "—")"
+            )
             fact("Home", doctor.config.home)
             fact("Team", doctor.config.team)
             fact("Transport", "\(doctor.transport.name) · \(doctor.transport.bindings) binding(s)")
             fact("Hook paths", doctor.hostHook.paths.joined(separator: ", "))
-            fact("Hooks", doctor.hostHook.configured.isEmpty ? "none configured" : doctor.hostHook.configured.joined(separator: ", "))
+            fact(
+                "Hooks",
+                doctor.hostHook.configured.isEmpty
+                    ? "none configured" : doctor.hostHook.configured.joined(separator: ", "))
         }
     }
 

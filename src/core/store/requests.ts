@@ -41,7 +41,9 @@ function requestFromRow(row: Row): RequestRecord {
     requesterSession: String(row["requester_session"]),
     targetSession: String(row["target_session"]),
     status: String(row["status"]) as RequestStatus,
-    closeReason: nullableString(row["close_reason"]) as RequestCloseReason | null,
+    closeReason: nullableString(
+      row["close_reason"],
+    ) as RequestCloseReason | null,
     deadline: nullableString(row["deadline"]),
     replyMessageId: nullableString(row["reply_message_id"]),
     createdAt: String(row["created_at"]),

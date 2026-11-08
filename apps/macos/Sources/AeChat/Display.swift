@@ -47,7 +47,8 @@ enum Display {
         AgentText.sanitized(text)
     }
 
-    static func transportModes(_ sessions: [SessionView]) -> [(mode: String, count: Int)] {        var counts: [String: Int] = [:]
+    static func transportModes(_ sessions: [SessionView]) -> [(mode: String, count: Int)] {
+        var counts: [String: Int] = [:]
         for session in sessions {
             for transport in session.transports {
                 counts[transport.mode ?? "unknown", default: 0] += 1

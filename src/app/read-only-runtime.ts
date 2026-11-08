@@ -4,9 +4,14 @@ import { CapabilityService } from "../core/services/capability-service.js";
 import { openReadOnlyDatabase } from "../core/store/db.js";
 import { assertCurrentSchema } from "../core/store/schema.js";
 import type { TransportAdapter } from "../core/transport/adapter.js";
-import { resolveNow, resolvePaths, resolveTransport, type AppOptions } from "./options.js";
-import { createRepositories, type AppRepositories } from "./repositories.js";
-import { SessionQueryService, type CapabilityQuery } from "./session-query.js";
+import {
+  type AppOptions,
+  resolveNow,
+  resolvePaths,
+  resolveTransport,
+} from "./options.js";
+import { type AppRepositories, createRepositories } from "./repositories.js";
+import { type CapabilityQuery, SessionQueryService } from "./session-query.js";
 
 /**
  * Query-only surface for the app bridge. It deliberately exposes no write
@@ -23,7 +28,9 @@ export interface ReadOnlyRuntime extends AppRepositories {
 }
 
 /** Open the existing store without any write or permission side effect. */
-export function createReadOnlyRuntime(options: AppOptions = {}): ReadOnlyRuntime {
+export function createReadOnlyRuntime(
+  options: AppOptions = {},
+): ReadOnlyRuntime {
   const { dbPath } = resolvePaths(options);
   const db = openReadOnlyDatabase(dbPath);
   try {

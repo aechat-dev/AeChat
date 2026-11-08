@@ -36,8 +36,23 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
-      - name: Test
-        run: pnpm test
+      - name: Lint and format check
+        run: pnpm lint
+
+      - name: Test audit
+        run: pnpm test:audit
+
+      - name: Test with coverage
+        run: pnpm test:coverage
+
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage/
+          if-no-files-found: warn
+          retention-days: 14
 
       - name: Build
         run: pnpm build
@@ -61,6 +76,9 @@ jobs:
 
       - name: Install
         run: pnpm install --frozen-lockfile
+
+      - name: Swift format check
+        run: pnpm lint:swift
 
       - name: Swift build and checks
         run: ./scripts/check-macos.sh

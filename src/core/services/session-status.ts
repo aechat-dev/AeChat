@@ -55,7 +55,10 @@ function ageSeconds(at: string | null, now: string): number | null {
   return (nowMs - atMs) / 1000;
 }
 
-function latestTimestamp(at: string | null, host: string | null): string | null {
+function latestTimestamp(
+  at: string | null,
+  host: string | null,
+): string | null {
   if (at === null) {
     return host;
   }

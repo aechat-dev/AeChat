@@ -6,7 +6,10 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { createReadOnlyRuntime } from "../../../src/app/read-only-runtime.js";
 import { createRuntime } from "../../../src/app/runtime.js";
-import { openDatabase, openReadOnlyDatabase } from "../../../src/core/store/db.js";
+import {
+  openDatabase,
+  openReadOnlyDatabase,
+} from "../../../src/core/store/db.js";
 import { EventRepository } from "../../../src/core/store/events.js";
 import { migrate } from "../../../src/core/store/schema.js";
 import { FakeTransportAdapter } from "../../../src/core/transport/fake.js";
@@ -80,7 +83,11 @@ describe("createReadOnlyRuntime", () => {
     }
 
     expect(() =>
-      createReadOnlyRuntime({ home: dir, dbPath: path, transport: new FakeTransportAdapter() }),
+      createReadOnlyRuntime({
+        home: dir,
+        dbPath: path,
+        transport: new FakeTransportAdapter(),
+      }),
     ).toThrow(/schema version 4 is not supported.*run aechat/);
   });
 
@@ -129,7 +136,9 @@ describe("createReadOnlyRuntime", () => {
       expect("probe" in runtime.capabilities).toBe(false);
 
       const sessions = await runtime.sessionQuery.list();
-      expect(sessions.map((session) => session.session_id)).toContain(sessionId);
+      expect(sessions.map((session) => session.session_id)).toContain(
+        sessionId,
+      );
       expect(() => runtime.events.record({ event: "list" })).toThrow();
     } finally {
       runtime.close();

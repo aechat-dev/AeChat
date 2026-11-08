@@ -3,9 +3,9 @@ import { afterEach, describe, expect, it } from "vitest";
 import { openDatabase } from "../../../src/core/store/db.js";
 import { migrate } from "../../../src/core/store/schema.js";
 import {
+  type CreateSessionInput,
   SessionRepository,
   TransportBindingRepository,
-  type CreateSessionInput,
 } from "../../../src/core/store/sessions.js";
 
 const databases: Array<{ close(): void }> = [];
@@ -23,7 +23,9 @@ function setup(): {
   };
 }
 
-function sessionInput(overrides: Partial<CreateSessionInput> = {}): CreateSessionInput {
+function sessionInput(
+  overrides: Partial<CreateSessionInput> = {},
+): CreateSessionInput {
   return {
     sessionId: "session-1",
     displayName: "dev",
@@ -57,7 +59,9 @@ describe("SessionRepository", () => {
   it("rejects duplicate (transport,address) bindings", () => {
     const { sessions, bindings } = setup();
     sessions.create(sessionInput({ sessionId: "session-1" }));
-    sessions.create(sessionInput({ sessionId: "session-2", displayName: "other" }));
+    sessions.create(
+      sessionInput({ sessionId: "session-2", displayName: "other" }),
+    );
 
     bindings.create({
       bindingId: "binding-1",
@@ -81,10 +85,14 @@ describe("SessionRepository", () => {
   it("list excludes left unless includeLeft", () => {
     const { sessions } = setup();
     sessions.create(sessionInput({ sessionId: "session-1" }));
-    sessions.create(sessionInput({ sessionId: "session-2", displayName: "other" }));
+    sessions.create(
+      sessionInput({ sessionId: "session-2", displayName: "other" }),
+    );
     sessions.markLeft("session-2", "2026-11-06T01:00:00.000Z");
 
-    expect(sessions.list().map((session) => session.sessionId)).toEqual(["session-1"]);
+    expect(sessions.list().map((session) => session.sessionId)).toEqual([
+      "session-1",
+    ]);
     expect(sessions.list({ includeLeft: true })).toHaveLength(2);
   });
 

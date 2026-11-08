@@ -1,24 +1,29 @@
 import type { DatabaseSync } from "node:sqlite";
 
 import { AechatError } from "../errors.js";
-import { redactErrorDetail } from "../log-redaction.js";
 import { newId } from "../ids.js";
-import { nowIso } from "../time.js";
-import type { SessionRepository, TransportBindingRepository } from "../store/sessions.js";
+import { redactErrorDetail } from "../log-redaction.js";
+import { withImmediate } from "../store/db.js";
 import type { EventRepository } from "../store/events.js";
 import type {
+  DeliveryRecord,
   DeliveryRepository,
+  MessageKind,
+  MessageRecord,
   MessageRepository,
 } from "../store/messages.js";
 import type { RequestRepository } from "../store/requests.js";
-import type { DeliveryRecord, MessageKind, MessageRecord } from "../store/messages.js";
+import type {
+  SessionRepository,
+  TransportBindingRepository,
+} from "../store/sessions.js";
+import { nowIso } from "../time.js";
 import type {
   PointerNotification,
   TransportAdapter,
   TransportBinding,
 } from "../transport/adapter.js";
 import type { TransportBindingRecord } from "../types.js";
-import { withImmediate } from "../store/db.js";
 
 export const MAX_BODY_BYTES = 16 * 1024;
 const DEFAULT_LEASE_SECONDS = 30;
@@ -216,7 +221,10 @@ export class DeliveryService {
       );
     }
     if (to.leftAt !== null) {
-      throw new AechatError("target_left", `target has left: ${input.toSession}`);
+      throw new AechatError(
+        "target_left",
+        `target has left: ${input.toSession}`,
+      );
     }
 
     const at = input.now ?? this.now();
@@ -278,7 +286,11 @@ export class DeliveryService {
         dedupKey: input.dedupKey ?? null,
         expiresAt,
       });
-      this.deliveries.insert({ deliveryId, messageId, sessionId: input.toSession });
+      this.deliveries.insert({
+        deliveryId,
+        messageId,
+        sessionId: input.toSession,
+      });
       if (input.kind === "request") {
         (this.requests as RequestRepository).insert({
           requestId: messageId,
@@ -338,7 +350,9 @@ export class DeliveryService {
       messageId: input.messageId,
       fromSession: input.fromSession,
       toSession: input.toSession,
-      ...(fromBinding === undefined ? {} : { fromAddress: fromBinding.address }),
+      ...(fromBinding === undefined
+        ? {}
+        : { fromAddress: fromBinding.address }),
     };
 
     let notifyResult: { ok: boolean; error?: string };
@@ -376,7 +390,7 @@ export class DeliveryService {
     const error =
       redactErrorDetail(notifyResult.error ?? "transport notify failed") ??
       "transport notify failed";
-    this.deliveries.markNotifyFailed(input.deliveryId, notifyAt, error);
+    this.deliveries.markNotifyFailed(input.deliveryId, error);
     this.events?.record({
       event: "notify_fail",
       level: "warn",
@@ -411,9 +425,7 @@ export class DeliveryService {
   }
 
   async retry(input: RetryInput): Promise<RetryResult> {
-    if (
-      (input.messageId === undefined) === (input.deliveryId === undefined)
-    ) {
+    if ((input.messageId === undefined) === (input.deliveryId === undefined)) {
       throw new AechatError(
         "invalid_input",
         "retry requires exactly one of messageId or deliveryId",
@@ -437,13 +449,13 @@ export class DeliveryService {
       );
     }
     if (message.fromSession !== input.sessionId) {
-      throw new AechatError("not_actor", "only the sender may retry this message");
+      throw new AechatError(
+        "not_actor",
+        "only the sender may retry this message",
+      );
     }
 
-    if (
-      delivery.status !== "stored" &&
-      delivery.status !== "notify_failed"
-    ) {
+    if (delivery.status !== "stored" && delivery.status !== "notify_failed") {
       return {
         messageId: message.messageId,
         deliveryId: delivery.deliveryId,
@@ -477,7 +489,10 @@ export class DeliveryService {
 
   async inbox(input: InboxInput): Promise<InboxItem[]> {
     if (!Number.isInteger(input.limit) || input.limit <= 0) {
-      throw new AechatError("invalid_input", "inbox limit must be a positive integer");
+      throw new AechatError(
+        "invalid_input",
+        "inbox limit must be a positive integer",
+      );
     }
     const at = input.now ?? this.now();
     if (input.peek === true) {
@@ -514,7 +529,10 @@ export class DeliveryService {
 
   async wait(input: WaitInput): Promise<InboxItem[] | null> {
     if (input.timeoutSeconds < 0) {
-      throw new AechatError("invalid_input", "wait timeout must not be negative");
+      throw new AechatError(
+        "invalid_input",
+        "wait timeout must not be negative",
+      );
     }
     const deadline = Date.now() + input.timeoutSeconds * 1000;
     for (;;) {
@@ -588,7 +606,10 @@ export class DeliveryService {
     return message;
   }
 
-  private duplicateResult(message: MessageRecord, toSession: string): SendResult {
+  private duplicateResult(
+    message: MessageRecord,
+    toSession: string,
+  ): SendResult {
     const delivery = this.deliveries.getForMessageSession(
       message.messageId,
       toSession,

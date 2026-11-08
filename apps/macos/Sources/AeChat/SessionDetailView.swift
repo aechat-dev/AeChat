@@ -12,7 +12,9 @@ struct SessionDetailView: View {
                 ContentUnavailableView(
                     "CLI required",
                     systemImage: "terminal",
-                    description: Text("AeChat reads data through the aechat CLI. Choose the binary from the banner below.")
+                    description: Text(
+                        "AeChat reads data through the aechat CLI. Choose the binary from the banner below."
+                    )
                 )
             } else {
                 ContentUnavailableView(
@@ -88,11 +90,19 @@ struct SessionDetailView: View {
             Text("Capabilities")
                 .font(.headline)
             HStack(spacing: 16) {
-                capability("pull", supported: report.supported.pull, available: report.available.pull)
-                capability("wait", supported: report.supported.wait, available: report.available.wait)
-                capability("notify", supported: report.supported.notificationReceive, available: report.available.notificationReceive)
-                capability("busy", supported: report.supported.busyReceive, available: report.available.busyReceive)
-                capability("idle", supported: report.supported.idleWakeup, available: report.available.idleWakeup)
+                capability(
+                    "pull", supported: report.supported.pull, available: report.available.pull)
+                capability(
+                    "wait", supported: report.supported.wait, available: report.available.wait)
+                capability(
+                    "notify", supported: report.supported.notificationReceive,
+                    available: report.available.notificationReceive)
+                capability(
+                    "busy", supported: report.supported.busyReceive,
+                    available: report.available.busyReceive)
+                capability(
+                    "idle", supported: report.supported.idleWakeup,
+                    available: report.available.idleWakeup)
             }
             Text("wakeup \(report.wakeupLevel) · supported vs available")
                 .font(.caption)

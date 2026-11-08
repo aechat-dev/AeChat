@@ -1,7 +1,6 @@
 import { setTimeout as delay } from "node:timers/promises";
-
-import type { UiQueryService } from "./ui-query-service.js";
 import type { UiEvent, UiEventTick } from "../contracts/ui.js";
+import type { UiQueryService } from "./ui-query-service.js";
 
 export interface UiEventStreamOptions {
   after: number;
@@ -54,11 +53,7 @@ export async function* uiEventStream(
     // Rate-limit bursts to one poll window so a busy database cannot flood
     // the app's JSONL reader or force a redraw per event.
     try {
-      await delay(
-        pollMs,
-        undefined,
-        signal === undefined ? {} : { signal },
-      );
+      await delay(pollMs, undefined, signal === undefined ? {} : { signal });
     } catch {
       return;
     }

@@ -1,6 +1,6 @@
+import type { AuditLogEntry } from "../../core/services/audit-service.js";
 import { parseArgs, requiredValue } from "../args.js";
 import { formatBody } from "../message-format.js";
-import type { AuditLogEntry } from "../../core/services/audit-service.js";
 import type { CommandResult } from "../output.js";
 import type { CommandContext } from "./context.js";
 
@@ -45,7 +45,9 @@ function formatLogText(entry: AuditLogEntry): string {
   ];
   for (const event of entry.chain) {
     const error =
-      event.errorDetail === null ? "" : ` error=${formatBody(event.errorDetail)}`;
+      event.errorDetail === null
+        ? ""
+        : ` error=${formatBody(event.errorDetail)}`;
     lines.push(
       `  ${event.ts} ${event.level} ${event.stage} session=${event.sessionId ?? "-"} delivery=${event.deliveryId ?? "-"}${error}`,
     );

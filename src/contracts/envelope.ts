@@ -36,7 +36,8 @@ export function buildErrorEnvelope(
 ): ErrorEnvelope {
   return {
     ok: false,
-    error: details === undefined ? { code, message } : { code, message, details },
+    error:
+      details === undefined ? { code, message } : { code, message, details },
     meta: { schema: SCHEMA_VERSION },
   };
 }

@@ -1,7 +1,7 @@
 import { AechatError } from "../../core/errors.js";
 import type { Session } from "../../core/services/session-service.js";
-import type { CommandContext } from "./context.js";
 import { parseArgs, requiredValue } from "../args.js";
+import type { CommandContext } from "./context.js";
 
 const CLIENTS = new Set(["claude-code", "codex", "other"]);
 

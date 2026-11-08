@@ -1,9 +1,9 @@
 import { parseArgs, requiredValue } from "../args.js";
 import {
   formatBody,
-  messageHeader,
   MESSAGE_BEGIN,
   MESSAGE_END,
+  messageHeader,
 } from "../message-format.js";
 import type { CommandResult } from "../output.js";
 import type { CommandContext } from "./context.js";

@@ -1,7 +1,6 @@
 import type { DatabaseSync } from "node:sqlite";
-
-import { redactErrorDetail } from "../log-redaction.js";
 import { newId } from "../ids.js";
+import { redactErrorDetail } from "../log-redaction.js";
 import { withImmediate } from "./db.js";
 
 export type MessageKind = "notify" | "request" | "reply";
@@ -171,7 +170,10 @@ export class MessageRepository {
     return row === undefined ? undefined : messageFromRow(row);
   }
 
-  findByDedupKeyFromSender(fromSession: string, dedupKey: string): MessageRecord[] {
+  findByDedupKeyFromSender(
+    fromSession: string,
+    dedupKey: string,
+  ): MessageRecord[] {
     const rows = this.db
       .prepare(
         `SELECT * FROM messages
@@ -182,7 +184,10 @@ export class MessageRepository {
     return rows.map(messageFromRow);
   }
 
-  listForSession(sessionId: string, opts: { limit?: number } = {}): MessageRecord[] {
+  listForSession(
+    sessionId: string,
+    opts: { limit?: number } = {},
+  ): MessageRecord[] {
     const limit = opts.limit ?? 100;
     const rows = this.db
       .prepare(
@@ -217,8 +222,7 @@ export class MessageRepository {
       );
     }
     if (input.before !== undefined) {
-      where +=
-        " AND (created_at < ? OR (created_at = ? AND message_id < ?))";
+      where += " AND (created_at < ? OR (created_at = ? AND message_id < ?))";
       params.push(
         input.before.createdAt,
         input.before.createdAt,
@@ -553,7 +557,7 @@ export class DeliveryRepository {
       .run(now, id);
   }
 
-  markNotifyFailed(id: string, now: string, error: string): void {
+  markNotifyFailed(id: string, error: string): void {
     this.db
       .prepare(
         `UPDATE deliveries

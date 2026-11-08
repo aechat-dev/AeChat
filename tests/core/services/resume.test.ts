@@ -1,9 +1,11 @@
 import { afterEach, describe, expect, it } from "vitest";
-
-import { DeliveryRepository, MessageRepository } from "../../../src/core/store/messages.js";
 import { ResumeService } from "../../../src/core/services/resume-service.js";
 import { openDatabase } from "../../../src/core/store/db.js";
 import { EventRepository } from "../../../src/core/store/events.js";
+import {
+  DeliveryRepository,
+  MessageRepository,
+} from "../../../src/core/store/messages.js";
 import { migrate } from "../../../src/core/store/schema.js";
 import {
   SessionRepository,
@@ -13,7 +15,9 @@ import { FakeTransportAdapter } from "../../../src/core/transport/fake.js";
 
 const databases: Array<{ close(): void }> = [];
 
-function setup(options: ConstructorParameters<typeof FakeTransportAdapter>[0] = {}) {
+function setup(
+  options: ConstructorParameters<typeof FakeTransportAdapter>[0] = {},
+) {
   const db = openDatabase(":memory:");
   databases.push(db);
   migrate(db);
@@ -51,7 +55,16 @@ function setup(options: ConstructorParameters<typeof FakeTransportAdapter>[0] = 
     evidenceJson: JSON.stringify({ bindDirective: "fake actas aechat-old" }),
   });
 
-  return { db, sessions, bindings, messages, deliveries, transport, resume, binding };
+  return {
+    db,
+    sessions,
+    bindings,
+    messages,
+    deliveries,
+    transport,
+    resume,
+    binding,
+  };
 }
 
 afterEach(() => {
@@ -64,7 +77,9 @@ describe("ResumeService.begin", () => {
   it("rejects a live old host", async () => {
     const { resume } = setup({ live: true });
 
-    await expect(resume.begin({ sessionId: "old-session" })).rejects.toMatchObject({
+    await expect(
+      resume.begin({ sessionId: "old-session" }),
+    ).rejects.toMatchObject({
       code: "resume_unsafe",
     });
   });
@@ -110,7 +125,7 @@ describe("ResumeService.confirm", () => {
   });
 
   it("finishes resume and resets delivered-but-unacked rows to notified", async () => {
-    const { resume, sessions, bindings, messages, deliveries } = setup();
+    const { resume, bindings, messages, deliveries } = setup();
     messages.insert({
       messageId: "unacked-message",
       kind: "notify",

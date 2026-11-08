@@ -11,7 +11,12 @@ export type RequestId = string;
 export type Client = "claude-code" | "codex" | "other";
 export type BoundScope = "conversation" | "host_role" | "none";
 export type ResumeState = "idle" | "resume_pending";
-export type TransportState = "pending" | "bound" | "stale" | "released" | "failed";
+export type TransportState =
+  | "pending"
+  | "bound"
+  | "stale"
+  | "released"
+  | "failed";
 
 export type HostSeenSource = "heartbeat" | "hook";
 

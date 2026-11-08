@@ -12,8 +12,13 @@ import { SessionService } from "../core/services/session-service.js";
 import { openDatabase } from "../core/store/db.js";
 import { migrate } from "../core/store/schema.js";
 import type { TransportAdapter } from "../core/transport/adapter.js";
-import { resolveNow, resolvePaths, resolveTransport, type AppOptions } from "./options.js";
-import { createRepositories, type AppRepositories } from "./repositories.js";
+import {
+  type AppOptions,
+  resolveNow,
+  resolvePaths,
+  resolveTransport,
+} from "./options.js";
+import { type AppRepositories, createRepositories } from "./repositories.js";
 import { SessionQueryService } from "./session-query.js";
 
 /** Services that operate on an explicit session; the CLI context is this set. */

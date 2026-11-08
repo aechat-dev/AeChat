@@ -48,7 +48,11 @@ export interface AgmsgCliPort {
   notify(input: NotifyInput): Promise<CommandResult>;
   teamJson(team: string): Promise<TeamJson>;
   deliveryStatus(client: string, project: string): Promise<{ mode: string }>;
-  doctorStatus(team: string, client: string, project: string): Promise<DoctorStatus>;
+  doctorStatus(
+    team: string,
+    client: string,
+    project: string,
+  ): Promise<DoctorStatus>;
   leave(team: string, address: string): Promise<void>;
 }
 
@@ -91,12 +95,16 @@ export class AgmsgCli implements AgmsgCliPort {
 
   constructor(options: AgmsgCliOptions = {}) {
     this.scriptsDir =
-      options.scriptsDir ?? joinPath(homedir(), ".agents", "skills", "agmsg", "scripts");
+      options.scriptsDir ??
+      joinPath(homedir(), ".agents", "skills", "agmsg", "scripts");
     this.runner = options.runner ?? execFileRunner;
     this.timeoutMs = options.timeoutMs ?? 10_000;
   }
 
-  private async exec(script: string, args: readonly string[]): Promise<ExecResult> {
+  private async exec(
+    script: string,
+    args: readonly string[],
+  ): Promise<ExecResult> {
     try {
       return await this.runner(joinPath(this.scriptsDir, script), args, {
         timeoutMs: this.timeoutMs,
@@ -175,9 +183,14 @@ export class AgmsgCli implements AgmsgCliPort {
     }
   }
 
-  async deliveryStatus(client: string, project: string): Promise<{ mode: string }> {
+  async deliveryStatus(
+    client: string,
+    project: string,
+  ): Promise<{ mode: string }> {
     const result = await this.exec("delivery.sh", ["status", client, project]);
-    const match = /(?:mode|delivery)[ \t]*[:=][ \t]*([a-z]+)/i.exec(result.stdout);
+    const match = /(?:mode|delivery)[ \t]*[:=][ \t]*([a-z]+)/i.exec(
+      result.stdout,
+    );
     return { mode: match?.[1]?.toLowerCase() ?? "unknown" };
   }
 
@@ -202,7 +215,8 @@ export class AgmsgCli implements AgmsgCliPort {
         `agmsg doctor failed: ${result.stderr.trim()}`,
       );
     }
-    const mode = /^mode:[ \t]*([a-z]+)/im.exec(result.stdout)?.[1]?.toLowerCase() ??
+    const mode =
+      /^mode:[ \t]*([a-z]+)/im.exec(result.stdout)?.[1]?.toLowerCase() ??
       "unknown";
     const locks: Record<string, string> = {};
     for (const line of result.stdout.split(/\r?\n/)) {

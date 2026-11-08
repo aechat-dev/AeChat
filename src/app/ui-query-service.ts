@@ -1,12 +1,5 @@
-import type { ReadOnlyRuntime } from "./read-only-runtime.js";
-import {
-  AuditQueryService,
-  parseEventData,
-  type AuditLogEntry,
-} from "../core/services/audit-query.js";
-import type { RequestRecord, RequestStatus } from "../core/store/requests.js";
-import type { MessageRecord, ThreadRecord } from "../core/store/messages.js";
 import type {
+  SessionView,
   ThreadSummary,
   UiAuditEvent,
   UiCounts,
@@ -16,8 +9,15 @@ import type {
   UiMessagePage,
   UiSnapshot,
 } from "../contracts/ui.js";
-import type { SessionView } from "../contracts/ui.js";
 import { AechatError } from "../core/errors.js";
+import {
+  type AuditLogEntry,
+  AuditQueryService,
+  parseEventData,
+} from "../core/services/audit-query.js";
+import type { MessageRecord, ThreadRecord } from "../core/store/messages.js";
+import type { RequestRecord, RequestStatus } from "../core/store/requests.js";
+import type { ReadOnlyRuntime } from "./read-only-runtime.js";
 
 export interface UiMessageInput {
   sessionId: string;
@@ -42,13 +42,18 @@ function preview(body: string): string {
     : `${chars.slice(0, PREVIEW_LIMIT - 1).join("")}…`;
 }
 
-function parseCursor(before: string | undefined): { createdAt: string; messageId: string } | undefined {
+function parseCursor(
+  before: string | undefined,
+): { createdAt: string; messageId: string } | undefined {
   if (before === undefined) {
     return undefined;
   }
   const separator = before.lastIndexOf("|");
   if (separator <= 0 || separator === before.length - 1) {
-    throw new AechatError("invalid_input", "before cursor must be <created_at>|<message_id>");
+    throw new AechatError(
+      "invalid_input",
+      "before cursor must be <created_at>|<message_id>",
+    );
   }
   return {
     createdAt: before.slice(0, separator),
@@ -153,7 +158,11 @@ function effectiveRequest(
     request.deadline !== null &&
     request.deadline <= now
   ) {
-    return { status: "expired", closeReason: "deadline", deadline: request.deadline };
+    return {
+      status: "expired",
+      closeReason: "deadline",
+      deadline: request.deadline,
+    };
   }
   return {
     status: request.status,
@@ -181,7 +190,9 @@ export class UiQueryService {
     // Capture the cursor before reading data. Events committed while the
     // snapshot is assembled are then replayed instead of being skipped.
     const eventSeq = this.runtime.events.latestSeq();
-    const sessions = await this.runtime.sessionQuery.list({ includeLeft: true });
+    const sessions = await this.runtime.sessionQuery.list({
+      includeLeft: true,
+    });
     const threads = this.runtime.messages
       .listThreads(this.runtime.now())
       .map(threadSummary);
@@ -215,7 +226,10 @@ export class UiQueryService {
         );
       }
       if (input.counterpartId === input.sessionId) {
-        throw new AechatError("invalid_input", "counterpart must differ from session");
+        throw new AechatError(
+          "invalid_input",
+          "counterpart must differ from session",
+        );
       }
     }
     const limit = input.limit ?? MESSAGE_LIMIT_DEFAULT;
@@ -238,7 +252,10 @@ export class UiQueryService {
     const page = hasMore ? records.slice(0, limit) : records;
     return {
       messages: page.map((message) => this.message(message, input.sessionId)),
-      next_before: hasMore && page.length > 0 ? cursorOf(page[page.length - 1] as MessageRecord) : null,
+      next_before:
+        hasMore && page.length > 0
+          ? cursorOf(page[page.length - 1] as MessageRecord)
+          : null,
     };
   }
 
@@ -287,7 +304,10 @@ export class UiQueryService {
     const requestId = record.requestId ?? record.messageId;
     const request =
       record.kind === "request" || record.kind === "reply"
-        ? effectiveRequest(this.runtime.requests.get(requestId), this.runtime.now())
+        ? effectiveRequest(
+            this.runtime.requests.get(requestId),
+            this.runtime.now(),
+          )
         : { status: null, closeReason: null, deadline: null };
     return {
       message_id: record.messageId,

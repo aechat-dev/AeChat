@@ -21,7 +21,8 @@ struct InspectorView: View {
                 ContentUnavailableView(
                     "Nothing selected",
                     systemImage: "sidebar.right",
-                    description: Text("Select a message to inspect delivery, request and audit state.")
+                    description: Text(
+                        "Select a message to inspect delivery, request and audit state.")
                 )
             }
         }

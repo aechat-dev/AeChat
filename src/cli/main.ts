@@ -1,34 +1,33 @@
 #!/usr/bin/env node
 import { realpathSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-
-import { createRuntime } from "../app/runtime.js";
 import { createReadOnlyRuntime } from "../app/read-only-runtime.js";
+import { createRuntime } from "../app/runtime.js";
 import { UiQueryService } from "../app/ui-query-service.js";
+import { AechatError } from "../core/errors.js";
 import { ackCommand } from "./commands/ack.js";
 import { cancelCommand } from "./commands/cancel.js";
 import { confirmCommand } from "./commands/confirm.js";
 import { doctorCommand } from "./commands/doctor.js";
-import { historyCommand } from "./commands/history.js";
-import { logCommand } from "./commands/log.js";
 import { heartbeatCommand } from "./commands/heartbeat.js";
+import { historyCommand } from "./commands/history.js";
 import { inboxCommand } from "./commands/inbox.js";
 import { leaveCommand } from "./commands/leave.js";
 import { listCommand } from "./commands/list.js";
+import { logCommand } from "./commands/log.js";
 import { registerCommand } from "./commands/register.js";
-import { resumeCommand } from "./commands/resume.js";
 import { replyCommand } from "./commands/reply.js";
+import { resumeCommand } from "./commands/resume.js";
 import { retryCommand } from "./commands/retry.js";
 import { sendCommand } from "./commands/send.js";
 import { showCommand } from "./commands/show.js";
-import { waitCommand } from "./commands/wait.js";
-import { whoamiCommand } from "./commands/whoami.js";
 import { uiDoctorCommand } from "./commands/ui-doctor.js";
 import { uiEventsCommand } from "./commands/ui-events.js";
 import { uiLogCommand } from "./commands/ui-log.js";
 import { uiMessagesCommand } from "./commands/ui-messages.js";
 import { uiSnapshotCommand } from "./commands/ui-snapshot.js";
-import { AechatError } from "../core/errors.js";
+import { waitCommand } from "./commands/wait.js";
+import { whoamiCommand } from "./commands/whoami.js";
 import { errorEnvelope, isCommandResult, render } from "./output.js";
 
 const UI_COMMANDS = new Set([
@@ -95,7 +94,6 @@ Commands:
 All identity-related commands require an explicit session.
 `;
 
-
 /**
  * CLI entry point. Returns the process exit code instead of calling
  * `process.exit`, so tests can invoke it without terminating the runner.
@@ -135,7 +133,10 @@ export async function main(argv: readonly string[]): Promise<number> {
             data = await uiDoctorCommand(rest, uiCtx);
             break;
           default:
-            throw new AechatError("internal", `unhandled ui command: ${command}`);
+            throw new AechatError(
+              "internal",
+              `unhandled ui command: ${command}`,
+            );
         }
         render(data);
         return isCommandResult(data) ? (data.exitCode ?? 0) : 0;
@@ -214,7 +215,10 @@ export async function main(argv: readonly string[]): Promise<number> {
       errorEnvelope(error.code, error.message, error.details);
       return error.exitCode;
     }
-    errorEnvelope("internal", error instanceof Error ? error.message : String(error));
+    errorEnvelope(
+      "internal",
+      error instanceof Error ? error.message : String(error),
+    );
     return 1;
   }
 }

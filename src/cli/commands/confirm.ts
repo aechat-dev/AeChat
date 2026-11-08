@@ -1,5 +1,5 @@
-import type { CommandContext } from "./context.js";
 import { parseArgs, requiredValue } from "../args.js";
+import type { CommandContext } from "./context.js";
 
 export async function confirmCommand(
   argv: readonly string[],

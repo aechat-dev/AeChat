@@ -1,18 +1,18 @@
+import type { SessionView } from "../contracts/ui.js";
+import type { CapabilityService } from "../core/services/capability-service.js";
+import { adapterBinding } from "../core/services/capability-service.js";
 import type { SessionListEntry } from "../core/services/session-service.js";
 import {
   DEFAULT_TTL,
   deriveBoundState,
   deriveStatus,
 } from "../core/services/session-status.js";
-import { adapterBinding } from "../core/services/capability-service.js";
-import type { CapabilityService } from "../core/services/capability-service.js";
-import type { TransportAdapter } from "../core/transport/adapter.js";
-import type { TransportState } from "../core/types.js";
-import type { SessionView } from "../contracts/ui.js";
 import type {
   SessionRepository,
   TransportBindingRepository,
 } from "../core/store/sessions.js";
+import type { TransportAdapter } from "../core/transport/adapter.js";
+import type { TransportState } from "../core/types.js";
 
 export interface CapabilityQuery {
   reportForSession(
@@ -52,10 +52,13 @@ export class SessionQueryService {
   }
 
   list(opts: { includeLeft?: boolean } = {}): Promise<SessionView[]> {
-    const entries: SessionListEntry[] = this.sessions.list(opts).map((session) => ({
-      ...session,
-      transport: this.bindings.listForSession(session.sessionId).at(-1) ?? null,
-    }));
+    const entries: SessionListEntry[] = this.sessions
+      .list(opts)
+      .map((session) => ({
+        ...session,
+        transport:
+          this.bindings.listForSession(session.sessionId).at(-1) ?? null,
+      }));
     return Promise.all(entries.map((entry) => this.view(entry)));
   }
 

@@ -3,11 +3,13 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { afterEach, describe, expect, it } from "vitest";
-
-import { buildErrorEnvelope, buildSuccessEnvelope } from "../../src/contracts/envelope.js";
-import { listCommand } from "../../src/cli/commands/list.js";
 import { createReadOnlyRuntime } from "../../src/app/read-only-runtime.js";
 import { createRuntime } from "../../src/app/runtime.js";
+import { listCommand } from "../../src/cli/commands/list.js";
+import {
+  buildErrorEnvelope,
+  buildSuccessEnvelope,
+} from "../../src/contracts/envelope.js";
 import { FakeTransportAdapter } from "../../src/core/transport/fake.js";
 
 const dirs: string[] = [];
@@ -22,7 +24,11 @@ afterEach(() => {
   }
 });
 
-function setup(): { home: string; dbPath: string; runtime: ReturnType<typeof createRuntime> } {
+function setup(): {
+  home: string;
+  dbPath: string;
+  runtime: ReturnType<typeof createRuntime>;
+} {
   const home = mkdtempSync(join(tmpdir(), "aechat-contracts-"));
   dirs.push(home);
   const dbPath = join(home, "aechat.db");
@@ -109,9 +115,15 @@ describe("envelope contract", () => {
       error: { code: "invalid_input", message: "bad" },
       meta: { schema: 1 },
     });
-    expect(buildErrorEnvelope("invalid_input", "bad", { field: "name" })).toEqual({
+    expect(
+      buildErrorEnvelope("invalid_input", "bad", { field: "name" }),
+    ).toEqual({
       ok: false,
-      error: { code: "invalid_input", message: "bad", details: { field: "name" } },
+      error: {
+        code: "invalid_input",
+        message: "bad",
+        details: { field: "name" },
+      },
       meta: { schema: 1 },
     });
   });

@@ -1,16 +1,15 @@
-import { mkdtempSync, mkdirSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { afterEach, describe, expect, it, vi } from "vitest";
-
+import { SessionQueryService } from "../../src/app/session-query.js";
 import type { CommandContext } from "../../src/cli/commands/context.js";
 import { doctorCommand } from "../../src/cli/commands/doctor.js";
 import { listCommand } from "../../src/cli/commands/list.js";
-import { SessionQueryService } from "../../src/app/session-query.js";
+import { AuditService } from "../../src/core/services/audit-service.js";
 import { CapabilityService } from "../../src/core/services/capability-service.js";
 import { DeliveryService } from "../../src/core/services/delivery-service.js";
-import { AuditService } from "../../src/core/services/audit-service.js";
 import { RequestService } from "../../src/core/services/request-service.js";
 import { ResumeService } from "../../src/core/services/resume-service.js";
 import { SessionService } from "../../src/core/services/session-service.js";
@@ -22,16 +21,16 @@ import {
 } from "../../src/core/store/messages.js";
 import { ProbeRepository } from "../../src/core/store/probes.js";
 import { RequestRepository } from "../../src/core/store/requests.js";
+import { migrate } from "../../src/core/store/schema.js";
 import {
   SessionRepository,
   TransportBindingRepository,
 } from "../../src/core/store/sessions.js";
-import { migrate } from "../../src/core/store/schema.js";
-import { FakeTransportAdapter } from "../../src/core/transport/fake.js";
 import type {
   TransportBinding,
   TransportStatus,
 } from "../../src/core/transport/adapter.js";
+import { FakeTransportAdapter } from "../../src/core/transport/fake.js";
 
 const databases: Array<{ close(): void }> = [];
 const tempDirs: string[] = [];
@@ -203,7 +202,9 @@ describe("doctor output", () => {
         transport: { name: "fake" },
         host_hook: { configured: expect.any(Array) },
       });
-      expect((data["transport"] as { bindings: unknown[] }).bindings).toHaveLength(1);
+      expect(
+        (data["transport"] as { bindings: unknown[] }).bindings,
+      ).toHaveLength(1);
     } finally {
       if (previousHome === undefined) {
         delete process.env["AECHAT_HOME"];
@@ -261,7 +262,9 @@ describe("capability matrix", () => {
 
     const data = await listCommand(["--json"], ctx);
     const entries = data["sessions"] as Array<Record<string, unknown>>;
-    const byId = Object.fromEntries(entries.map((entry) => [entry["session_id"], entry]));
+    const byId = Object.fromEntries(
+      entries.map((entry) => [entry["session_id"], entry]),
+    );
 
     expect(byId["running"]?.["status"]).toBe("online");
     expect(byId["running"]?.["capabilities"]).toMatchObject({
@@ -269,7 +272,11 @@ describe("capability matrix", () => {
     });
     expect(byId["idle"]?.["capabilities"]).toMatchObject({
       wakeup_level: "L3",
-      available: { notification_receive: true, busy_receive: true, idle_wakeup: true },
+      available: {
+        notification_receive: true,
+        busy_receive: true,
+        idle_wakeup: true,
+      },
     });
     expect(byId["offline"]?.["status"]).toBe("offline");
     expect(byId["offline"]?.["capabilities"]).toMatchObject({

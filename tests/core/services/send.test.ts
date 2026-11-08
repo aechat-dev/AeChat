@@ -16,7 +16,9 @@ import { FakeTransportAdapter } from "../../../src/core/transport/fake.js";
 
 const databases: Array<{ close(): void }> = [];
 
-function setup(options: ConstructorParameters<typeof FakeTransportAdapter>[0] = {}) {
+function setup(
+  options: ConstructorParameters<typeof FakeTransportAdapter>[0] = {},
+) {
   const db = openDatabase(":memory:");
   databases.push(db);
   migrate(db);
@@ -173,7 +175,10 @@ describe("DeliveryService.send", () => {
     const [item] = await service.inbox({ sessionId: "to-session", limit: 1 });
     expect(item?.deliveryToken).toBeTypeOf("string");
     expect(
-      service.ack({ sessionId: "to-session", token: item?.deliveryToken as string }),
+      service.ack({
+        sessionId: "to-session",
+        token: item?.deliveryToken as string,
+      }),
     ).toBe(true);
 
     const again = await service.send(input);

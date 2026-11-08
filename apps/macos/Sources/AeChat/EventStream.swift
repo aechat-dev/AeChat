@@ -31,7 +31,8 @@ final class EventStream {
             var backoffSeconds: UInt64 = 2
             while !Task.isCancelled {
                 guard let self, generation == self.generation,
-                      let client = self.client, let onLine = self.onLine else {
+                    let client = self.client, let onLine = self.onLine
+                else {
                     return
                 }
                 self.onConnection?(true)

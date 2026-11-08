@@ -185,9 +185,12 @@ export class AgmsgAdapter implements TransportAdapter {
           ? binding.evidence["project"]
           : "";
       const doctor = await this.cli.doctorStatus(teamName, client, project);
-      const lock = parseLockState(doctor.locks[`${teamName}/${binding.address}`]);
+      const lock = parseLockState(
+        doctor.locks[`${teamName}/${binding.address}`],
+      );
       return {
-        state: lock === "alive" ? "live" : lock === "stale" ? "dead" : "unknown",
+        state:
+          lock === "alive" ? "live" : lock === "stale" ? "dead" : "unknown",
         at: new Date().toISOString(),
         evidence: { roster: true, lock },
       };

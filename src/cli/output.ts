@@ -1,9 +1,9 @@
-import { AechatError, exitCodeFor, type ErrorCode } from "../core/errors.js";
 import {
   buildErrorEnvelope,
   buildSuccessEnvelope,
   SCHEMA_VERSION,
 } from "../contracts/envelope.js";
+import { AechatError, type ErrorCode, exitCodeFor } from "../core/errors.js";
 
 export { SCHEMA_VERSION };
 
@@ -52,14 +52,20 @@ export function errorEnvelope(
   details?: unknown,
 ): void {
   process.exitCode = exitCodeFor(code);
-  process.stderr.write(`${JSON.stringify(buildErrorEnvelope(code, message, details))}\n`);
+  process.stderr.write(
+    `${JSON.stringify(buildErrorEnvelope(code, message, details))}\n`,
+  );
 }
 
 /**
  * Write a failure envelope, record the exit code, and throw the typed error.
  * Throwing keeps `fail` usable from any layer and `never`-typed.
  */
-export function fail(code: ErrorCode, message: string, details?: unknown): never {
+export function fail(
+  code: ErrorCode,
+  message: string,
+  details?: unknown,
+): never {
   errorEnvelope(code, message, details);
   throw new AechatError(code, message, details);
 }

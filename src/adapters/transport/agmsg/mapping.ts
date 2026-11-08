@@ -49,9 +49,11 @@ export function hasAddress(team: TeamJson, address: string): boolean {
     return team.some((row) => isRecord(row) && row["member"] === address);
   }
   const agents = team.agents;
-  return isRecord(agents) && Object.prototype.hasOwnProperty.call(agents, address);
+  return isRecord(agents) && Object.hasOwn(agents, address);
 }
 
 export function bindDirectiveFor(client: string, address: string): string {
-  return client === "codex" ? `$agmsg actas ${address}` : `/agmsg actas ${address}`;
+  return client === "codex"
+    ? `$agmsg actas ${address}`
+    : `/agmsg actas ${address}`;
 }

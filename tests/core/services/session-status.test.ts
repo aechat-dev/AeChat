@@ -58,7 +58,10 @@ describe("deriveStatus", () => {
       now: NOW,
       ttl: DEFAULT_TTL,
     });
-    expect(offline).toMatchObject({ status: "offline", evidence: "transport_dead" });
+    expect(offline).toMatchObject({
+      status: "offline",
+      evidence: "transport_dead",
+    });
   });
 
   it("uses recent CLI evidence when transport is not live", () => {

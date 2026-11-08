@@ -73,7 +73,9 @@ struct RootView: View {
         .task {
             await state.refresh()
         }
-        .onReceive(NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)) { _ in
+        .onReceive(
+            NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)
+        ) { _ in
             state.stopStream()
         }
         .overlay(alignment: .bottom) {

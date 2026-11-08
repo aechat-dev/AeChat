@@ -1,11 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
-
+import { AgmsgAdapter } from "../../../src/adapters/transport/agmsg/agmsg-adapter.js";
 import {
   AgmsgCli,
   type AgmsgCliPort,
   type CommandRunner,
 } from "../../../src/adapters/transport/agmsg/agmsg-cli.js";
-import { AgmsgAdapter } from "../../../src/adapters/transport/agmsg/agmsg-adapter.js";
 import type { SessionRef } from "../../../src/core/transport/adapter.js";
 
 const SESSION: SessionRef = {
@@ -219,7 +218,8 @@ describe("AgmsgAdapter", () => {
         "[AeChat] msg=msg-1 session=target-session " +
         "action=aechat inbox --session target-session",
     });
-    const call = (cli.notify as ReturnType<typeof vi.fn>).mock.calls[0]?.[0] as {
+    const call = (cli.notify as ReturnType<typeof vi.fn>).mock
+      .calls[0]?.[0] as {
       text: string;
     };
     expect(call.text).not.toContain("dev");

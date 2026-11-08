@@ -11,11 +11,13 @@ func check(_ condition: @autoclosure () -> Bool, _ message: String) {
 }
 
 func fixtureData() -> Data {
-    guard let url = Bundle.module.url(
-        forResource: "snapshot",
-        withExtension: "json",
-        subdirectory: "Fixtures"
-    ) else {
+    guard
+        let url = Bundle.module.url(
+            forResource: "snapshot",
+            withExtension: "json",
+            subdirectory: "Fixtures"
+        )
+    else {
         FileHandle.standardError.write(Data("FAIL: snapshot fixture missing\n".utf8))
         exit(1)
     }
@@ -59,8 +61,8 @@ func testSnapshot() throws {
 
 func testErrorEnvelope() throws {
     let json = """
-    {"ok":false,"error":{"code":"invalid_input","message":"missing --session"},"meta":{"schema":1}}
-    """
+        {"ok":false,"error":{"code":"invalid_input","message":"missing --session"},"meta":{"schema":1}}
+        """
     let envelope = try AeChatClient.decoder().decode(
         APIEnvelope<UiSnapshot>.self,
         from: Data(json.utf8)
@@ -71,46 +73,58 @@ func testErrorEnvelope() throws {
 }
 
 func testEventLines() throws {
-    let event = try AeChatClient.decodeLine(Data("""
-    {"kind":"event","seq":3,"event":"send","ts":"2026-11-08T00:00:00.000Z","level":"info","session_id":"s-a","message_id":"m-1","delivery_id":"d-1","request_id":null,"data":{"kind":"notify"}}
-    """.utf8))
+    let event = try AeChatClient.decodeLine(
+        Data(
+            """
+            {"kind":"event","seq":3,"event":"send","ts":"2026-11-08T00:00:00.000Z","level":"info","session_id":"s-a","message_id":"m-1","delivery_id":"d-1","request_id":null,"data":{"kind":"notify"}}
+            """.utf8))
     check(event.kind == "event", "event kind")
     check(event.seq == 3, "event seq")
     check(event.event == "send", "event name")
     check(event.sessionId == "s-a", "event session")
     check(event.deliveryId == "d-1", "event delivery")
 
-    let tick = try AeChatClient.decodeLine(Data("""
-    {"kind":"snapshot","generated_at":"2026-11-08T00:00:00.000Z"}
-    """.utf8))
+    let tick = try AeChatClient.decodeLine(
+        Data(
+            """
+            {"kind":"snapshot","generated_at":"2026-11-08T00:00:00.000Z"}
+            """.utf8))
     check(tick.kind == "snapshot", "tick kind")
     check(tick.generatedAt == "2026-11-08T00:00:00.000Z", "tick timestamp")
 }
 
 func testMessageLogDoctor() throws {
-    let page = try AeChatClient.decode(Data("""
-    {"ok":true,"data":{"messages":[{"message_id":"m-1","kind":"request","direction":"out","from_session":"a","to_session":"b","request_id":null,"reply_to":null,"body":"hi","agent_origin":true,"not_a_user_instruction":true,"created_at":"2026-11-08T00:00:00.000Z","expires_at":null,"delivery_status":"notified","request_status":"expired","request_deadline":"2026-11-07T23:00:00.000Z","request_close_reason":"deadline"}],"next_before":null},"meta":{"schema":1}}
-    """.utf8), as: UiMessagePage.self)
+    let page = try AeChatClient.decode(
+        Data(
+            """
+            {"ok":true,"data":{"messages":[{"message_id":"m-1","kind":"request","direction":"out","from_session":"a","to_session":"b","request_id":null,"reply_to":null,"body":"hi","agent_origin":true,"not_a_user_instruction":true,"created_at":"2026-11-08T00:00:00.000Z","expires_at":null,"delivery_status":"notified","request_status":"expired","request_deadline":"2026-11-07T23:00:00.000Z","request_close_reason":"deadline"}],"next_before":null},"meta":{"schema":1}}
+            """.utf8), as: UiMessagePage.self)
     check(page.messages.first?.requestStatus == "expired", "message request status")
     check(page.messages.first?.requestCloseReason == "deadline", "message close reason")
     check(page.nextBefore == nil, "next cursor")
 
-    let replies = try AeChatClient.decode(Data("""
-    {"ok":true,"data":{"messages":[{"message_id":"m-2","kind":"reply","direction":"in","from_session":"b","to_session":"a","request_id":"m-1","reply_to":"m-1","body":"done","agent_origin":true,"not_a_user_instruction":true,"created_at":"2026-11-08T00:00:01.000Z","expires_at":null,"delivery_status":"acked","request_status":"replied","request_deadline":null,"request_close_reason":"replied"}],"next_before":"cursor"},"meta":{"schema":1}}
-    """.utf8), as: UiMessagePage.self)
+    let replies = try AeChatClient.decode(
+        Data(
+            """
+            {"ok":true,"data":{"messages":[{"message_id":"m-2","kind":"reply","direction":"in","from_session":"b","to_session":"a","request_id":"m-1","reply_to":"m-1","body":"done","agent_origin":true,"not_a_user_instruction":true,"created_at":"2026-11-08T00:00:01.000Z","expires_at":null,"delivery_status":"acked","request_status":"replied","request_deadline":null,"request_close_reason":"replied"}],"next_before":"cursor"},"meta":{"schema":1}}
+            """.utf8), as: UiMessagePage.self)
     check(replies.messages.first?.kind == "reply", "reply kind")
     check(replies.messages.first?.replyTo == "m-1", "reply parent")
     check(replies.messages.first?.deliveryStatus == "acked", "reply delivery")
     check(replies.nextBefore == "cursor", "reply cursor")
 
-    let log = try AeChatClient.decode(Data("""
-    {"ok":true,"data":{"message_id":"m-1","kind":"notify","from_session":"a","to_session":"b","request_id":null,"delivery_id":"d-1","delivery_status":"ack","attempts":1,"last_error":null,"request_status":null,"request_deadline":null,"request_close_reason":null,"reply_message_id":null,"chain":[{"event":"send","stage":"stored","ts":"2026-11-08T00:00:00.000Z","level":"info","session_id":"a","delivery_id":"d-1","request_id":null,"error_code":null,"error_detail":null}]},"meta":{"schema":1}}
-    """.utf8), as: UiLog.self)
+    let log = try AeChatClient.decode(
+        Data(
+            """
+            {"ok":true,"data":{"message_id":"m-1","kind":"notify","from_session":"a","to_session":"b","request_id":null,"delivery_id":"d-1","delivery_status":"ack","attempts":1,"last_error":null,"request_status":null,"request_deadline":null,"request_close_reason":null,"reply_message_id":null,"chain":[{"event":"send","stage":"stored","ts":"2026-11-08T00:00:00.000Z","level":"info","session_id":"a","delivery_id":"d-1","request_id":null,"error_code":null,"error_detail":null}]},"meta":{"schema":1}}
+            """.utf8), as: UiLog.self)
     check(log.chain.first?.stage == "stored", "audit chain stage")
 
-    let doctor = try AeChatClient.decode(Data("""
-    {"ok":true,"data":{"node":{"version":"v24.21.0","platform":"darwin","arch":"arm64"},"agmsg":{"checked":true,"version":"1.7.1","supported":true},"database":{"path":"/tmp/aechat.db","read_only":true,"schema_version":5,"quick_check":"ok","mode":"0600"},"logs":{"path":"/tmp/logs","exists":true,"writable":true,"mode":"0700"},"config":{"home":"/tmp","db_path":"/tmp/aechat.db","team":"aechat"},"transport":{"name":"agmsg","bindings":1},"host_hook":{"paths":["/tmp/settings.json"],"configured":[]}},"meta":{"schema":1}}
-    """.utf8), as: UiDoctor.self)
+    let doctor = try AeChatClient.decode(
+        Data(
+            """
+            {"ok":true,"data":{"node":{"version":"v24.21.0","platform":"darwin","arch":"arm64"},"agmsg":{"checked":true,"version":"1.7.1","supported":true},"database":{"path":"/tmp/aechat.db","read_only":true,"schema_version":5,"quick_check":"ok","mode":"0600"},"logs":{"path":"/tmp/logs","exists":true,"writable":true,"mode":"0700"},"config":{"home":"/tmp","db_path":"/tmp/aechat.db","team":"aechat"},"transport":{"name":"agmsg","bindings":1},"host_hook":{"paths":["/tmp/settings.json"],"configured":[]}},"meta":{"schema":1}}
+            """.utf8), as: UiDoctor.self)
     check(doctor.database.readOnly, "doctor read-only")
     check(doctor.database.schemaVersion == 5, "doctor schema")
     check(doctor.transport.name == "agmsg", "doctor transport")
@@ -214,7 +228,8 @@ func testNewestNodeWins() throws {
     defer { try? FileManager.default.removeItem(at: home) }
 
     for version in ["v9.11.2", "v24.21.0"] {
-        let directory = home
+        let directory =
+            home
             .appendingPathComponent(".local/share/fnm/node-versions")
             .appendingPathComponent(version)
             .appendingPathComponent("installation/bin")

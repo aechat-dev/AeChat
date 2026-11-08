@@ -1,8 +1,11 @@
 import { AechatError } from "../errors.js";
 import { redactErrorDetail } from "../log-redaction.js";
-import type { DeliveryRepository, MessageRepository } from "../store/messages.js";
-import type { RequestRepository } from "../store/requests.js";
 import type { EventRecord, EventRepository } from "../store/events.js";
+import type {
+  DeliveryRepository,
+  MessageRepository,
+} from "../store/messages.js";
+import type { RequestRepository } from "../store/requests.js";
 
 export interface AuditLogInput {
   messageId: string;
@@ -44,7 +47,9 @@ export interface AuditQueryDeps {
   events: EventRepository;
 }
 
-export function parseEventData(json: string | null): Record<string, unknown> | null {
+export function parseEventData(
+  json: string | null,
+): Record<string, unknown> | null {
   if (json === null) {
     return null;
   }

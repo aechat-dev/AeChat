@@ -2,7 +2,6 @@ import type { DatabaseSync } from "node:sqlite";
 
 import { AechatError } from "../errors.js";
 import { newId } from "../ids.js";
-import { nowIso } from "../time.js";
 import { withImmediate } from "../store/db.js";
 import type { EventRepository } from "../store/events.js";
 import type {
@@ -10,11 +9,9 @@ import type {
   MessageRecord,
   MessageRepository,
 } from "../store/messages.js";
-import type {
-  RequestRecord,
-  RequestRepository,
-} from "../store/requests.js";
-import { MAX_BODY_BYTES, type DeliveryService } from "./delivery-service.js";
+import type { RequestRecord, RequestRepository } from "../store/requests.js";
+import { nowIso } from "../time.js";
+import { type DeliveryService, MAX_BODY_BYTES } from "./delivery-service.js";
 
 export interface ReplyInput {
   sessionId: string;
@@ -59,9 +56,13 @@ function closedError(request: RequestRecord): AechatError {
       `request cancelled: ${request.requestId}`,
     );
   }
-  return new AechatError("request_closed", `request is not open: ${request.requestId}`, {
-    status: request.status,
-  });
+  return new AechatError(
+    "request_closed",
+    `request is not open: ${request.requestId}`,
+    {
+      status: request.status,
+    },
+  );
 }
 
 /**
@@ -193,7 +194,10 @@ export class RequestService {
     });
 
     if (outcome === undefined) {
-      throw new AechatError("internal", "reply transaction produced no outcome");
+      throw new AechatError(
+        "internal",
+        "reply transaction produced no outcome",
+      );
     }
     if (outcome.alreadyReplied) {
       return {
@@ -286,10 +290,7 @@ export class RequestService {
         }
         const reply = this.messages.get(request.replyMessageId);
         if (reply === undefined) {
-          throw new AechatError(
-            "internal",
-            "request reply message is missing",
-          );
+          throw new AechatError("internal", "request reply message is missing");
         }
         return { status: "replied", reply };
       }

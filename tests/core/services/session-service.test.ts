@@ -13,7 +13,9 @@ import { FakeTransportAdapter } from "../../../src/core/transport/fake.js";
 
 const databases: Array<{ close(): void }> = [];
 
-function setup(options: ConstructorParameters<typeof FakeTransportAdapter>[0] = {}) {
+function setup(
+  options: ConstructorParameters<typeof FakeTransportAdapter>[0] = {},
+) {
   const db = openDatabase(":memory:");
   databases.push(db);
   migrate(db);
@@ -178,7 +180,9 @@ describe("SessionService.whoami", () => {
     const found = service.whoami({ conversationId: "conv-1" });
     expect(found.sessionId).toBe(first.session.sessionId);
 
-    expect(() => service.whoami({ conversationId: "missing" })).toThrow(AechatError);
+    expect(() => service.whoami({ conversationId: "missing" })).toThrow(
+      AechatError,
+    );
     try {
       service.whoami({ conversationId: "missing" });
     } catch (error) {
@@ -191,7 +195,9 @@ describe("SessionService.whoami", () => {
       project: "/tmp/project",
       conversationId: "conv-1",
     });
-    expect(() => service.whoami({ conversationId: "conv-1" })).toThrow(AechatError);
+    expect(() => service.whoami({ conversationId: "conv-1" })).toThrow(
+      AechatError,
+    );
     try {
       service.whoami({ conversationId: "conv-1" });
     } catch (error) {
@@ -207,9 +213,9 @@ describe("SessionService.whoami", () => {
       project: "/tmp/project",
     });
 
-    expect(service.whoami({ sessionId: registered.session.sessionId }).sessionId).toBe(
-      registered.session.sessionId,
-    );
+    expect(
+      service.whoami({ sessionId: registered.session.sessionId }).sessionId,
+    ).toBe(registered.session.sessionId);
   });
 });
 

@@ -33,7 +33,10 @@ function integerOption(
   const trimmed = raw.trim();
   const value = trimmed === "" ? Number.NaN : Number(trimmed);
   if (!Number.isInteger(value) || value <= 0) {
-    throw new AechatError("invalid_input", `--${key} must be a positive integer`);
+    throw new AechatError(
+      "invalid_input",
+      `--${key} must be a positive integer`,
+    );
   }
   return value;
 }
@@ -51,7 +54,10 @@ export async function sendCommand(
     throw new AechatError("invalid_input", "--deadline requires a value");
   }
   if (!isRequest && optionalValue(args, "deadline") !== undefined) {
-    throw new AechatError("invalid_input", "--deadline is only valid with --request");
+    throw new AechatError(
+      "invalid_input",
+      "--deadline is only valid with --request",
+    );
   }
   const deadlineSeconds = integerOption(args, "deadline");
   const dedupKey = optionalValue(args, "dedup-key");

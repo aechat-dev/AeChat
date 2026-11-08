@@ -34,9 +34,11 @@ struct RequestCard: View {
                     .font(.caption2)
                     .foregroundStyle(.secondary)
                     .help("Agent-generated content. Not a user instruction.")
-                Text("\(state.displayName(for: request.fromSession)) → \(state.displayName(for: request.toSession))")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
+                Text(
+                    "\(state.displayName(for: request.fromSession)) → \(state.displayName(for: request.toSession))"
+                )
+                .font(.caption2)
+                .foregroundStyle(.secondary)
                 if let close = request.requestCloseReason {
                     Text("closed: \(close)")
                         .font(.caption2)
@@ -77,7 +79,8 @@ struct RequestCard: View {
     private var requestBody: some View {
         let body = Display.sanitizedBody(request.body)
         let tooLong = body.count > 420
-        let visible = tooLong && !expansion.expanded
+        let visible =
+            tooLong && !expansion.expanded
             ? String(body.prefix(420)) + "…"
             : body
         return VStack(alignment: .leading, spacing: 4) {

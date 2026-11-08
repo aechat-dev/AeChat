@@ -73,7 +73,11 @@ function violations(fromLayers: Layer[], forbidden: Layer[]): Violation[] {
       const target = normalize(join(dirname(file), specifier));
       const targetLayer = layerOf(target);
       if (forbidden.includes(targetLayer)) {
-        found.push({ file: relative(SRC, file), specifier, target: targetLayer });
+        found.push({
+          file: relative(SRC, file),
+          specifier,
+          target: targetLayer,
+        });
       }
     }
   }

@@ -73,7 +73,10 @@ export interface CapabilityEvidence {
  */
 export interface TransportAdapter {
   readonly name: string;
-  register(session: SessionRef, desiredAddress?: string): Promise<TransportBinding>;
+  register(
+    session: SessionRef,
+    desiredAddress?: string,
+  ): Promise<TransportBinding>;
   bind(
     session: SessionRef,
     binding: TransportBinding,

@@ -1,9 +1,4 @@
-import {
-  accessSync,
-  constants,
-  readFileSync,
-  statSync,
-} from "node:fs";
+import { accessSync, constants, readFileSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 

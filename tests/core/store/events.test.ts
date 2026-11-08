@@ -23,9 +23,18 @@ describe("event cursor", () => {
   it("keeps seq stable and monotonic across VACUUM", () => {
     const db = memoryDatabase();
     const events = new EventRepository(db);
-    const first = events.record({ event: "send", ts: "2026-11-07T00:00:00.000Z" });
-    const second = events.record({ event: "notify", ts: "2026-11-07T00:00:01.000Z" });
-    const third = events.record({ event: "ack", ts: "2026-11-07T00:00:02.000Z" });
+    const first = events.record({
+      event: "send",
+      ts: "2026-11-07T00:00:00.000Z",
+    });
+    const second = events.record({
+      event: "notify",
+      ts: "2026-11-07T00:00:01.000Z",
+    });
+    const third = events.record({
+      event: "ack",
+      ts: "2026-11-07T00:00:02.000Z",
+    });
 
     const before = events.listAfter(0);
     expect(before.map((record) => record.seq)).toEqual([1, 2, 3]);
@@ -84,7 +93,9 @@ describe("event cursor", () => {
     migrate(db);
 
     const records = new EventRepository(db).listAfter(0);
-    expect(records.map((record) => [record.seq, record.eventId, record.event])).toEqual([
+    expect(
+      records.map((record) => [record.seq, record.eventId, record.event]),
+    ).toEqual([
       [1, "event-1", "send"],
       [2, "event-2", "notify"],
     ]);

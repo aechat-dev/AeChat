@@ -1,7 +1,7 @@
 import { AechatError } from "../../core/errors.js";
 import { optionalValue, parseArgs, requiredValue } from "../args.js";
-import { formatInboxText } from "../message-format.js";
 import { inboxItemDto } from "../message-dto.js";
+import { formatInboxText } from "../message-format.js";
 import type { CommandResult } from "../output.js";
 import type { CommandContext } from "./context.js";
 
@@ -12,7 +12,10 @@ function limitFromArgs(args: ReturnType<typeof parseArgs>): number {
   }
   const limit = Number(raw);
   if (!Number.isInteger(limit) || limit <= 0 || limit > 100) {
-    throw new AechatError("invalid_input", "--limit must be an integer in 1..100");
+    throw new AechatError(
+      "invalid_input",
+      "--limit must be an integer in 1..100",
+    );
   }
   return limit;
 }

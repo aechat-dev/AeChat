@@ -33,8 +33,7 @@ function setup() {
   const events = new EventRepository(db);
   const transport = new FakeTransportAdapter();
   let tick = 0;
-  const now = () =>
-    `2026-11-07T00:00:${String(tick++).padStart(2, "0")}.000Z`;
+  const now = () => `2026-11-07T00:00:${String(tick++).padStart(2, "0")}.000Z`;
   const delivery = new DeliveryService({
     db,
     messages,
@@ -131,7 +130,13 @@ describe("AuditService.log", () => {
     const events = entry.chain.map((item) => item.stage);
 
     expect(events).toEqual(
-      expect.arrayContaining(["stored", "notified", "delivered", "acked", "replied"]),
+      expect.arrayContaining([
+        "stored",
+        "notified",
+        "delivered",
+        "acked",
+        "replied",
+      ]),
     );
     expect(events.filter((event) => event === "acked")).toHaveLength(1);
     expect(entry.requestStatus).toBe("replied");
@@ -225,7 +230,6 @@ describe("AuditService.log", () => {
     });
     deliveries.markNotifyFailed(
       sent.deliveryId,
-      "2026-11-07T00:00:00.000Z",
       `Authorization: Basic basic-secret ${homedir()}/private`,
     );
 
@@ -240,7 +244,8 @@ describe("AuditService.log", () => {
 
 describe("AuditService.history", () => {
   it("returns only messages sent or received by the requested session", async () => {
-    const { delivery, audit } = setup();    await delivery.send({
+    const { delivery, audit } = setup();
+    await delivery.send({
       fromSession: "a",
       toSession: "b",
       kind: "notify",

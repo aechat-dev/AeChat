@@ -56,7 +56,7 @@ Keep the following split when adding code:
   handling and no CLI formatting.
 - `src/adapters` — transport and host integration. New hosts are added as
   adapters; the core must not gain host-specific branches.
-- `src/app` — composition and query services.
+- `src/runtime` — composition and query services.
 - `src/contracts` — JSON DTOs and envelopes shared with the UI bridge.
 - `src/cli` — argument parsing and command wiring only.
 - `apps/macos` — SwiftUI read-only monitor. It may call only the `ui-*` bridge

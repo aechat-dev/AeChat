@@ -13,9 +13,9 @@ echo "==> Building CLI"
 pnpm --dir "$ROOT" build
 
 # tsc does not copy Markdown; ship the host skill templates explicitly.
-rm -rf "$CLI_DIST/skill"
-if [ -d "$ROOT/src/skill" ]; then
-  cp -R "$ROOT/src/skill" "$CLI_DIST/skill"
+rm -rf "$CLI_DIST/skills"
+if [ -d "$ROOT/skills" ]; then
+  cp -R "$ROOT/skills" "$CLI_DIST/skills"
 fi
 
 echo "==> Building Swift app ($CONFIG)"
@@ -31,16 +31,16 @@ chmod +x "$APP/Contents/MacOS/AeChat"
 # dist/cli/main.js keeps relative imports to ../core, so copy the JS tree but
 # never the app bundle itself (APP may live inside CLI_DIST).
 mkdir -p "$APP/Contents/Resources/cli"
-for entry in cli app core adapters contracts skill index.js index.d.ts index.js.map index.d.ts.map; do
+for entry in cli runtime core adapters contracts index.js index.d.ts index.js.map index.d.ts.map; do
   if [ -e "$CLI_DIST/$entry" ]; then
     cp -R "$CLI_DIST/$entry" "$APP/Contents/Resources/cli/"
   fi
 done
 chmod +x "$APP/Contents/Resources/cli/cli/main.js"
 
-if [ -d "$CLI_DIST/skill" ]; then
-  rm -rf "$APP/Contents/Resources/skill"
-  cp -R "$CLI_DIST/skill" "$APP/Contents/Resources/skill"
+if [ -d "$CLI_DIST/skills" ]; then
+  rm -rf "$APP/Contents/Resources/skills"
+  cp -R "$CLI_DIST/skills" "$APP/Contents/Resources/skills"
 fi
 
 ICON_SRC="$ROOT/docs/assets/icon.png"

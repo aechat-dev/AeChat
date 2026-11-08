@@ -1,5 +1,4 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { SessionQueryService } from "../../src/app/session-query.js";
 import { listCommand } from "../../src/cli/commands/list.js";
 import { registerCommand } from "../../src/cli/commands/register.js";
 import { whoamiCommand } from "../../src/cli/commands/whoami.js";
@@ -23,6 +22,7 @@ import {
   TransportBindingRepository,
 } from "../../src/core/store/sessions.js";
 import { FakeTransportAdapter } from "../../src/core/transport/fake.js";
+import { SessionQueryService } from "../../src/runtime/session-query.js";
 
 const databases: Array<{ close(): void }> = [];
 

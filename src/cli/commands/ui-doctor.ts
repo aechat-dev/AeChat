@@ -2,7 +2,7 @@ import { accessSync, constants, readFileSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
-import { resolvePaths } from "../../app/options.js";
+import { resolvePaths } from "../../runtime/options.js";
 import { parseArgs } from "../args.js";
 import type { UiCommandContext } from "./ui-context.js";
 

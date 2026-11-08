@@ -6,16 +6,16 @@ import { describe, expect, it } from "vitest";
 
 const SRC = fileURLToPath(new URL("../../src", import.meta.url));
 
-type Layer = "adapters" | "app" | "cli" | "contracts" | "core" | "other";
+type Layer = "adapters" | "cli" | "contracts" | "core" | "runtime" | "other";
 
 function layerOf(path: string): Layer {
   const first = relative(SRC, path).split(sep)[0];
   switch (first) {
     case "adapters":
-    case "app":
     case "cli":
     case "contracts":
     case "core":
+    case "runtime":
       return first;
     default:
       return "other";
@@ -85,20 +85,20 @@ function violations(fromLayers: Layer[], forbidden: Layer[]): Violation[] {
 }
 
 describe("import boundaries", () => {
-  it("core does not depend on cli, app or adapters", () => {
-    expect(violations(["core"], ["cli", "app", "adapters"])).toEqual([]);
+  it("core does not depend on cli, runtime or adapters", () => {
+    expect(violations(["core"], ["cli", "runtime", "adapters"])).toEqual([]);
   });
 
-  it("adapters do not depend on cli or app", () => {
-    expect(violations(["adapters"], ["cli", "app"])).toEqual([]);
+  it("adapters do not depend on cli or runtime", () => {
+    expect(violations(["adapters"], ["cli", "runtime"])).toEqual([]);
   });
 
-  it("contracts do not depend on cli or app", () => {
-    expect(violations(["contracts"], ["cli", "app"])).toEqual([]);
+  it("contracts do not depend on cli or runtime", () => {
+    expect(violations(["contracts"], ["cli", "runtime"])).toEqual([]);
   });
 
-  it("app does not depend on cli", () => {
-    expect(violations(["app"], ["cli"])).toEqual([]);
+  it("runtime does not depend on cli", () => {
+    expect(violations(["runtime"], ["cli"])).toEqual([]);
   });
 
   it("the library entry does not export the CLI entry point", () => {

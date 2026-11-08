@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 const root = fileURLToPath(new URL("../../", import.meta.url));
 
 function skill(host: "claude-code" | "codex"): string {
-  return readFileSync(`${root}src/skill/${host}/SKILL.md`, "utf8");
+  return readFileSync(`${root}skills/${host}/SKILL.md`, "utf8");
 }
 
 describe.each(["claude-code", "codex"] as const)("%s skill", (host) => {

@@ -37,14 +37,14 @@ Claude Code:
 
 ```bash
 mkdir -p ~/.claude/skills/aechat
-cp src/skill/claude-code/SKILL.md ~/.claude/skills/aechat/SKILL.md
+cp skills/claude-code/SKILL.md ~/.claude/skills/aechat/SKILL.md
 ```
 
 Codex:
 
 ```bash
 mkdir -p ~/.codex/skills/aechat
-cp src/skill/codex/SKILL.md ~/.codex/skills/aechat/SKILL.md
+cp skills/codex/SKILL.md ~/.codex/skills/aechat/SKILL.md
 ```
 
 The skill is instructions for the Agent, not an automatic permission grant.

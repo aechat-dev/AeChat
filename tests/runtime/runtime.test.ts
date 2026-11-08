@@ -3,9 +3,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { afterEach, describe, expect, it } from "vitest";
-
-import { createRuntime } from "../../src/app/runtime.js";
 import { FakeTransportAdapter } from "../../src/core/transport/fake.js";
+import { createRuntime } from "../../src/runtime/runtime.js";
 
 const dirs: string[] = [];
 

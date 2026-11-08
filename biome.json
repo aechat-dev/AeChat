@@ -48,7 +48,10 @@
   },
   "overrides": [
     {
-      "includes": ["src/app/ui-query-service.ts", "src/cli/message-format.ts"],
+      "includes": [
+        "src/runtime/ui-query-service.ts",
+        "src/cli/message-format.ts"
+      ],
       "linter": {
         "rules": {
           "suspicious": {

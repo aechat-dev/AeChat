@@ -1,4 +1,4 @@
-import type { AppRuntime } from "../../app/runtime.js";
+import type { AppRuntime } from "../../runtime/runtime.js";
 
 /**
  * The service subset a CLI command needs. This is a `Pick` of the single

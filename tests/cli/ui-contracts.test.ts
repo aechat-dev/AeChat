@@ -3,14 +3,14 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { afterEach, describe, expect, it } from "vitest";
-import { createReadOnlyRuntime } from "../../src/app/read-only-runtime.js";
-import { createRuntime } from "../../src/app/runtime.js";
 import { listCommand } from "../../src/cli/commands/list.js";
 import {
   buildErrorEnvelope,
   buildSuccessEnvelope,
 } from "../../src/contracts/envelope.js";
 import { FakeTransportAdapter } from "../../src/core/transport/fake.js";
+import { createReadOnlyRuntime } from "../../src/runtime/read-only-runtime.js";
+import { createRuntime } from "../../src/runtime/runtime.js";
 
 const dirs: string[] = [];
 const runtimes: Array<{ close(): void }> = [];

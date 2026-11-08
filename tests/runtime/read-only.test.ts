@@ -3,16 +3,12 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { afterEach, describe, expect, it } from "vitest";
-
-import { createReadOnlyRuntime } from "../../../src/app/read-only-runtime.js";
-import { createRuntime } from "../../../src/app/runtime.js";
-import {
-  openDatabase,
-  openReadOnlyDatabase,
-} from "../../../src/core/store/db.js";
-import { EventRepository } from "../../../src/core/store/events.js";
-import { migrate } from "../../../src/core/store/schema.js";
-import { FakeTransportAdapter } from "../../../src/core/transport/fake.js";
+import { openDatabase, openReadOnlyDatabase } from "../../src/core/store/db.js";
+import { EventRepository } from "../../src/core/store/events.js";
+import { migrate } from "../../src/core/store/schema.js";
+import { FakeTransportAdapter } from "../../src/core/transport/fake.js";
+import { createReadOnlyRuntime } from "../../src/runtime/read-only-runtime.js";
+import { createRuntime } from "../../src/runtime/runtime.js";
 
 const dirs: string[] = [];
 

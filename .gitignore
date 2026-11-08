@@ -1,5 +1,13 @@
 # 本地专用文件，不提交
 CLAUDE.md
+AGENTS.md
+
+# 内部工作文档，不发布
+.superpowers/
+docs/acceptance/
+docs/review/
+docs/spike/
+docs/superpowers/
 
 # macOS
 .DS_Store

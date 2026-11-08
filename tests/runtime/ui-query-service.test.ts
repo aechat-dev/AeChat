@@ -3,15 +3,14 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { afterEach, describe, expect, it } from "vitest";
-
+import { FakeTransportAdapter } from "../../src/core/transport/fake.js";
 import {
   createReadOnlyRuntime,
   type ReadOnlyRuntime,
-} from "../../src/app/read-only-runtime.js";
-import { createRuntime } from "../../src/app/runtime.js";
-import { uiEventStream } from "../../src/app/ui-event-stream.js";
-import { UiQueryService } from "../../src/app/ui-query-service.js";
-import { FakeTransportAdapter } from "../../src/core/transport/fake.js";
+} from "../../src/runtime/read-only-runtime.js";
+import { createRuntime } from "../../src/runtime/runtime.js";
+import { uiEventStream } from "../../src/runtime/ui-event-stream.js";
+import { UiQueryService } from "../../src/runtime/ui-query-service.js";
 
 const dirs: string[] = [];
 const runtimes: Array<{ close(): void }> = [];

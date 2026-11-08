@@ -3,7 +3,6 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { SessionQueryService } from "../../src/app/session-query.js";
 import type { CommandContext } from "../../src/cli/commands/context.js";
 import { doctorCommand } from "../../src/cli/commands/doctor.js";
 import { listCommand } from "../../src/cli/commands/list.js";
@@ -31,6 +30,7 @@ import type {
   TransportStatus,
 } from "../../src/core/transport/adapter.js";
 import { FakeTransportAdapter } from "../../src/core/transport/fake.js";
+import { SessionQueryService } from "../../src/runtime/session-query.js";
 
 const databases: Array<{ close(): void }> = [];
 const tempDirs: string[] = [];

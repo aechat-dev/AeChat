@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 import { realpathSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { createReadOnlyRuntime } from "../app/read-only-runtime.js";
-import { createRuntime } from "../app/runtime.js";
-import { UiQueryService } from "../app/ui-query-service.js";
 import { AechatError } from "../core/errors.js";
+import { createReadOnlyRuntime } from "../runtime/read-only-runtime.js";
+import { createRuntime } from "../runtime/runtime.js";
+import { UiQueryService } from "../runtime/ui-query-service.js";
 import { ackCommand } from "./commands/ack.js";
 import { cancelCommand } from "./commands/cancel.js";
 import { confirmCommand } from "./commands/confirm.js";

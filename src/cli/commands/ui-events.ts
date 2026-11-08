@@ -1,5 +1,5 @@
-import { uiEventStream } from "../../app/ui-event-stream.js";
 import { AechatError } from "../../core/errors.js";
+import { uiEventStream } from "../../runtime/ui-event-stream.js";
 import { parseArgs, requiredValue } from "../args.js";
 import type { UiCommandContext } from "./ui-context.js";
 

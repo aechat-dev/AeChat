@@ -3,12 +3,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { afterEach, describe, expect, it, vi } from "vitest";
-
-import { createRuntime } from "../../src/app/runtime.js";
 import { main } from "../../src/cli/main.js";
 import { openDatabase } from "../../src/core/store/db.js";
 import { EventRepository } from "../../src/core/store/events.js";
 import { FakeTransportAdapter } from "../../src/core/transport/fake.js";
+import { createRuntime } from "../../src/runtime/runtime.js";
 
 const dirs: string[] = [];
 const envKeys = ["AECHAT_HOME", "AECHAT_DB"] as const;

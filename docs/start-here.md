@@ -14,7 +14,7 @@ Read [README.md](../README.md) for the product model and
 ```text
 src/core        domain, state machines, SQLite persistence, audit
 src/adapters    transport and host integration (agmsg, skills)
-src/app         composition and read-only query services
+src/runtime     composition and read-only query services
 src/contracts   JSON DTOs and envelopes for the UI bridge
 src/cli         argument parsing and command wiring
 apps/macos      SwiftUI read-only monitor, consumes only ui-* commands
@@ -33,10 +33,10 @@ Two rules matter more than the rest:
 |---|---|
 | `src/core` | sessions, messages, deliveries, requests, audit, schema |
 | `src/adapters` | agmsg transport, host integration, fake transport |
-| `src/app` | runtime composition, UI query services, event stream |
+| `src/runtime` | runtime composition, UI query services, event stream |
 | `src/contracts` | UI bridge DTOs |
 | `src/cli` | `aechat` command surface |
-| `src/skill` | Claude Code and Codex skill templates |
+| `skills/` | Claude Code and Codex skill templates |
 | `apps/macos` | SwiftUI app and `AeChatChecks` |
 | `scripts` | build, packaging and test-audit scripts |
 | `docs` | install and contributor documentation |

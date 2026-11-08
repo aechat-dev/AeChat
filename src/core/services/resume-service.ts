@@ -69,7 +69,6 @@ function parseBindDirective(json: string | null): string {
 
 function inspectionAllowsResume(
   status: TransportStatus,
-  session: SessionRecord,
   force: boolean,
 ): { allowed: boolean; forced: boolean; reason?: string } {
   if (status.state === "live") {
@@ -161,11 +160,7 @@ export class ResumeService {
         "session is still online; resume requires an offline or unknown old host",
       );
     }
-    const decision = inspectionAllowsResume(
-      inspected,
-      session,
-      input.force === true,
-    );
+    const decision = inspectionAllowsResume(inspected, input.force === true);
     if (!decision.allowed) {
       throw new AechatError(
         "resume_unsafe",

@@ -166,6 +166,11 @@ public struct UiLog: Decodable, Equatable {
 
 // MARK: - Events
 
+public struct UiEventData: Decodable, Equatable {
+    public let kind: String?
+    public let toSession: String?
+}
+
 public struct UiEventLine: Decodable, Equatable {
     public let kind: String
     public let seq: Int?
@@ -177,6 +182,7 @@ public struct UiEventLine: Decodable, Equatable {
     public let deliveryId: String?
     public let requestId: String?
     public let generatedAt: String?
+    public let data: UiEventData?
 }
 
 // MARK: - Doctor

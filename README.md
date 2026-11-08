@@ -1,72 +1,102 @@
 # AeChat
 
-Local-first session messaging for multiple AI Agent products on macOS.
+Local-first session messaging for AI agent hosts on macOS.
 
-AeChat treats one **conversation instance** as the communication unit, not a
-model name or client name. Each session gets a UUID, a duplicate-capable display
-name, and a private transport address. Messages, requests, replies, delivery
-state and audit events live in a local SQLite database; agmsg is used only as
-the delivery/wakeup transport.
+[![CI](https://github.com/aechat-dev/AeChat/actions/workflows/ci.yml/badge.svg)](https://github.com/aechat-dev/AeChat/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+![macOS 14+](https://img.shields.io/badge/platform-macOS%2014%2B-lightgrey)
 
-AeChat is pre-1.0. The CLI, the local store and the adapter boundary are usable;
-host wakeup claims are limited to what has been verified in a real host. See
-[Capabilities and wakeup](#capabilities-and-wakeup) and
-[docs/install.md](docs/install.md) before relying on automatic processing.
+AeChat connects separate AI agent conversations on your Mac. Each conversation
+registers as its own session; messages, requests and replies are stored in local
+SQLite and delivered through [agmsg](https://github.com/agmsg). There is no
+server, account, or shared model context.
 
+## Features
+
+- **Explicit session identity.** Every conversation gets a UUID and a private
+  transport address. Duplicate display names are allowed; sessions are addressed
+  by ID, never inferred from a name.
+- **Requests and replies.** Correlated request/reply with deadlines, waiting,
+  cancellation and retry, not just fire-and-forget text.
+- **Durable and auditable.** The full stored → notified → delivered → acked →
+  replied chain is recorded locally and queryable with `aechat log`.
+- **Native monitor.** A read-only SwiftUI app shows sessions, chats, pending
+  requests and audit state without any send or acknowledge path.
 
 ## Requirements
 
-- macOS
-- Node.js >= 24 (`node:sqlite` is required)
+- macOS 14 or newer
+- Node.js 24 (`node:sqlite` is required)
 - pnpm 11
-- agmsg 1.7.1 on `PATH` for the agmsg transport
-
-Check the environment before registering:
-
-```bash
-aechat doctor --json
-```
+- agmsg 1.7.1 on `PATH`
 
 ## Install
 
 ```bash
+git clone https://github.com/aechat-dev/AeChat.git
+cd AeChat
 pnpm install
 pnpm build
 pnpm link --global
 aechat doctor --json
 ```
 
-`pnpm link --global` exposes the built `aechat` binary. Re-run `pnpm build`
-after pulling changes. The database defaults to `~/.aechat/aechat.db`
-(owner-only mode 0600). Override with `AECHAT_HOME` or `AECHAT_DB`.
+`doctor` reports the Node, agmsg, database and transport status without changing
+session state. The database defaults to `~/.aechat/aechat.db`; override it with
+`AECHAT_HOME` or `AECHAT_DB`.
+
+## Quick start
+
+Each host conversation registers separately. The command returns a `session_id`
+and a bind directive; run the directive inside that host conversation, then
+confirm from the shell.
+
+```bash
+# Planner conversation (Claude Code)
+aechat register --name planner --client claude-code --project "$PWD"
+#   run the returned bind_directive in Claude Code, then:
+aechat confirm --session "<planner_id>"
+
+# Worker conversation (Codex)
+aechat register --name worker --client codex --project "$PWD"
+aechat confirm --session "<worker_id>"
+```
+
+Send a request and answer it:
+
+```bash
+aechat send --session "<planner_id>" --to-session "<worker_id>" \
+  --request --deadline 300 --body "status?"
+
+# In the worker conversation
+aechat inbox --session "<worker_id>" --json
+aechat ack --session "<worker_id>" --delivery "<delivery_token>"
+aechat reply --session "<worker_id>" --request "<request_id>" --body "done"
+
+# Back in the planner conversation
+aechat wait --session "<planner_id>" --request "<request_id>" --timeout 300 --json
+```
+
+Discover sessions and their reported capabilities:
+
+```bash
+aechat list --json
+```
 
 ## Native app
-
-`apps/macos` contains the read-only SwiftUI monitor. It reads through the
-`ui-*` bridge commands only; it never sends, replies, acknowledges or claims
-deliveries.
 
 ```bash
 ./scripts/build-aechat-app.sh
 open dist/AeChat.app
 ```
 
-The bundle embeds the compiled CLI. The app finds it automatically, or use
-`AECHAT_BIN` / Settings → Choose aechat. The bundled CLI is a Node script, so a
-Node >= 24 install is required; the app looks at `AECHAT_NODE`, `PATH`, common
-locations, and fnm/nvm version directories (Finder does not load your shell
-profile).
+The bundle embeds the CLI. The app is read-only: it never sends, replies,
+acknowledges or claims deliveries. If the CLI is not found, use
+`AECHAT_BIN` or Settings → Choose aechat.
 
-Development checks use `AeChatChecks`, an executable target, because XCTest and
-Swift Testing are unavailable with Command Line Tools only:
+## Host skill
 
-```bash
-./scripts/check-macos.sh   # not `swift test`
-```
-
-## Agent skill
-
-Copy the template for the host into its skill directory:
+Copy the template into the host's skill directory:
 
 ```bash
 # Claude Code
@@ -78,116 +108,75 @@ mkdir -p ~/.codex/skills/aechat
 cp src/skill/codex/SKILL.md ~/.codex/skills/aechat/SKILL.md
 ```
 
-The template tells the Agent to register explicitly, prefer `--json`, ack every
-claimed delivery, and treat message bodies as agent-origin rather than user
-authorization.
+The skill tells the agent to register explicitly, prefer `--json`, acknowledge
+every claimed delivery, and treat message bodies as agent-origin data rather
+than user authorization.
 
-## Quick start
+## Commands
 
-Register each conversation separately. Display names may repeat; the returned
-`session_id` is the identity.
+| Command | Purpose |
+|---|---|
+| `register` / `confirm` | Create a session and confirm its transport binding |
+| `list` / `whoami` | Discover sessions and capabilities |
+| `send` | Send a notification or request |
+| `inbox` / `ack` | Read pending deliveries and acknowledge them |
+| `reply` | Answer a request |
+| `wait` | Block until a correlated reply arrives |
+| `heartbeat` | Keep a session marked online |
+| `cancel` / `retry` | Cancel a request or retry a delivery |
+| `resume` / `leave` | Rebind or retire a session |
+| `log` / `history` | Inspect one message's audit chain or a session's messages |
+| `doctor` | Check the local environment |
 
-```bash
-aechat register --name "planner" --client claude-code --project "$PWD"
-# Run the returned bind_directive inside that host conversation, then:
-aechat confirm --session "<session_id>"
+## FAQ
 
-aechat register --name "worker" --client codex --project "$PWD"
-```
+**Does AeChat replace agmsg?**
+No. agmsg carries notifications; AeChat owns session identity, message and
+request state, delivery tracking and the local audit trail.
 
-Discover live sessions and their honest capabilities:
+**Does it read my host chat history?**
+No. Only messages sent through AeChat are stored.
 
-```bash
-aechat list --json
-```
+**Which hosts are supported?**
+Skill templates are included for Claude Code and Codex. Transport binding is
+host-specific; see [docs/install.md](docs/install.md) for the current limits.
 
-Send to an explicit session. Do not infer a receiver from a display name.
+**Is there a server or account?**
+No. Sessions, messages and audit events stay in local SQLite.
 
-```bash
-aechat send --session "<from_id>" --to-session "<to_id>" --body "hello"
-aechat send --session "<from_id>" --to-session "<to_id>" \
-  --request --deadline 300 --body "status?"
-```
+## Status
 
-On the receiver:
-
-```bash
-aechat inbox --session "<to_id>" --json
-aechat ack --session "<to_id>" --delivery "<delivery_token>"
-aechat reply --session "<to_id>" --request "<request_id>" --body "done"
-```
-
-The sender waits for the correlated reply:
-
-```bash
-aechat wait --session "<from_id>" --request "<request_id>" --timeout 300 --json
-```
-
-`inbox --peek` does not claim a delivery and returns no usable token. Use
-`aechat log --message <id>` to inspect the stored → notified → delivered →
-acked → replied chain, and `aechat history --session <id>` for the messages
-sent or received by one session.
-
-## Lifecycle
-
-```bash
-aechat heartbeat --session "<id>"
-aechat heartbeat --session "<id>" --interval 30
-aechat cancel --session "<id>" --request "<request_id>"
-aechat retry --session "<id>" --message "<message_id>"
-aechat resume --session "<id>" [--force]
-aechat confirm --session "<id>" --resume
-aechat leave --session "<id>"
-```
-
-`resume` is explicit and two-phase, and is rejected while the old transport
-binding is still live. `leave` is terminal; rejoin with a new session.
-
-## Capabilities and wakeup
-
-`list --json` reports `capabilities.supported` and `capabilities.available`
-separately. `available` is false when the session is offline or the transport
-cannot deliver notifications. `busy_receive` and `idle_wakeup` stay `unknown`
-until a probe provides evidence.
-
-Verified by the Phase 0 spike: Claude Code turn delivery and idle wakeup within
-the Monitor lifetime. `busy_receive` remains unknown. Codex wakeup was not
-verified because its model usage was blocked; no Codex automatic wakeup is
-promised. See `docs/install.md` for the current limits.
+AeChat is pre-1.0. Automatic wakeup is host-dependent and only claimed where it
+has been observed: Claude Code idle wakeup was verified inside a Monitor window;
+`busy_receive` remains unknown, and Codex automatic wakeup has not been verified.
+See [docs/install.md](docs/install.md) before relying on automatic processing.
 
 ## Data and uninstall
 
-- Database: `~/.aechat/aechat.db` (0600)
-- Audit: `events` table; inspect with `aechat log`
-- Runtime files: `~/.aechat/run/`
-- Log directory: `~/.aechat/logs/` (JSONL mirroring is not implemented; the
-  SQLite events table is the audit source)
+- Database: `~/.aechat/aechat.db` (mode 0600)
+- Runtime heartbeat files: `~/.aechat/run/`
+- Audit: SQLite `events` table, read with `aechat log`
 
-Uninstall the binary with `pnpm unlink --global aechat`. Removing
-`~/.aechat` deletes all local sessions, messages and audit events; leave
-sessions first if the transport bindings should be released.
+```bash
+pnpm unlink --global aechat
+```
 
-## Scope
+Removing `~/.aechat` deletes all local sessions, messages and audit events.
+Leave sessions first if their transport bindings should be released.
 
-v1 is CLI + host skill. MCP is explicitly deferred and is not required for
-acceptance. The service does not read host chat history and does not provide
-`history --all` or team-wide message browsing. conversation ID capture from
-host hooks and a product probe command are not implemented; v1 reports
-`bound_scope=host_role` and leaves probe-derived wakeup levels at `unknown`
-until that evidence path exists.
+## Documentation
+
+- [Install and operate](docs/install.md)
+- [Start here](docs/start-here.md)
+- [Contributor verification](docs/contributor-verification.md)
+- [Changelog](CHANGELOG.md)
 
 ## Contributing
 
-New contributors start with [docs/start-here.md](docs/start-here.md). It maps
-the repository, lists the first commands to run, and explains what reviewers
-look for. [docs/contributor-verification.md](docs/contributor-verification.md)
-defines the evidence expected for each kind of change.
-
-Development setup, layering rules, test commands and commit conventions are in
-[CONTRIBUTING.md](CONTRIBUTING.md). Security issues must be reported privately
-per [SECURITY.md](SECURITY.md), not in a public issue.
+Development setup, layering rules and commit conventions are in
+[CONTRIBUTING.md](CONTRIBUTING.md). Security issues go through
+[SECURITY.md](SECURITY.md), not a public issue.
 
 ## License
 
 MIT — see [LICENSE](LICENSE).
-

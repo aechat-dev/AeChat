@@ -10,6 +10,11 @@ are assembled from the `Unreleased` section at tag time.
 
 ## [Unreleased]
 
+## [0.1.0-alpha.1] - 2026-11-08
+
+First installable alpha. The interface is pre-1.0 and may change between minor
+releases.
+
 ### Added
 
 - Session-scoped messaging CLI: registration, discovery, send, inbox, ack,

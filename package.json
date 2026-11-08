@@ -1,9 +1,29 @@
 {
   "name": "aechat",
-  "version": "0.0.0",
-  "private": true,
+  "version": "0.1.0-alpha.1",
   "type": "module",
   "description": "Local-first session messaging service for multiple AI agents",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/aechat-dev/AeChat.git"
+  },
+  "homepage": "https://github.com/aechat-dev/AeChat#readme",
+  "bugs": {
+    "url": "https://github.com/aechat-dev/AeChat/issues"
+  },
+  "keywords": [
+    "agents",
+    "claude-code",
+    "codex",
+    "messaging",
+    "sqlite"
+  ],
+  "files": [
+    "dist",
+    "skills",
+    "CHANGELOG.md"
+  ],
   "engines": {
     "node": ">=24.0.0"
   },
@@ -14,7 +34,8 @@
   "scripts": {
     "dev": "tsx watch src/cli/main.ts",
     "start": "node dist/cli/main.js",
-    "build": "tsc -p tsconfig.build.json && chmod +x dist/cli/main.js",
+    "clean": "rm -rf dist",
+    "build": "pnpm clean && tsc -p tsconfig.build.json && chmod +x dist/cli/main.js",
     "typecheck": "tsc --noEmit",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
@@ -25,7 +46,9 @@
     "test:audit": "node scripts/check-tests.mjs",
     "test:coverage": "vitest run --coverage",
     "check": "pnpm typecheck && pnpm lint && pnpm test:audit && pnpm test:coverage",
-    "e2e:local": "bash scripts/e2e-local.sh"
+    "e2e:local": "bash scripts/e2e-local.sh",
+    "prepack": "pnpm build",
+    "prepublishOnly": "pnpm check"
   },
   "devDependencies": {
     "@biomejs/biome": "2.6.6",

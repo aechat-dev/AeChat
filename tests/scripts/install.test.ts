@@ -128,6 +128,26 @@ describe("install script", () => {
     expect(result.stderr).toContain("must use HTTPS");
   });
 
+  it("rejects loopback-looking userinfo that resolves elsewhere", () => {
+    for (const base of [
+      "http://127.0.0.1:80@example.invalid",
+      "http://localhost:80@example.invalid",
+      "http://[::1]:80@example.invalid",
+    ]) {
+      const result = spawnSync(
+        "bash",
+        [script, "--version", `v${version}`, "--dry-run"],
+        {
+          encoding: "utf8",
+          env: { ...process.env, AECHAT_INSTALL_BASE: base },
+        },
+      );
+
+      expect(result.status).toBe(2);
+      expect(result.stderr).toContain("must use HTTPS");
+    }
+  });
+
   it("fails when SHA256SUMS does not name the tarball", async () => {
     await withRelease(
       {

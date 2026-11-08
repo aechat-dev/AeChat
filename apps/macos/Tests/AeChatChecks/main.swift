@@ -351,6 +351,29 @@ func testEventPolicy() throws {
         selectedMessageId: nil
     )
     check(!afterStale.gap, "an older snapshot does not move the cursor back")
+
+    stale.clear()
+    let afterClear = try stale.decide(
+        event: event(
+            """
+            {"kind":"event","seq":1,"event":"ack","ts":"2026-11-08T00:00:10.000Z","level":"info","session_id":"s-a","message_id":null,"delivery_id":null,"request_id":null,"data":null}
+            """),
+        snapshotSeq: 0,
+        threadSessionIds: [],
+        selectedMessageId: nil
+    )
+    check(!afterClear.gap, "the first event after a clear is not a gap")
+
+    let afterClearSkip = try stale.decide(
+        event: event(
+            """
+            {"kind":"event","seq":3,"event":"ack","ts":"2026-11-08T00:00:11.000Z","level":"info","session_id":"s-a","message_id":null,"delivery_id":null,"request_id":null,"data":null}
+            """),
+        snapshotSeq: 0,
+        threadSessionIds: [],
+        selectedMessageId: nil
+    )
+    check(afterClearSkip.gap, "the next skipped sequence is still a gap")
 }
 
 func testNewestNodeWins() throws {

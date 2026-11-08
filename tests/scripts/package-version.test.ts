@@ -44,4 +44,13 @@ describe("release package version", () => {
     expect(result.status).toBe(1);
     expect(result.stderr).toContain("does not match");
   });
+
+  it("fails when package.json is missing", () => {
+    const root = mkdtempSync(join(tmpdir(), "aechat-package-version-"));
+    roots.push(root);
+
+    const result = run(root, "v0.1.0-alpha.1");
+
+    expect(result.status).not.toBe(0);
+  });
 });

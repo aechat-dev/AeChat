@@ -63,7 +63,10 @@ jobs:
 
       - name: Checksums
         run: |
-          shasum -a 256 "${{ steps.pack.outputs.tarball }}" dist/AeChat.app.zip > SHA256SUMS
+          shasum -a 256 \
+            "${{ steps.pack.outputs.tarball }}" \
+            dist/AeChat.app.zip \
+            scripts/install.sh > SHA256SUMS
 
       - name: Assemble release notes
         run: ./scripts/release-notes.sh "$GITHUB_REF_NAME" > release-notes.md

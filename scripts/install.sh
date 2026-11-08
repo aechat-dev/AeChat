@@ -123,14 +123,31 @@ esac
 asset="aechat-$number.tgz"
 base="${AECHAT_INSTALL_BASE:-https://github.com/$repo}/releases/download/$tag"
 if [ -n "${AECHAT_INSTALL_BASE:-}" ]; then
-  case "$AECHAT_INSTALL_BASE" in
-    https://*) ;;
-    http://127.0.0.1:*|http://localhost:*|"http://[::1]:"*) ;;
-    *)
-      echo "AECHAT_INSTALL_BASE must use HTTPS except for loopback tests" >&2
-      exit 2
-      ;;
-  esac
+  # Parse the URL rather than pattern-matching: string prefixes accept
+  # userinfo tricks such as http://127.0.0.1:80@example.invalid, which curl
+  # resolves to example.invalid.
+  if ! printf '%s' "$AECHAT_INSTALL_BASE" | node -e '
+    let body = "";
+    process.stdin.on("data", (chunk) => { body += chunk; });
+    process.stdin.on("end", () => {
+      let url;
+      try {
+        url = new URL(body);
+      } catch {
+        process.exit(1);
+      }
+      if (url.username || url.password) process.exit(1);
+      if (url.protocol === "https:") process.exit(0);
+      const loopback = ["127.0.0.1", "localhost", "[::1]"];
+      if (url.protocol === "http:" && loopback.includes(url.hostname)) {
+        process.exit(0);
+      }
+      process.exit(1);
+    });
+  '; then
+    echo "AECHAT_INSTALL_BASE must use HTTPS except for loopback tests" >&2
+    exit 2
+  fi
 fi
 
 if [ "$dry_run" = true ]; then
@@ -144,6 +161,13 @@ if [ "$dry_run" = true ]; then
   fi
   exit 0
 fi
+
+for command in curl shasum; do
+  command -v "$command" >/dev/null 2>&1 || {
+    echo "missing required command: $command" >&2
+    exit 1
+  }
+done
 
 work=$(mktemp -d "${TMPDIR:-/tmp}/aechat-install.XXXXXX")
 trap 'rm -rf "$work"' EXIT

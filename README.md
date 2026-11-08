@@ -74,6 +74,9 @@ bash install.sh
 aechat init
 ```
 
+The installer is attached to each new release; the URL above works until the
+next tag is published.
+
 `bash install.sh --help` lists `--version`, `--stable`, `--prefix` and
 `--dry-run`. Registry publication is not available yet; the installer uses the
 GitHub release tarball and verifies `SHA256SUMS`.
@@ -85,7 +88,7 @@ version=0.1.0-alpha.1
 base=https://github.com/aechat-dev/AeChat/releases/download/v$version
 curl -fsSLO "$base/aechat-$version.tgz"
 curl -fsSLO "$base/SHA256SUMS"
-shasum -a 256 -c SHA256SUMS
+grep "  aechat-$version.tgz$" SHA256SUMS | shasum -a 256 -c -
 npm install -g "aechat-$version.tgz"
 aechat init
 ```

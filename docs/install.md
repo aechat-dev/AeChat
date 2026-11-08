@@ -26,6 +26,9 @@ aechat init
 aechat doctor --json
 ```
 
+The installer is attached to each new release; the URL above works until the
+next tag is published.
+
 `bash install.sh --help` lists the options: `--version <tag>` for an exact
 release, `--stable` to skip prereleases, `--prefix <dir>` for a non-default
 install root, and `--dry-run` to print the plan.
@@ -43,11 +46,14 @@ version=0.1.0-alpha.1
 base=https://github.com/aechat-dev/AeChat/releases/download/v$version
 curl -fsSLO "$base/aechat-$version.tgz"
 curl -fsSLO "$base/SHA256SUMS"
-shasum -a 256 -c SHA256SUMS
+grep "  aechat-$version.tgz$" SHA256SUMS | shasum -a 256 -c -
 npm install -g "aechat-$version.tgz"
 aechat init
 aechat doctor --json
 ```
+
+`SHA256SUMS` covers both the CLI tarball and `AeChat.app.zip`; the command
+above verifies only the tarball being installed.
 
 ### From the repository (development)
 
@@ -172,7 +178,7 @@ The current evidence matrix and the repeatable verification protocol are in
 - Logs directory: `~/.aechat/logs/` (reported by `doctor`; JSONL mirroring is
   not implemented, the SQLite `events` table is the audit source).
 
-No backup/export command exists in v1. To upgrade:
+No backup/export command exists in v1. For a source checkout (development):
 
 ```bash
 git pull
@@ -181,8 +187,9 @@ pnpm build
 aechat doctor --json
 ```
 
-Schema migrations run on the next command and are tracked with
-`PRAGMA user_version`. Do not downgrade the binary against a newer database.
+For an installed release, follow section 8 instead. Schema migrations run on
+the next command and are tracked with `PRAGMA user_version`. Do not downgrade
+the binary against a newer database.
 
 ## 7. Uninstall
 
@@ -200,8 +207,9 @@ commands only after confirming they are test data.
 
 ## 8. Upgrade and rollback
 
-Install the newer tarball over the existing CLI; `npm install -g` replaces the
-previous files. Check the result before using it:
+Install the newer tarball (the section 2 installer or manual commands) over the
+existing CLI; `npm install -g` replaces the previous files. Check the result
+before using it:
 
 ```bash
 aechat doctor --json

@@ -22,12 +22,7 @@ jobs:
           fetch-depth: 0
 
       - name: Verify the tag is on main
-        run: |
-          git fetch origin main --depth=1
-          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
-            echo "release tags must point at a commit on main" >&2
-            exit 1
-          fi
+        run: ./scripts/verify-tag-on-main.sh "$GITHUB_SHA"
 
       - uses: pnpm/action-setup@v6
         with:
@@ -37,6 +32,9 @@ jobs:
         with:
           node-version-file: .node-version
           cache: pnpm
+
+      - name: Verify the package version matches the tag
+        run: ./scripts/verify-package-version.sh "$GITHUB_REF_NAME"
 
       - name: Install
         run: pnpm install --frozen-lockfile
@@ -50,7 +48,6 @@ jobs:
           tarball=$(npm pack --silent | tail -1)
           test -f "$tarball"
           echo "tarball=$tarball" >> "$GITHUB_OUTPUT"
-          shasum -a 256 "$tarball" > SHA256SUMS
 
       - name: Swift build and checks
         run: ./scripts/check-macos.sh
@@ -63,6 +60,13 @@ jobs:
 
       - name: Archive app
         run: ditto -c -k --keepParent dist/AeChat.app dist/AeChat.app.zip
+
+      - name: Checksums
+        run: |
+          shasum -a 256 \
+            "${{ steps.pack.outputs.tarball }}" \
+            dist/AeChat.app.zip \
+            scripts/install.sh > SHA256SUMS
 
       - name: Assemble release notes
         run: ./scripts/release-notes.sh "$GITHUB_REF_NAME" > release-notes.md
@@ -80,4 +84,5 @@ jobs:
             --notes-file release-notes.md \
             "${{ steps.pack.outputs.tarball }}" \
             SHA256SUMS \
-            dist/AeChat.app.zip
+            dist/AeChat.app.zip \
+            scripts/install.sh

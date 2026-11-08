@@ -34,9 +34,14 @@ public struct EventPolicy {
         self.observedSeq = observedSeq
     }
 
-    /// A fresh snapshot is authoritative; move the cursor to its event seq.
+    /// Snapshots can arrive out of order; never move the cursor backwards.
     public mutating func reset(to seq: Int) {
-        observedSeq = seq
+        observedSeq = max(observedSeq, seq)
+    }
+
+    /// Switching to a different database starts a new sequence space.
+    public mutating func clear() {
+        observedSeq = 0
     }
 
     public mutating func decide(
@@ -54,12 +59,18 @@ public struct EventPolicy {
             return EventDecision()
         }
 
-        let gap = observedSeq > 0 && seq > observedSeq + 1
+        // A first event after an empty snapshot (seq 0) is still a gap when
+        // its sequence skips a number.
+        let gap = seq > observedSeq + 1
         observedSeq = max(observedSeq, seq)
 
         let name = event.event ?? ""
         let messageEvent = name == "send" || name == "reply"
-        let inThread = event.sessionId.map(threadSessionIds.contains) == true
+        // Both sides must be in the open thread; otherwise a participant
+        // writing to another session would look like active-thread activity.
+        let inThread =
+            event.sessionId.map(threadSessionIds.contains) == true
+            && event.data?.toSession.map(threadSessionIds.contains) == true
         let reloadMessages = messageEvent && inThread
         let reloadLog =
             selectedMessageId != nil

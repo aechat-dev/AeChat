@@ -35,6 +35,8 @@ final class AppState: ObservableObject {
     private var reloadTask: Task<Void, Never>?
     private var fallbackTask: Task<Void, Never>?
     private var lastSnapshotRefresh = Date.distantPast
+    private var snapshotGeneration = 0
+    private var forceSnapshotRefresh = false
     private var eventPolicy = EventPolicy()
     private var logRefreshTask: Task<Void, Never>?
     private var loadGeneration = 0
@@ -115,25 +117,35 @@ final class AppState: ObservableObject {
         }
         isLoading = true
         defer { isLoading = false }
+        snapshotGeneration += 1
+        let generation = snapshotGeneration
         do {
             let fresh = try await client.snapshot()
+            guard generation == snapshotGeneration else { return }
             apply(snapshot: fresh)
             errorMessage = nil
             startStreamIfNeeded()
         } catch {
+            guard generation == snapshotGeneration else { return }
             errorMessage = error.localizedDescription
         }
         await refreshActiveContext(markSeen: true)
     }
 
-    private func refreshSnapshotFromStream() async {
+    private func refreshSnapshotFromStream(force: Bool = false) async {
         // Snapshot calls inspect every transport binding; keep the rate at or
-        // below one per ~2s even when events are bursty.
-        guard Date().timeIntervalSince(lastSnapshotRefresh) >= 1.8 else { return }
+        // below one per ~2s even when events are bursty. A cursor gap forces
+        // the read so the app cannot stay wrong until the next event.
+        guard force || Date().timeIntervalSince(lastSnapshotRefresh) >= 1.8 else {
+            return
+        }
         lastSnapshotRefresh = Date()
         guard let client else { return }
+        snapshotGeneration += 1
+        let generation = snapshotGeneration
         do {
             let fresh = try await client.snapshot()
+            guard generation == snapshotGeneration else { return }
             apply(snapshot: fresh)
             errorMessage = nil
         } catch {
@@ -415,7 +427,7 @@ final class AppState: ObservableObject {
             scheduleLogRefresh()
         }
         if decision.refreshSnapshot {
-            scheduleSnapshotRefresh()
+            scheduleSnapshotRefresh(force: decision.gap)
         }
     }
 
@@ -449,12 +461,15 @@ final class AppState: ObservableObject {
         }
     }
 
-    private func scheduleSnapshotRefresh() {
+    private func scheduleSnapshotRefresh(force: Bool = false) {
+        forceSnapshotRefresh = forceSnapshotRefresh || force
         snapshotTask?.cancel()
         snapshotTask = Task { [weak self] in
             try? await Task.sleep(nanoseconds: 500_000_000)
-            guard !Task.isCancelled else { return }
-            await self?.refreshSnapshotFromStream()
+            guard !Task.isCancelled, let self else { return }
+            let forced = self.forceSnapshotRefresh
+            self.forceSnapshotRefresh = false
+            await self.refreshSnapshotFromStream(force: forced)
         }
     }
 
@@ -466,6 +481,8 @@ final class AppState: ObservableObject {
         client = AeChatClient(binary: url)
         doctor = nil
         doctorError = nil
+        snapshotGeneration += 1
+        eventPolicy.clear()
         stream.reset()
         streamConnected = false
         Task {

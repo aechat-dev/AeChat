@@ -106,7 +106,9 @@ when names are duplicated; choose the intended `session_id`.
 ## 5. Host hooks and delivery mode
 
 Host hooks are optional. Without one, run a heartbeat while the conversation is
-active and pull with `inbox`/`wait`:
+active and pull with `receive` (one message), `inbox` (a batch) or `wait
+--request` (a correlated reply). `receive` exits 2 when no message arrives
+within `--timeout`; that is an empty poll, not a delivery failure:
 
 ```bash
 aechat heartbeat --session "<session_id>" --interval 30

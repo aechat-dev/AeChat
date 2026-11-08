@@ -3,6 +3,7 @@ import type { CommandContext } from "../../src/cli/commands/context.js";
 import { historyCommand } from "../../src/cli/commands/history.js";
 import { inboxCommand } from "../../src/cli/commands/inbox.js";
 import { logCommand } from "../../src/cli/commands/log.js";
+import { receiveCommand } from "../../src/cli/commands/receive.js";
 import { sendCommand } from "../../src/cli/commands/send.js";
 import type { CommandResult } from "../../src/cli/output.js";
 import { AuditService } from "../../src/core/services/audit-service.js";
@@ -346,6 +347,79 @@ describe("delivery CLI commands", () => {
       "a to b",
       "b to c",
     ]);
+  });
+
+  it("receive claims one delivery without acknowledging it", async () => {
+    const { ctx, addSession, deliveries } = setup();
+    const from = await addSession("sender");
+    const to = await addSession("receiver");
+    const first = await ctx.delivery.send({
+      fromSession: from,
+      toSession: to,
+      kind: "notify",
+      body: "first",
+    });
+    await ctx.delivery.send({
+      fromSession: from,
+      toSession: to,
+      kind: "notify",
+      body: "second",
+    });
+
+    const result = (await receiveCommand(
+      ["--session", to, "--json"],
+      ctx,
+    )) as CommandResult;
+    const data = result.data as {
+      status: string;
+      message: Record<string, unknown>;
+    };
+    expect(data.status).toBe("delivered");
+    expect(data.message).toMatchObject({
+      message_id: first.messageId,
+      body: "first",
+      delivery_token: expect.any(String),
+    });
+    expect(deliveries.get(first.deliveryId)?.status).toBe("delivered");
+    expect(result.exitCode).toBeUndefined();
+  });
+
+  it("receive rejects options that would claim on a peek or request path", async () => {
+    const { ctx, addSession, deliveries } = setup();
+    const from = await addSession("sender");
+    const to = await addSession("receiver");
+    const sent = await ctx.delivery.send({
+      fromSession: from,
+      toSession: to,
+      kind: "notify",
+      body: "hello",
+    });
+
+    for (const extra of [
+      ["--peek"],
+      ["--limit", "1"],
+      ["--request", "request-1"],
+      ["--timeout"],
+    ]) {
+      await expect(
+        receiveCommand(["--session", to, ...extra], ctx),
+      ).rejects.toMatchObject({ code: "invalid_input" });
+    }
+    expect(deliveries.get(sent.deliveryId)?.status).toBe("notified");
+  });
+
+  it("receive reports timeout when no delivery is pending", async () => {
+    const { ctx, addSession } = setup();
+    const sessionId = await addSession("receiver");
+
+    const result = (await receiveCommand(
+      ["--session", sessionId, "--timeout", "0"],
+      ctx,
+    )) as CommandResult;
+
+    expect(result.data).toEqual({ status: "timeout" });
+    expect(result.exitCode).toBe(2);
+    expect(textOf(result)).toBe("timeout\n");
   });
 
   it("history does not refresh last_seen_at", async () => {

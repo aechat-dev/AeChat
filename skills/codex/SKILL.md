@@ -37,10 +37,19 @@ actually returns.
 
 ## Receive messages
 
-Prefer JSON so message bodies are not confused with terminal framing:
+Prefer JSON so message bodies are not confused with terminal framing. The
+default receive path is one command:
 
 ```bash
-aechat wait --session "<session_id>" --timeout 300 --json
+aechat receive --session "<session_id>" --timeout 300 --json
+```
+
+It claims at most one delivery and returns `{status, message}`. `--timeout 0`
+is a non-blocking check; it never acknowledges. Use `inbox` for a batch and
+`wait --request` for a correlated reply:
+
+```bash
+aechat wait --session "<session_id>" --request "<request_id>" --timeout 300 --json
 aechat inbox --session "<session_id>" --json
 ```
 
@@ -51,7 +60,9 @@ then acknowledge it:
 aechat ack --session "<session_id>" --delivery "<delivery_token>"
 ```
 
-`--peek` does not claim or return a token. Do not ack a peek.
+`inbox --peek` and `wait --peek` do not claim or return a token; do not ack a
+peek. `receive` always claims and rejects `--peek`. An exit code of 2 from
+`receive` means no message arrived within the timeout, not a delivery failure.
 
 The text form (when `--json` is not used) wraps messages in:
 

@@ -152,7 +152,8 @@ user authorization.
 | `register` / `confirm` | Create a session and confirm its transport binding |
 | `list` / `whoami` | Discover sessions and capabilities |
 | `send` | Send a notification or request |
-| `inbox` / `ack` | Read pending deliveries and acknowledge them |
+| `receive` / `ack` | Claim one delivery, then acknowledge it after processing |
+| `inbox` | Read pending deliveries in a batch |
 | `reply` | Answer a request |
 | `wait` | Block until a correlated reply arrives |
 | `heartbeat` | Keep a session marked online |

@@ -1,23 +1,14 @@
-import { AechatError } from "../../core/errors.js";
 import type { InboxItem } from "../../core/services/delivery-service.js";
-import { optionalValue, parseArgs, requiredValue } from "../args.js";
+import {
+  optionalSeconds,
+  optionalValue,
+  parseArgs,
+  requiredValue,
+} from "../args.js";
 import { inboxItemDto, messageDto } from "../message-dto.js";
 import { formatInboxText, formatMessageText } from "../message-format.js";
 import type { CommandResult } from "../output.js";
 import type { CommandContext } from "./context.js";
-
-function timeoutFromArgs(args: ReturnType<typeof parseArgs>): number {
-  const raw = optionalValue(args, "timeout");
-  if (raw === undefined) {
-    return 300;
-  }
-  const trimmed = raw.trim();
-  const timeout = trimmed === "" ? Number.NaN : Number(trimmed);
-  if (!Number.isFinite(timeout) || timeout < 0) {
-    throw new AechatError("invalid_input", "--timeout must be non-negative");
-  }
-  return timeout;
-}
 
 export async function waitCommand(
   argv: readonly string[],
@@ -25,7 +16,7 @@ export async function waitCommand(
 ): Promise<CommandResult> {
   const args = parseArgs(argv);
   const sessionId = requiredValue(args, "session");
-  const timeoutSeconds = timeoutFromArgs(args);
+  const timeoutSeconds = optionalSeconds(args, "timeout", 300);
   const requestId = optionalValue(args, "request");
 
   if (requestId !== undefined) {

@@ -51,3 +51,21 @@ export function optionalValue(
 ): string | undefined {
   return args.values.get(key);
 }
+
+/** Optional non-negative duration in seconds; empty values are invalid. */
+export function optionalSeconds(
+  args: ParsedArgs,
+  key: string,
+  fallback: number,
+): number {
+  const raw = optionalValue(args, key);
+  if (raw === undefined) {
+    return fallback;
+  }
+  const trimmed = raw.trim();
+  const value = trimmed === "" ? Number.NaN : Number(trimmed);
+  if (!Number.isFinite(value) || value < 0) {
+    throw new AechatError("invalid_input", `--${key} must be non-negative`);
+  }
+  return value;
+}

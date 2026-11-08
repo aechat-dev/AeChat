@@ -18,6 +18,7 @@ import { leaveCommand } from "./commands/leave.js";
 import { listCommand } from "./commands/list.js";
 import { logCommand } from "./commands/log.js";
 import { probeCommand } from "./commands/probe.js";
+import { receiveCommand } from "./commands/receive.js";
 import { registerCommand } from "./commands/register.js";
 import { replyCommand } from "./commands/reply.js";
 import { resumeCommand } from "./commands/resume.js";
@@ -51,6 +52,7 @@ const COMMANDS = new Set([
   "probe",
   "send",
   "inbox",
+  "receive",
   "ack",
   "show",
   "reply",
@@ -82,6 +84,7 @@ Commands:
              (--body <text> | --body-file <path>) [--request] [--deadline <seconds>]
              [--dedup-key <key>] [--ttl <seconds>]
   inbox      --session <uuid> [--peek] [--json] [--limit <n>]
+  receive    --session <uuid> [--timeout <seconds>] [--json]
   ack        --session <uuid> --delivery <token>
   show       --session <uuid> --message <message-id> [--json]
   reply      --session <uuid> --request <request-id> (--body <text> | --body-file <path>)
@@ -196,6 +199,9 @@ export async function main(argv: readonly string[]): Promise<number> {
           break;
         case "inbox":
           data = await inboxCommand(rest, ctx);
+          break;
+        case "receive":
+          data = await receiveCommand(rest, ctx);
           break;
         case "ack":
           data = ackCommand(rest, ctx);

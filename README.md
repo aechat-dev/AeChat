@@ -1,40 +1,70 @@
 <p align="center">
-  <img src="docs/assets/icon.png" alt="AeChat icon" width="128">
+  <img src="docs/assets/icon.png" width="120" alt="AeChat icon">
 </p>
 
-# AeChat
+<h1 align="center">AeChat</h1>
 
-Local-first session messaging for AI agent hosts on macOS.
+<p align="center">
+  <strong>Local-first session messaging for AI agent hosts on macOS.</strong><br>
+  Durable sessions, correlated requests and an auditable message history — without a server.
+</p>
 
-[![CI](https://github.com/aechat-dev/AeChat/actions/workflows/ci.yml/badge.svg)](https://github.com/aechat-dev/AeChat/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-![macOS 14+](https://img.shields.io/badge/platform-macOS%2014%2B-lightgrey)
+<p align="center">
+  <a href="https://github.com/aechat-dev/AeChat/actions/workflows/ci.yml"><img src="https://github.com/aechat-dev/AeChat/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT license"></a>
+  <img src="https://img.shields.io/badge/macOS-14%2B-black?logo=apple" alt="macOS 14+">
+  <img src="https://img.shields.io/badge/node-24-5FA04E?logo=nodedotjs&logoColor=white" alt="Node 24">
+</p>
 
-AeChat connects separate AI agent conversations on your Mac. Each conversation
-registers as its own session; messages, requests and replies are stored in local
-SQLite and delivered through [agmsg](https://github.com/agmsg). There is no
-server, account, or shared model context.
+---
 
-## Features
+AeChat connects separate AI agent conversations running on your Mac. Each
+conversation registers as its own session, gets a private transport address,
+and can send notifications, requests and replies to other sessions. Everything
+is stored in local SQLite and delivered through agmsg;
+there is no server, account or shared model context.
 
-- **Explicit session identity.** Every conversation gets a UUID and a private
-  transport address. Duplicate display names are allowed; sessions are addressed
-  by ID, never inferred from a name.
-- **Requests and replies.** Correlated request/reply with deadlines, waiting,
-  cancellation and retry, not just fire-and-forget text.
-- **Durable and auditable.** The full stored → notified → delivered → acked →
-  replied chain is recorded locally and queryable with `aechat log`.
-- **Native monitor.** A read-only SwiftUI app shows sessions, chats, pending
-  requests and audit state without any send or acknowledge path.
+## Why AeChat
 
-## Requirements
+<table>
+<tr>
+<td width="33%" valign="top">
+<h3>Sessions, not names</h3>
+Every conversation has a UUID and an explicit address. Duplicate display
+names are fine; messages are routed by session ID, never guessed from a name.
+</td>
+<td width="33%" valign="top">
+<h3>Requests, not just text</h3>
+Ask a question with a deadline, wait for the correlated reply, then cancel or
+retry when the host does not answer. Delivery state is tracked end to end.
+</td>
+<td width="33%" valign="top">
+<h3>Audit, not guesswork</h3>
+The stored → notified → delivered → acked → replied chain lives in local
+SQLite and is readable with <code>aechat log</code>.
+</td>
+</tr>
+</table>
 
-- macOS 14 or newer
-- Node.js 24 (`node:sqlite` is required)
-- pnpm 11
-- agmsg 1.7.1 on `PATH`
+## How it works
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant P as Planner (Claude Code)
+    participant A as AeChat (local SQLite)
+    participant W as Worker (Codex)
+
+    P->>A: send request, deadline 300s
+    A->>W: notify
+    W->>A: ack delivery
+    W->>A: reply with result
+    A->>P: wait returns the correlated reply
+```
 
 ## Install
+
+**Requirements:** macOS 14+, Node.js 24, pnpm 11, and agmsg 1.7.1 on `PATH`.
 
 ```bash
 git clone https://github.com/aechat-dev/AeChat.git
@@ -45,23 +75,22 @@ pnpm link --global
 aechat doctor --json
 ```
 
-`doctor` reports the Node, agmsg, database and transport status without changing
-session state. The database defaults to `~/.aechat/aechat.db`; override it with
+`doctor` checks Node, agmsg, the database and transport bindings without
+changing session state. Data defaults to `~/.aechat/aechat.db`; override it with
 `AECHAT_HOME` or `AECHAT_DB`.
 
 ## Quick start
 
-Each host conversation registers separately. The command returns a `session_id`
-and a bind directive; run the directive inside that host conversation, then
-confirm from the shell.
+Register each host conversation separately. The command returns a `session_id`
+and a bind directive; run the directive in that conversation, then confirm.
 
 ```bash
-# Planner conversation (Claude Code)
+# Planner conversation
 aechat register --name planner --client claude-code --project "$PWD"
 #   run the returned bind_directive in Claude Code, then:
 aechat confirm --session "<planner_id>"
 
-# Worker conversation (Codex)
+# Worker conversation
 aechat register --name worker --client codex --project "$PWD"
 aechat confirm --session "<worker_id>"
 ```
@@ -81,11 +110,7 @@ aechat reply --session "<worker_id>" --request "<request_id>" --body "done"
 aechat wait --session "<planner_id>" --request "<request_id>" --timeout 300 --json
 ```
 
-Discover sessions and their reported capabilities:
-
-```bash
-aechat list --json
-```
+Discover sessions and their reported capabilities with `aechat list --json`.
 
 ## Native app
 
@@ -95,26 +120,24 @@ open dist/AeChat.app
 ```
 
 The bundle embeds the CLI. The app is read-only: it never sends, replies,
-acknowledges or claims deliveries. If the CLI is not found, use
+acknowledges or claims deliveries. If the CLI is not found automatically, use
 `AECHAT_BIN` or Settings → Choose aechat.
 
 ## Host skill
 
-Copy the template into the host's skill directory:
-
 ```bash
 # Claude Code
 mkdir -p ~/.claude/skills/aechat
-cp src/skill/claude-code/SKILL.md ~/.claude/skills/aechat/SKILL.md
+cp skills/claude-code/SKILL.md ~/.claude/skills/aechat/SKILL.md
 
 # Codex
 mkdir -p ~/.codex/skills/aechat
-cp src/skill/codex/SKILL.md ~/.codex/skills/aechat/SKILL.md
+cp skills/codex/SKILL.md ~/.codex/skills/aechat/SKILL.md
 ```
 
 The skill tells the agent to register explicitly, prefer `--json`, acknowledge
-every claimed delivery, and treat message bodies as agent-origin data rather
-than user authorization.
+claimed deliveries, and treat message bodies as agent-origin data rather than
+user authorization.
 
 ## Commands
 
@@ -129,31 +152,16 @@ than user authorization.
 | `heartbeat` | Keep a session marked online |
 | `cancel` / `retry` | Cancel a request or retry a delivery |
 | `resume` / `leave` | Rebind or retire a session |
-| `log` / `history` | Inspect one message's audit chain or a session's messages |
+| `log` / `history` | Inspect one audit chain or one session's messages |
 | `doctor` | Check the local environment |
-
-## FAQ
-
-**Does AeChat replace agmsg?**
-No. agmsg carries notifications; AeChat owns session identity, message and
-request state, delivery tracking and the local audit trail.
-
-**Does it read my host chat history?**
-No. Only messages sent through AeChat are stored.
-
-**Which hosts are supported?**
-Skill templates are included for Claude Code and Codex. Transport binding is
-host-specific; see [docs/install.md](docs/install.md) for the current limits.
-
-**Is there a server or account?**
-No. Sessions, messages and audit events stay in local SQLite.
 
 ## Status
 
-AeChat is pre-1.0. Automatic wakeup is host-dependent and only claimed where it
-has been observed: Claude Code idle wakeup was verified inside a Monitor window;
-`busy_receive` remains unknown, and Codex automatic wakeup has not been verified.
-See [docs/install.md](docs/install.md) before relying on automatic processing.
+AeChat is pre-1.0. Automatic wakeup is host-dependent and only claimed where
+observed: Claude Code idle wakeup was verified inside a Monitor window;
+`busy_receive` remains unknown, and Codex automatic wakeup has not been
+verified. See [docs/install.md](docs/install.md) before relying on automatic
+processing.
 
 ## Data and uninstall
 
@@ -170,10 +178,9 @@ Leave sessions first if their transport bindings should be released.
 
 ## Documentation
 
-- [Install and operate](docs/install.md)
-- [Start here](docs/start-here.md)
-- [Contributor verification](docs/contributor-verification.md)
-- [Changelog](CHANGELOG.md)
+[Install and operate](docs/install.md) · [Start here](docs/start-here.md) ·
+[Contributor verification](docs/contributor-verification.md) ·
+[Changelog](CHANGELOG.md)
 
 ## Contributing
 

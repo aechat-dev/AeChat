@@ -19,13 +19,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with:
           version: 11.25.0
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .node-version
           cache: pnpm
@@ -47,7 +47,7 @@ jobs:
 
       - name: Upload coverage
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: coverage
           path: coverage/
@@ -59,17 +59,20 @@ jobs:
 
   macos:
     name: macOS app
+    # Pull requests get the fast TypeScript gate; the macOS build and package
+    # run on main and on manual dispatch, where the artifact matters.
+    if: github.event_name != 'pull_request'
     runs-on: macos-15
     timeout-minutes: 30
     needs: typescript
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with:
           version: 11.25.0
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .node-version
           cache: pnpm
@@ -92,7 +95,7 @@ jobs:
       - name: Archive app
         run: ditto -c -k --keepParent dist/AeChat.app dist/AeChat.app.zip
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: AeChat.app
           path: dist/AeChat.app.zip

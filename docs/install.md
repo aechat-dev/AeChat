@@ -27,6 +27,10 @@ aechat init
 aechat doctor --json
 ```
 
+If `pnpm link --global` reports that its global bin directory is not on
+`PATH`, run `pnpm setup`, restart the shell, then link again. The same applies
+to a fresh pnpm installation where `pnpm bin -g` is not yet in `PATH`.
+
 `init` creates the database, checks agmsg and installs the host skill for every
 detected host. `doctor` reports the Node version, agmsg version and support
 flag, database health/mode, log directory, transport bindings and host hook

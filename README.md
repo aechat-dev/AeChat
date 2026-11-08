@@ -75,6 +75,9 @@ pnpm link --global
 aechat init
 ```
 
+If `pnpm link --global` reports that its global bin directory is not on
+`PATH`, run `pnpm setup`, restart the shell, then link again.
+
 `init` creates the database, checks agmsg and installs the skill for every
 detected host. Run `aechat setup <claude-code|codex>` to install one explicitly.
 Data defaults to `~/.aechat/aechat.db`; override it with `AECHAT_HOME` or

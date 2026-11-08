@@ -55,25 +55,13 @@ while [ $# -gt 0 ]; do
   esac
 done
 
-if [ "$(uname -s)" != "Darwin" ]; then
-  echo "AeChat currently supports macOS only" >&2
-  exit 1
-fi
-
-for command in curl node npm shasum; do
-  command -v "$command" >/dev/null 2>&1 || {
-    echo "missing required command: $command" >&2
-    exit 1
-  }
-done
-
-node_major=$(node -p 'process.versions.node.split(".")[0]')
-if [ "$node_major" -lt 24 ]; then
-  echo "Node.js 24 or newer is required; found $(node -v)" >&2
-  exit 1
-fi
-
 if [ -z "$version" ]; then
+  for command in curl node; do
+    command -v "$command" >/dev/null 2>&1 || {
+      echo "missing required command: $command" >&2
+      exit 1
+    }
+  done
   api="https://api.github.com/repos/$repo/releases?per_page=20"
   release_json=$(curl -fsSL -H "Accept: application/vnd.github+json" "$api") || {
     echo "could not list releases from GitHub" >&2
@@ -115,6 +103,24 @@ if [ "$dry_run" = true ]; then
     echo "install: npm install -g $asset"
   fi
   exit 0
+fi
+
+if [ "$(uname -s)" != "Darwin" ]; then
+  echo "AeChat currently supports macOS only" >&2
+  exit 1
+fi
+
+for command in curl node npm shasum; do
+  command -v "$command" >/dev/null 2>&1 || {
+    echo "missing required command: $command" >&2
+    exit 1
+  }
+done
+
+node_major=$(node -p 'process.versions.node.split(".")[0]')
+if [ "$node_major" -lt 24 ]; then
+  echo "Node.js 24 or newer is required; found $(node -v)" >&2
+  exit 1
 fi
 
 work=$(mktemp -d "${TMPDIR:-/tmp}/aechat-install.XXXXXX")

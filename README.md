@@ -69,7 +69,9 @@ sequenceDiagram
 Install the CLI with the release installer:
 
 ```bash
-curl -fsSLO https://raw.githubusercontent.com/aechat-dev/AeChat/main/scripts/install.sh
+version=0.1.0-alpha.1
+base=https://github.com/aechat-dev/AeChat/releases/download/v$version
+curl -fsSLO "$base/install.sh"
 bash install.sh
 aechat init
 ```

@@ -111,6 +111,23 @@ describe("install script", () => {
     expect(result.stderr).toContain("invalid release version");
   });
 
+  it("rejects a non-loopback HTTP download base", () => {
+    const result = spawnSync(
+      "bash",
+      [script, "--version", `v${version}`, "--dry-run"],
+      {
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          AECHAT_INSTALL_BASE: "http://example.invalid",
+        },
+      },
+    );
+
+    expect(result.status).toBe(2);
+    expect(result.stderr).toContain("must use HTTPS");
+  });
+
   it("fails when SHA256SUMS does not name the tarball", async () => {
     await withRelease(
       {

@@ -122,6 +122,16 @@ case "$number" in
 esac
 asset="aechat-$number.tgz"
 base="${AECHAT_INSTALL_BASE:-https://github.com/$repo}/releases/download/$tag"
+if [ -n "${AECHAT_INSTALL_BASE:-}" ]; then
+  case "$AECHAT_INSTALL_BASE" in
+    https://*) ;;
+    http://127.0.0.1:*|http://localhost:*|"http://[::1]:"*) ;;
+    *)
+      echo "AECHAT_INSTALL_BASE must use HTTPS except for loopback tests" >&2
+      exit 2
+      ;;
+  esac
+fi
 
 if [ "$dry_run" = true ]; then
   echo "tag: $tag"
@@ -183,6 +193,10 @@ fi
 if [ -n "$prefix" ]; then
   npm install -g --prefix "$prefix" "$work/$asset"
   bin="$prefix/bin/aechat"
+  case ":$PATH:" in
+    *":$prefix/bin:"*) ;;
+    *) echo "Add $prefix/bin to PATH to run aechat" ;;
+  esac
 else
   npm install -g "$work/$asset"
   bin="$(npm prefix -g)/bin/aechat"

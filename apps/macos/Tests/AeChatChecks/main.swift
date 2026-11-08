@@ -232,10 +232,10 @@ func testEventPolicy() throws {
     let replay = try policy.decide(
         event: event(
             """
-            {"kind":"event","seq":3,"event":"send","ts":"2026-11-08T00:00:00.000Z","level":"info","session_id":"s-a","message_id":"m-1","delivery_id":null,"request_id":null,"data":null}
+            {"kind":"event","seq":3,"event":"send","ts":"2026-11-08T00:00:00.000Z","level":"info","session_id":"s-a","message_id":"m-1","delivery_id":null,"request_id":null,"data":{"to_session":"s-b"}}
             """),
         snapshotSeq: 3,
-        threadSessionIds: ["s-a"],
+        threadSessionIds: ["s-a", "s-b"],
         selectedMessageId: nil
     )
     check(replay == EventDecision(), "a replayed event does nothing")
@@ -246,7 +246,7 @@ func testEventPolicy() throws {
             {"kind":"event","seq":4,"event":"heartbeat","ts":"2026-11-08T00:00:01.000Z","level":"info","session_id":"s-a","message_id":null,"delivery_id":null,"request_id":null,"data":null}
             """),
         snapshotSeq: 3,
-        threadSessionIds: ["s-a"],
+        threadSessionIds: ["s-a", "s-b"],
         selectedMessageId: nil
     )
     check(!heartbeat.refreshSnapshot, "heartbeat does not refresh the snapshot")
@@ -255,10 +255,10 @@ func testEventPolicy() throws {
     let message = try policy.decide(
         event: event(
             """
-            {"kind":"event","seq":5,"event":"send","ts":"2026-11-08T00:00:02.000Z","level":"info","session_id":"s-a","message_id":"m-2","delivery_id":"d-2","request_id":null,"data":null}
+            {"kind":"event","seq":5,"event":"send","ts":"2026-11-08T00:00:02.000Z","level":"info","session_id":"s-a","message_id":"m-2","delivery_id":"d-2","request_id":null,"data":{"to_session":"s-b"}}
             """),
         snapshotSeq: 3,
-        threadSessionIds: ["s-a"],
+        threadSessionIds: ["s-a", "s-b"],
         selectedMessageId: nil
     )
     check(message.reloadMessages, "send in the active thread reloads messages")
@@ -266,25 +266,39 @@ func testEventPolicy() throws {
     check(message.refreshSnapshot, "send refreshes the thread summary")
     check(!message.gap, "consecutive sequence is not a gap")
 
+    let missingCounterpart = try policy.decide(
+        event: event(
+            """
+            {"kind":"event","seq":6,"event":"send","ts":"2026-11-08T00:00:03.000Z","level":"info","session_id":"s-a","message_id":"m-3","delivery_id":"d-3","request_id":null,"data":null}
+            """),
+        snapshotSeq: 3,
+        threadSessionIds: ["s-a", "s-b"],
+        selectedMessageId: nil
+    )
+    check(
+        !missingCounterpart.reloadMessages,
+        "a send without a counterpart is not active-thread activity"
+    )
+
     let elsewhere = try policy.decide(
         event: event(
             """
-            {"kind":"event","seq":6,"event":"send","ts":"2026-11-08T00:00:03.000Z","level":"info","session_id":"s-z","message_id":"m-3","delivery_id":"d-3","request_id":null,"data":null}
+            {"kind":"event","seq":7,"event":"send","ts":"2026-11-08T00:00:04.000Z","level":"info","session_id":"s-a","message_id":"m-4","delivery_id":"d-4","request_id":null,"data":{"to_session":"s-z"}}
             """),
         snapshotSeq: 3,
-        threadSessionIds: ["s-a"],
+        threadSessionIds: ["s-a", "s-b"],
         selectedMessageId: nil
     )
-    check(!elsewhere.reloadMessages, "another thread's send does not reload messages")
-    check(elsewhere.refreshSnapshot, "another thread's send refreshes the snapshot")
+    check(!elsewhere.reloadMessages, "a send outside the thread does not reload messages")
+    check(elsewhere.refreshSnapshot, "a send outside the thread refreshes the snapshot")
 
     let log = try policy.decide(
         event: event(
             """
-            {"kind":"event","seq":7,"event":"ack","ts":"2026-11-08T00:00:04.000Z","level":"info","session_id":"s-a","message_id":"m-2","delivery_id":"d-2","request_id":null,"data":null}
+            {"kind":"event","seq":8,"event":"ack","ts":"2026-11-08T00:00:05.000Z","level":"info","session_id":"s-a","message_id":"m-2","delivery_id":"d-2","request_id":null,"data":null}
             """),
         snapshotSeq: 3,
-        threadSessionIds: ["s-a"],
+        threadSessionIds: ["s-a", "s-b"],
         selectedMessageId: "m-2"
     )
     check(log.reloadLog, "an event for the selected message reloads the inspector")
@@ -292,7 +306,7 @@ func testEventPolicy() throws {
     let gap = try policy.decide(
         event: event(
             """
-            {"kind":"event","seq":10,"event":"ack","ts":"2026-11-08T00:00:05.000Z","level":"info","session_id":"s-a","message_id":null,"delivery_id":null,"request_id":null,"data":null}
+            {"kind":"event","seq":11,"event":"ack","ts":"2026-11-08T00:00:06.000Z","level":"info","session_id":"s-a","message_id":null,"delivery_id":null,"request_id":null,"data":null}
             """),
         snapshotSeq: 3,
         threadSessionIds: [],
@@ -301,10 +315,23 @@ func testEventPolicy() throws {
     check(gap.gap, "a skipped sequence is a gap")
     check(gap.refreshSnapshot, "a gap forces a snapshot")
 
+    var emptyPolicy = EventPolicy(observedSeq: 0)
+    let firstGap = try emptyPolicy.decide(
+        event: event(
+            """
+            {"kind":"event","seq":2,"event":"heartbeat","ts":"2026-11-08T00:00:07.000Z","level":"info","session_id":"s-a","message_id":null,"delivery_id":null,"request_id":null,"data":null}
+            """),
+        snapshotSeq: 0,
+        threadSessionIds: [],
+        selectedMessageId: nil
+    )
+    check(firstGap.gap, "a first event after an empty snapshot can be a gap")
+    check(firstGap.refreshSnapshot, "the first-event gap forces a snapshot")
+
     let tick = try policy.decide(
         event: event(
             """
-            {"kind":"snapshot","generated_at":"2026-11-08T00:00:06.000Z"}
+            {"kind":"snapshot","generated_at":"2026-11-08T00:00:08.000Z"}
             """),
         snapshotSeq: 3,
         threadSessionIds: [],

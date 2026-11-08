@@ -62,27 +62,44 @@ if [ -z "$version" ]; then
       exit 1
     }
   done
-  api="https://api.github.com/repos/$repo/releases?per_page=20"
-  release_json=$(curl -fsSL -H "Accept: application/vnd.github+json" "$api") || {
-    echo "could not list releases from GitHub" >&2
-    exit 1
-  }
-  version=$(printf '%s' "$release_json" | node -e '
-    let body = "";
-    process.stdin.on("data", (chunk) => { body += chunk; });
-    process.stdin.on("end", () => {
-      const releases = JSON.parse(body);
-      const stable = process.argv[1] === "stable";
-      const match = releases.find((item) =>
-        !item.draft && (stable ? !item.prerelease : true)
-      );
-      if (!match) process.exit(1);
-      process.stdout.write(match.tag_name);
-    });
-  ' "$channel") || {
-    echo "no matching release found for channel: $channel" >&2
-    exit 1
-  }
+  if [ "$channel" = "stable" ]; then
+    api="https://api.github.com/repos/$repo/releases/latest"
+    release_json=$(curl -fsSL -H "Accept: application/vnd.github+json" "$api") || {
+      echo "could not read the latest stable release from GitHub" >&2
+      exit 1
+    }
+    version=$(printf '%s' "$release_json" | node -e '
+      let body = "";
+      process.stdin.on("data", (chunk) => { body += chunk; });
+      process.stdin.on("end", () => {
+        const release = JSON.parse(body);
+        if (!release.tag_name || release.draft || release.prerelease) process.exit(1);
+        process.stdout.write(release.tag_name);
+      });
+    ') || {
+      echo "no stable release found" >&2
+      exit 1
+    }
+  else
+    api="https://api.github.com/repos/$repo/releases?per_page=20"
+    release_json=$(curl -fsSL -H "Accept: application/vnd.github+json" "$api") || {
+      echo "could not list releases from GitHub" >&2
+      exit 1
+    }
+    version=$(printf '%s' "$release_json" | node -e '
+      let body = "";
+      process.stdin.on("data", (chunk) => { body += chunk; });
+      process.stdin.on("end", () => {
+        const releases = JSON.parse(body);
+        const match = releases.find((item) => !item.draft);
+        if (!match) process.exit(1);
+        process.stdout.write(match.tag_name);
+      });
+    ') || {
+      echo "no release found" >&2
+      exit 1
+    }
+  fi
 fi
 
 case "$version" in
@@ -90,8 +107,21 @@ case "$version" in
   *) tag="v$version" ;;
 esac
 number=${tag#v}
+case "$number" in
+  ""|*..*|*[!0-9A-Za-z.+-]*)
+    echo "invalid release version: $version" >&2
+    exit 2
+    ;;
+esac
+case "$number" in
+  [0-9]*) ;;
+  *)
+    echo "invalid release version: $version" >&2
+    exit 2
+    ;;
+esac
 asset="aechat-$number.tgz"
-base="https://github.com/$repo/releases/download/$tag"
+base="${AECHAT_INSTALL_BASE:-https://github.com/$repo}/releases/download/$tag"
 
 if [ "$dry_run" = true ]; then
   echo "tag: $tag"
@@ -103,6 +133,33 @@ if [ "$dry_run" = true ]; then
     echo "install: npm install -g $asset"
   fi
   exit 0
+fi
+
+work=$(mktemp -d "${TMPDIR:-/tmp}/aechat-install.XXXXXX")
+trap 'rm -rf "$work"' EXIT
+
+echo "Downloading AeChat $tag"
+curl -fsSL "$base/$asset" -o "$work/$asset"
+curl -fsSL "$base/SHA256SUMS" -o "$work/SHA256SUMS"
+
+# Fail closed: the checksum file must name this tarball exactly once, and the
+# digest must match. `shasum -c` alone would pass a file that lists other
+# artifacts and silently skip the one being installed.
+count=$(
+  awk -v name="$asset" '$2 == name { count += 1 } END { print count + 0 }' \
+    "$work/SHA256SUMS"
+)
+if [ "$count" -ne 1 ]; then
+  echo "SHA256SUMS must list $asset exactly once (found $count)" >&2
+  exit 1
+fi
+expected=$(
+  awk -v name="$asset" '$2 == name { print $1 }' "$work/SHA256SUMS"
+)
+actual=$(shasum -a 256 "$work/$asset" | awk '{ print $1 }')
+if [ "$expected" != "$actual" ]; then
+  echo "checksum mismatch for $asset" >&2
+  exit 1
 fi
 
 if [ "$(uname -s)" != "Darwin" ]; then
@@ -122,14 +179,6 @@ if [ "$node_major" -lt 24 ]; then
   echo "Node.js 24 or newer is required; found $(node -v)" >&2
   exit 1
 fi
-
-work=$(mktemp -d "${TMPDIR:-/tmp}/aechat-install.XXXXXX")
-trap 'rm -rf "$work"' EXIT
-
-echo "Downloading AeChat $tag"
-curl -fsSL "$base/$asset" -o "$work/$asset"
-curl -fsSL "$base/SHA256SUMS" -o "$work/SHA256SUMS"
-(cd "$work" && shasum -a 256 -c SHA256SUMS)
 
 if [ -n "$prefix" ]; then
   npm install -g --prefix "$prefix" "$work/$asset"

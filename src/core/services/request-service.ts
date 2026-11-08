@@ -219,7 +219,10 @@ export class RequestService {
         deliveryId: completed.deliveryId,
         requestId: input.requestId,
         ts: at,
-        data: { replyMessageId: completed.messageId },
+        data: {
+          replyMessageId: completed.messageId,
+          toSession: completed.requesterSession,
+        },
       });
     });
 

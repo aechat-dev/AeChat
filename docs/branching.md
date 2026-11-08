@@ -5,11 +5,12 @@ AeChat separates integration from release verification. Feature work lands on
 
 ## Current state (2026-11-08)
 
-`main` is the default branch. Only `main` is protected, its only required check
-is `TypeScript`, pull request review is not required (`required_pull_request_reviews`
-is null), `enforce_admins` is off, and `dev` exists locally but not on origin.
-The rest of this document describes the target state and the order in which to
-apply it.
+`main` and `dev` both exist on origin. `main` requires a pull request (zero
+approvals), the `TypeScript` and `macOS app` checks, an up-to-date branch and
+conversation resolution; force pushes and deletions are blocked and
+`enforce_admins` is on. `dev` requires a pull request and `TypeScript`; force
+pushes and deletions are blocked. The branch model and CI below are the
+operating rules.
 
 ## Branch model
 
@@ -40,8 +41,9 @@ and signature are verified before the merge.
 
 ## Repository settings
 
-These settings live in GitHub, not in the repository. Apply them in this order
-so a required check always exists on the base branch:
+These settings live in GitHub, not in the repository. They were applied to the
+upstream repository on 2026-11-08. For a fork or a new repository, apply them
+in this order so a required check always exists on the base branch:
 
 1. Bootstrap once: push `dev` at the current commit, open the first
    `dev` → `main` pull request, and merge it after the `TypeScript` check
@@ -69,9 +71,9 @@ base branch.
   - require a pull request and the `TypeScript` check;
   - block force pushes and deletions.
 
-`enforce_admins` is intentionally part of the target state; until it is on, an
-administrator can bypass the rules and GitHub reports "Bypassed rule
-violations".
+`enforce_admins` is on for `main`, so administrators cannot bypass its rules.
+For `dev` it is off: administrators can still push directly during a bootstrap,
+while regular contributors must use a pull request.
 
 ## Release steps
 

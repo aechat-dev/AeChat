@@ -1,0 +1,57 @@
+name: Feature request
+description: Propose a capability or an adapter.
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        AeChat keeps host-specific logic in adapters. Describe which host or
+        workflow the change serves before proposing an implementation.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What are you trying to do that AeChat does not support today?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: What should happen, from the user's point of view?
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - CLI
+        - Transport adapter
+        - Host adapter
+        - Native app
+        - Audit and data
+        - Documentation
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+    validations:
+      required: false
+
+  - type: textarea
+    id: limits
+    attributes:
+      label: Capability claims
+      description: If this involves wakeup or automatic processing, state what has actually been verified in a real host.
+    validations:
+      required: false

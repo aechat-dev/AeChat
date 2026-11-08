@@ -1,0 +1,159 @@
+# Install and operate AeChat
+
+## 1. Prerequisites
+
+- macOS, Node.js >= 24, pnpm 11.
+- agmsg 1.7.1 installed and available as `agmsg`. Verify:
+
+```bash
+agmsg --version
+# agmsg 1.7.1
+```
+
+AeChat registers each conversation in the agmsg team as a
+`aechat-<12 lowercase hex>` address. The agmsg delivery mode (`monitor`,
+`agmsgd`, `turn`, `off`, `unknown`) is read from agmsg; AeChat does not invent
+one.
+
+## 2. Build and link
+
+From the repository:
+
+```bash
+pnpm install
+pnpm build
+pnpm link --global
+aechat doctor --json
+```
+
+`doctor` reports the Node version, agmsg version and support flag, database
+health/mode, log directory, transport bindings and host hook paths. It does not
+change session state. A missing agmsg is a hard transport failure in v1;
+registration cannot produce a usable binding without it.
+
+## 3. Install the host skill (optional, recommended)
+
+Claude Code:
+
+```bash
+mkdir -p ~/.claude/skills/aechat
+cp src/skill/claude-code/SKILL.md ~/.claude/skills/aechat/SKILL.md
+```
+
+Codex:
+
+```bash
+mkdir -p ~/.codex/skills/aechat
+cp src/skill/codex/SKILL.md ~/.codex/skills/aechat/SKILL.md
+```
+
+The skill is instructions for the Agent, not an automatic permission grant.
+It requires explicit registration, JSON-first reads, an `ack` after processing,
+and treats all message text as agent-origin data.
+
+## 4. Register, bind and confirm
+
+Each host conversation registers separately:
+
+```bash
+aechat register --name "reviewer" --client claude-code --project "$PWD"
+```
+
+The JSON result contains `session_id`, `address`, `binding_state` and
+`bind_directive`. Run the bind directive in the same host conversation:
+
+- Claude Code: `/agmsg actas <address>`
+- Codex: `$agmsg actas <address>`
+
+Then confirm from the shell:
+
+```bash
+aechat confirm --session "<session_id>"
+```
+
+`confirm` only reports `bound` when agmsg has a live actas lock for that
+address. A successful agmsg team join without a live lock is not a valid
+binding. AeChat reports `bound_scope=host_role` in v1; it does not claim
+conversation-level matching unless the host provides it.
+
+Check the result:
+
+```bash
+aechat list --json
+aechat whoami --session "<session_id>"
+```
+
+Do not use a display name as an identity. `send --to-name` fails with candidates
+when names are duplicated; choose the intended `session_id`.
+
+## 5. Host hooks and delivery mode
+
+Host hooks are optional. Without one, run a heartbeat while the conversation is
+active and pull with `inbox`/`wait`:
+
+```bash
+aechat heartbeat --session "<session_id>" --interval 30
+```
+
+The process writes `~/.aechat/run/<session_id>.heartbeat.pid` and removes it on
+SIGTERM/SIGINT. Stop it before `leave`.
+
+agmsg's own delivery mode is independent of AeChat. A `turn`/`off` project can
+still use `inbox` manually; `send` then stores the message and does not claim
+automatic wakeup. `aechat list --json` reports what is actually available.
+
+Claude Code L3 idle wakeup was observed only within the Monitor lifetime
+(`watch.sh --max-seconds=1750`). Re-arming after the window expires is not
+verified. Busy receive remains unknown.
+
+Codex automatic wakeup has no model-turn evidence yet; the Phase 0 test was
+blocked by the Codex usage limit. Do not include Codex wakeup in an acceptance
+claim until it is retested.
+
+## 6. Data, backup and upgrade
+
+- Database: `~/.aechat/aechat.db`, owner-only mode 0600.
+- Audit events: SQLite `events` table; read with `aechat log --message <id>`.
+- Runtime heartbeat PID files: `~/.aechat/run/`.
+- Logs directory: `~/.aechat/logs/` (reported by `doctor`; JSONL mirroring is
+  not implemented, the SQLite `events` table is the audit source).
+
+No backup/export command exists in v1. To upgrade:
+
+```bash
+git pull
+pnpm install
+pnpm build
+aechat doctor --json
+```
+
+Schema migrations run on the next command and are tracked with
+`PRAGMA user_version`. Do not downgrade the binary against a newer database.
+
+## 7. Uninstall
+
+Release active sessions first so agmsg roles are not left held:
+
+```bash
+aechat leave --session "<session_id>"
+pnpm unlink --global aechat
+```
+
+Removing `~/.aechat` deletes the database and all local message/audit history.
+It does not delete agmsg teams, roles or messages. Remove those with agmsg's own
+commands only after confirming they are test data.
+
+## 8. Scope notes
+
+- MCP is deferred; the v1 interface is CLI + skill.
+- There is no `history --all` and no team-wide body browsing.
+- Message bodies are untrusted and may contain sensitive data; the database is
+  local and owner-only, but it is not encrypted.
+- `resume --force` is unsafe by design: it is accepted only when the old
+  binding liveness cannot be proven, and it is audited.
+- conversation ID capture from host hooks is not implemented; v1 reports
+  `bound_scope=host_role` and `whoami --conversation` is only usable for rows
+  that already carry a conversation ID.
+- There is no product CLI probe yet; the agmsg adapter's `probe()` returns
+  `unknown`, so a real L3 observation from the Phase 0 spike is not converted
+  into `wakeup_level=L3` automatically.

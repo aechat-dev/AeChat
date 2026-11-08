@@ -1,0 +1,82 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  typescript:
+    name: TypeScript
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.25.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Test
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build
+
+  macos:
+    name: macOS app
+    runs-on: macos-15
+    timeout-minutes: 30
+    needs: typescript
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.25.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Swift build and checks
+        run: ./scripts/check-macos.sh
+
+      - name: Package app
+        run: ./scripts/build-aechat-app.sh
+
+      - name: Verify signature
+        run: codesign --verify --deep --strict dist/AeChat.app
+
+      - name: Archive app
+        run: ditto -c -k --keepParent dist/AeChat.app dist/AeChat.app.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AeChat.app
+          path: dist/AeChat.app.zip
+          if-no-files-found: error
+          retention-days: 14

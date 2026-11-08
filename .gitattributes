@@ -1,0 +1,14 @@
+# Normalize line endings in the repository; keep binary assets binary.
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.zip binary
+*.gz binary
+*.db binary
+*.sqlite binary
+
+*.sh text eol=lf
+*.swift text eol=lf

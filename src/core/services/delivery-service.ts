@@ -388,11 +388,17 @@ export class DeliveryService {
 
     // A direct host injection may land even when the CLI times out, so mark
     // the attempt before dispatch and never re-inject automatically.
+    const targetIsCodex = target?.client === "codex";
     const direct =
       message !== undefined &&
-      target?.client === "codex" &&
+      targetIsCodex &&
       target.conversationId !== null &&
       target.conversationId !== undefined;
+    const deliveryKind = direct
+      ? "direct"
+      : targetIsCodex
+        ? "blocked"
+        : "pointer";
     if (direct && !this.deliveries.claimDirectAttempt(input.deliveryId)) {
       return {
         messageId: input.messageId,
@@ -427,7 +433,7 @@ export class DeliveryService {
           transport: toBinding.transport,
           mode: toBinding.mode,
           ts: notifyAt,
-          data: { delivery: direct ? "direct" : "pointer" },
+          data: { delivery: deliveryKind },
         });
       });
       return {
@@ -452,7 +458,7 @@ export class DeliveryService {
         mode: toBinding.mode,
         ts: notifyAt,
         errorDetail: error,
-        data: { delivery: direct ? "direct" : "pointer" },
+        data: { delivery: deliveryKind },
       });
     });
     return {

@@ -27,11 +27,21 @@ struct InspectorView: View {
             }
         }
         .navigationTitle("Inspector")
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    state.selectMessage(nil)
+                } label: {
+                    Label("Close inspector", systemImage: "xmark.circle")
+                }
+                .keyboardShortcut(.escape, modifiers: [])
+            }
+        }
     }
 
     private func content(_ log: UiLog) -> some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
                 section("Message") {
                     fact("id", log.messageId, monospaced: true)
                     fact("kind", log.kind)
@@ -59,7 +69,7 @@ struct InspectorView: View {
                     }
                 }
             }
-            .padding(16)
+            .padding(Theme.Spacing.medium)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
@@ -68,15 +78,15 @@ struct InspectorView: View {
         _ title: String,
         @ViewBuilder content: () -> Content
     ) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
             Text(title)
-                .font(.headline)
+                .font(Theme.Typography.sectionTitle)
             content()
         }
     }
 
     private func fact(_ label: String, _ value: String, monospaced: Bool = false) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 8) {
+        HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.small) {
             Text(label)
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -89,8 +99,8 @@ struct InspectorView: View {
     }
 
     private func chainRow(_ event: UiAuditEvent) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            HStack(spacing: 6) {
+        VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
+            HStack(spacing: Theme.Spacing.small) {
                 Text(event.stage)
                     .font(.caption.monospaced())
                 Text(event.event)
@@ -104,9 +114,9 @@ struct InspectorView: View {
             if let error = event.errorDetail, !error.isEmpty {
                 Text(Display.sanitizedBody(error))
                     .font(.caption2)
-                    .foregroundStyle(.red)
+                    .foregroundStyle(Theme.Palette.failure)
             }
         }
-        .padding(.vertical, 2)
+        .padding(.vertical, Theme.Spacing.xSmall)
     }
 }

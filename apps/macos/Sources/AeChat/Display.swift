@@ -27,18 +27,17 @@ enum Display {
 
     static func statusColor(_ status: String) -> Color {
         switch status {
-        case "online": return .green
-        case "offline": return .secondary
-        case "left": return .purple
-        default: return .orange
+        case "online": return Theme.Palette.healthy
+        case "offline", "left": return Theme.Palette.muted
+        default: return Theme.Palette.attention
         }
     }
 
     static func bindingColor(_ state: String) -> Color {
         switch state {
-        case "valid": return .green
-        case "stale": return .orange
-        default: return .red
+        case "valid": return Theme.Palette.healthy
+        case "stale": return Theme.Palette.attention
+        default: return Theme.Palette.failure
         }
     }
 

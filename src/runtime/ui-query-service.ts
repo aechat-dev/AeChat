@@ -102,6 +102,7 @@ function countSessions(sessions: SessionView[]): UiCounts {
     left: 0,
     pending_requests: 0,
     pending_deliveries: 0,
+    failed_deliveries: 0,
   };
   for (const session of sessions) {
     switch (session.status) {
@@ -201,6 +202,7 @@ export class UiQueryService {
       counts.pending_requests += thread.pending_requests;
       counts.pending_deliveries += thread.pending_deliveries;
     }
+    counts.failed_deliveries = this.runtime.deliveries.countDeadLettered();
     return {
       generated_at: this.runtime.now(),
       event_seq: eventSeq,

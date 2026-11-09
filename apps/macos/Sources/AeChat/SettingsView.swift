@@ -18,7 +18,7 @@ struct SettingsView: View {
                     .font(.callout)
                 } icon: {
                     Image(systemName: "lock.shield")
-                        .foregroundStyle(.green)
+                        .foregroundStyle(Theme.Palette.healthy)
                 }
             }
 
@@ -42,7 +42,7 @@ struct SettingsView: View {
                 } else if let error = state.doctorError {
                     Text(error)
                         .font(.caption)
-                        .foregroundStyle(.red)
+                        .foregroundStyle(Theme.Palette.failure)
                 } else if state.isLoadingDoctor {
                     ProgressView("Reading read-only facts…")
                         .controlSize(.small)
@@ -84,7 +84,7 @@ struct SettingsView: View {
     }
 
     private func doctorFacts(_ doctor: UiDoctor) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: Theme.Spacing.small) {
             fact("Node", "\(doctor.node.version) \(doctor.node.platform)/\(doctor.node.arch)")
             fact("agmsg", doctor.agmsg.version ?? "unknown")
             if let error = doctor.agmsg.error {
@@ -111,7 +111,7 @@ struct SettingsView: View {
     }
 
     private func fact(_ label: String, _ value: String) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 8) {
+        HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.small) {
             Text(label)
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -124,7 +124,7 @@ struct SettingsView: View {
     }
 
     private func copyRow(_ title: String, _ value: String) -> some View {
-        HStack(spacing: 8) {
+        HStack(spacing: Theme.Spacing.small) {
             Text(value)
                 .font(.caption.monospaced())
                 .lineLimit(1)

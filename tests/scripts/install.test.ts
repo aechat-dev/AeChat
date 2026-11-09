@@ -26,7 +26,11 @@ async function runInstall(
 ): Promise<{ status: number | null; stdout: string; stderr: string }> {
   return await new Promise((resolve) => {
     const child = spawn("bash", [script, "--version", `v${version}`, ...args], {
-      env: { ...process.env, AECHAT_INSTALL_BASE: base },
+      env: {
+        ...process.env,
+        AECHAT_INSTALL_BASE: base,
+        AECHAT_INSTALL_ALLOW_INSECURE: "1",
+      },
       stdio: ["ignore", "pipe", "pipe"],
     });
     let stdout = "";
@@ -120,6 +124,23 @@ describe("install script", () => {
         env: {
           ...process.env,
           AECHAT_INSTALL_BASE: "http://example.invalid",
+        },
+      },
+    );
+
+    expect(result.status).toBe(2);
+    expect(result.stderr).toContain("must use HTTPS");
+  });
+
+  it("rejects loopback HTTP without the test opt-in", () => {
+    const result = spawnSync(
+      "bash",
+      [script, "--version", `v${version}`, "--dry-run"],
+      {
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          AECHAT_INSTALL_BASE: "http://127.0.0.1:1",
         },
       },
     );

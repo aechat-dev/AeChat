@@ -41,16 +41,19 @@ struct ChatView: View {
     }
 
     private func header(_ thread: ThreadSummary) -> some View {
-        HStack(spacing: 10) {
+        HStack(spacing: Theme.Spacing.small) {
             Text(participants(thread))
-                .font(.headline)
+                .font(Theme.Typography.sectionTitle)
             Text("\(thread.pendingRequests) req · \(thread.pendingDeliveries) delivery")
                 .font(.caption2.monospacedDigit())
                 .foregroundStyle(.secondary)
             Spacer()
-            HStack(spacing: 4) {
+            HStack(spacing: Theme.Spacing.xSmall) {
                 Circle()
-                    .fill(state.streamConnected ? Color.green : Color.orange)
+                    .fill(
+                        state.streamConnected
+                            ? Theme.Palette.healthy : Theme.Palette.attention
+                    )
                     .frame(width: 6, height: 6)
                 Text(state.streamConnected ? "live" : "reconnecting")
                     .font(.caption2)
@@ -70,14 +73,14 @@ struct ChatView: View {
                     .controlSize(.small)
             }
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
+        .padding(.horizontal, Theme.Spacing.medium)
+        .padding(.vertical, Theme.Spacing.small)
     }
 
     private var timeline: some View {
         ScrollViewReader { proxy in
             ScrollView {
-                LazyVStack(alignment: .leading, spacing: 12) {
+                LazyVStack(alignment: .leading, spacing: Theme.Spacing.small) {
                     if state.nextBefore != nil {
                         Button("Load older") {
                             loadOlder()
@@ -101,7 +104,7 @@ struct ChatView: View {
                         .frame(height: 1)
                         .id("bottom")
                 }
-                .padding(16)
+                .padding(Theme.Spacing.medium)
             }
             .onAppear {
                 proxy.scrollTo("bottom", anchor: .bottom)

@@ -24,7 +24,8 @@ if [ "$1" = "release" ] && [ "$2" = "view" ]; then
   case "\${GH_STATE:-missing}" in
     draft) printf 'true\\n'; exit 0 ;;
     published) printf 'false\\n'; exit 0 ;;
-    *) exit 1 ;;
+    error) printf 'HTTP 500\\n' >&2; exit 1 ;;
+    *) printf 'release not found\\n' >&2; exit 1 ;;
   esac
 fi
 exit 0
@@ -108,8 +109,31 @@ describe("publish release", () => {
     expect(result.status).toBe(0);
     const calls = readFileSync(log, "utf8").trim().split("\n");
     expect(calls.some((call) => call.includes("release create"))).toBe(false);
-    expect(calls.some((call) => call.includes("release upload"))).toBe(true);
+    const notesIndex = calls.findIndex(
+      (call) =>
+        call.includes("release edit") &&
+        call.includes("--title") &&
+        call.includes("--notes-file"),
+    );
+    const uploadIndex = calls.findIndex((call) =>
+      call.includes("release upload"),
+    );
+    expect(notesIndex).toBeGreaterThan(-1);
+    expect(notesIndex).toBeLessThan(uploadIndex);
+    expect(calls[notesIndex]).toContain("--prerelease");
     expect(calls.at(-1)).toContain("release edit");
+    expect(calls.at(-1)).toContain("--draft=false");
+  });
+
+  it("stops on a non-not-found release lookup error", () => {
+    const { root, bin, log } = setup();
+    const result = run(root, bin, log, "error");
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain("HTTP 500");
+    const calls = readFileSync(log, "utf8").trim().split("\n");
+    expect(calls).toHaveLength(1);
+    expect(calls[0]).toContain("release view");
   });
 
   it("refuses to touch an already published release", () => {

@@ -14,6 +14,8 @@ export interface HostDescriptor {
   configDirName: string;
   /** Settings/hook file inside the host config directory. */
   hookFile: string;
+  /** Extra guidance when a host-session claim is not confirmed. */
+  bindingHint?: string;
 }
 
 export const SHARED_SESSION_ENV = "AGMSG_SESSION_ID";
@@ -36,6 +38,8 @@ export const HOSTS: readonly HostDescriptor[] = [
     configEnv: "CODEX_HOME",
     configDirName: ".codex",
     hookFile: "config.toml",
+    bindingHint:
+      "Codex needs the agmsg bridge for a live role: run `aechat setup codex --hooks`, then launch Codex through the agmsg shim. Without it the session stays pull-only.",
   },
 ];
 

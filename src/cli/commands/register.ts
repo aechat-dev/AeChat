@@ -58,37 +58,45 @@ export async function registerCommand(
 
   // Conversation/thread IDs are host evidence, never a user-supplied CLI
   // shortcut: accepting one here would let a caller fake conversation binding.
+  const host = hostById(client);
+  const hostSession = host === undefined ? undefined : hostSessionId(host);
   const result = await ctx.service.register({
     displayName,
     client,
     project,
+    ...(hostSession === undefined ? {} : { conversationId: hostSession }),
   });
 
   let autoClaim: ClaimResult | undefined;
   let skipReason: string | undefined;
-  const host = hostById(client);
+  // Only a missing host session or a rejected claim leaves the user with an
+  // actionable host-specific hint; an explicit --no-bind or a client without
+  // a host descriptor is a deliberate opt-out.
+  let hintApplies = false;
   if (args.flags.has("no-bind")) {
     skipReason = "disabled by --no-bind";
   } else if (client === "other") {
     skipReason = "client other has no host session";
   } else {
     const shared = process.env[SHARED_SESSION_ENV];
-    const hostSession =
+    const claimSession =
       host === undefined
         ? shared === undefined || shared === ""
           ? undefined
           : shared
-        : hostSessionId(host);
-    if (hostSession === undefined) {
+        : hostSession;
+    if (claimSession === undefined) {
+      hintApplies = host !== undefined;
       skipReason =
         host === undefined
           ? `no host descriptor for client ${client}; set ${SHARED_SESSION_ENV} to bind`
           : `no host session id (${SHARED_SESSION_ENV} or ${host.sessionEnv}) in the environment`;
     } else {
+      hintApplies = true;
       try {
         autoClaim = await ctx.service.claim(
           result.session.sessionId,
-          hostSession,
+          claimSession,
         );
       } catch (error) {
         autoClaim = {
@@ -114,6 +122,24 @@ export async function registerCommand(
   const holdsRole =
     autoClaim?.transportClaimState === "accepted" ||
     autoClaim?.transportClaimState === "unknown";
+  const autoBind =
+    autoClaim === undefined
+      ? {
+          claimed: false,
+          boundScope: "none",
+          transportClaimState: "not-attempted",
+          bindingState,
+          reason: skipReason,
+        }
+      : autoBindView(autoClaim);
+  if (
+    hintApplies &&
+    autoClaim?.claimed !== true &&
+    host?.bindingHint !== undefined &&
+    typeof autoBind["reason"] === "string"
+  ) {
+    autoBind["reason"] = `${autoBind["reason"]} ${host.bindingHint}`;
+  }
 
   return {
     ...sessionDto(session),
@@ -122,15 +148,6 @@ export async function registerCommand(
     bound_scope: bound ? (autoClaim?.boundScope ?? "none") : "none",
     binding_state: bound ? "bound" : bindingState,
     bind_directive: bound || holdsRole ? null : result.bindDirective,
-    auto_bind:
-      autoClaim === undefined
-        ? {
-            claimed: false,
-            boundScope: "none",
-            transportClaimState: "not-attempted",
-            bindingState,
-            reason: skipReason,
-          }
-        : autoBindView(autoClaim),
+    auto_bind: autoBind,
   };
 }

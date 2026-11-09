@@ -190,7 +190,24 @@ describe("session CLI commands", () => {
 
     expect(data["bound_state"]).toBe("valid");
     expect(data["bound_scope"]).toBe("host_role");
+    expect(data["conversation_id"]).toBe("thread-1");
     expect(data["auto_bind"]).toMatchObject({ claimed: true });
+  });
+
+  it("points unbound Codex sessions at the agmsg bridge", async () => {
+    vi.stubEnv("AGMSG_SESSION_ID", "");
+    vi.stubEnv("CODEX_THREAD_ID", "");
+    const ctx = setup();
+
+    const data = await registerCommand(
+      ["--name", "dev", "--client", "codex", "--project", "/tmp/project"],
+      ctx,
+    );
+
+    expect(data["auto_bind"]).toMatchObject({
+      claimed: false,
+      reason: expect.stringContaining("aechat setup codex --hooks"),
+    });
   });
 
   it("registers a host id outside the built-in registry", async () => {

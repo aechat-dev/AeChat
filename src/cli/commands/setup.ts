@@ -1,3 +1,4 @@
+import { installCodexHooks } from "../../adapters/hosts/codex.js";
 import { hostById } from "../../adapters/hosts/registry.js";
 import { AechatError } from "../../core/errors.js";
 import { installHostSkill } from "../../runtime/host-install.js";
@@ -18,16 +19,29 @@ export async function setupCommand(
     );
   }
   const args = parseArgs(rest);
-  const result = installHostSkill({
-    host: hostArg,
-    dryRun: args.flags.has("dry-run"),
-  });
+  if (args.flags.has("hooks") && hostArg !== "codex") {
+    throw new AechatError(
+      "invalid_input",
+      `--hooks is not supported for ${hostArg}; only codex has an agmsg hook installer`,
+    );
+  }
+  const dryRun = args.flags.has("dry-run");
+  const result = installHostSkill({ host: hostArg, dryRun });
+  const hooks =
+    hostArg === "codex" && args.flags.has("hooks")
+      ? await installCodexHooks({
+          project: args.values.get("project") ?? process.cwd(),
+          dryRun,
+        })
+      : undefined;
+  const data = hooks === undefined ? result : { ...result, hooks };
 
   if (args.flags.has("json")) {
-    return { data: result };
+    return { data };
   }
-  return {
-    data: result,
-    text: `${result.host} skill: ${result.action} -> ${result.path}\n`,
-  };
+  const lines = [`${result.host} skill: ${result.action} -> ${result.path}`];
+  if (hooks !== undefined) {
+    lines.push(`codex hooks: ${hooks.action} -> ${hooks.path}`);
+  }
+  return { data, text: `${lines.join("\n")}\n` };
 }

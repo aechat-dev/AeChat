@@ -104,6 +104,12 @@ describe("init and setup", () => {
     });
   });
 
+  it("rejects --hooks for hosts without an agmsg hook installer", async () => {
+    await expect(
+      setupCommand(["claude-code", "--hooks", "--json"]),
+    ).rejects.toThrow("only codex has an agmsg hook installer");
+  });
+
   it("reports planned actions in a dry run without touching the disk", async () => {
     const root = tempRoot();
     const home = join(root, "home");

@@ -11,6 +11,7 @@ for a program; prefer it in agent conversations.
 | `list` / `whoami` | Discover sessions and capabilities |
 | `show` | Read one message by ID |
 | `send` | Send a notification or request |
+| `attach` | Reuse the session bound to this host conversation, or register one (host start/restart) |
 | `receive` / `ack` | Claim one delivery, then acknowledge it after processing |
 | `inbox` | Read pending deliveries in a batch |
 | `watch` | Stream newly arrived messages without claiming them (for a host watcher) |

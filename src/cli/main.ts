@@ -7,6 +7,7 @@ import { createReadOnlyRuntime } from "../runtime/read-only-runtime.js";
 import { createRuntime } from "../runtime/runtime.js";
 import { UiQueryService } from "../runtime/ui-query-service.js";
 import { ackCommand } from "./commands/ack.js";
+import { attachCommand } from "./commands/attach.js";
 import { cancelCommand } from "./commands/cancel.js";
 import { confirmCommand } from "./commands/confirm.js";
 import { doctorCommand } from "./commands/doctor.js";
@@ -46,6 +47,7 @@ const UI_COMMANDS = new Set([
 
 const COMMANDS = new Set([
   "register",
+  "attach",
   "confirm",
   "whoami",
   "list",
@@ -77,6 +79,7 @@ Usage: aechat <command> [options]
 
 Commands:
   register   --name <display> --client <host|other> [--project <path>] [--no-bind]
+  attach     --client <host> [--name <display>] [--project <path>] [--json]
   confirm    --session <uuid>
   whoami     --session <uuid> | --conversation <id>
   list       [--json] [--all] [--as <session>]
@@ -181,6 +184,9 @@ export async function main(argv: readonly string[]): Promise<number> {
       switch (command) {
         case "register":
           data = await registerCommand(rest, ctx);
+          break;
+        case "attach":
+          data = await attachCommand(rest, ctx);
           break;
         case "confirm":
           data = await confirmCommand(rest, ctx);

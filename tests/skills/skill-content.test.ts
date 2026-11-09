@@ -45,8 +45,8 @@ describe.each(["claude-code", "codex"] as const)("%s skill", (host) => {
     }
   });
 
-  it("registers with the correct host and confirms the binding", () => {
-    expect(content).toContain("aechat register --name");
+  it("attaches with the correct host and confirms the binding", () => {
+    expect(content).toContain("aechat attach");
     expect(content).toContain(`--client ${host}`);
     expect(content).toContain("bind_directive");
     expect(content).toContain("aechat confirm --session");

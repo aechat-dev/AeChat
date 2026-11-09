@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
@@ -10,6 +10,8 @@ export interface CodexHookOptions {
   env?: NodeJS.ProcessEnv;
   scriptsDir?: string;
   dryRun?: boolean;
+  /** Absolute command run from SessionStart to reattach the conversation. */
+  attachCommand?: string;
   runner?: (
     file: string,
     args: readonly string[],
@@ -25,6 +27,8 @@ export interface CodexHookResult {
   mode: CodexDeliveryMode;
   /** The project's hooks file; agmsg also writes it on the agmsgd path. */
   path: string;
+  /** Whether the host-start `aechat attach` hook is present. */
+  attachHook: "installed" | "up-to-date" | "skipped";
 }
 
 export function codexHooksPath(project: string): string {
@@ -58,6 +62,44 @@ function defaultRunner(
       },
     );
   });
+}
+
+/**
+ * Append AeChat's own SessionStart entry without touching agmsg's. agmsg's
+ * delivery.sh strips only agmsg-owned entries, so this survives a re-run.
+ */
+export function installAttachHook(
+  path: string,
+  command: string,
+): "installed" | "up-to-date" | "skipped" {
+  if (!existsSync(path)) {
+    return "skipped";
+  }
+  let root: unknown;
+  try {
+    root = JSON.parse(readFileSync(path, "utf8"));
+  } catch {
+    return "skipped";
+  }
+  if (typeof root !== "object" || root === null) {
+    return "skipped";
+  }
+  const hooks = (root as { hooks?: unknown }).hooks;
+  if (typeof hooks !== "object" || hooks === null) {
+    return "skipped";
+  }
+  const sessionStart = (hooks as { SessionStart?: unknown }).SessionStart;
+  const entries = Array.isArray(sessionStart) ? sessionStart : [];
+  if (JSON.stringify(entries).includes("attach --client codex")) {
+    return "up-to-date";
+  }
+  entries.push({
+    matcher: "",
+    hooks: [{ type: "command", command }],
+  });
+  (hooks as { SessionStart?: unknown }).SessionStart = entries;
+  writeFileSync(path, JSON.stringify(root), "utf8");
+  return "installed";
 }
 
 function alreadyConfigured(path: string): boolean {
@@ -120,10 +162,19 @@ export async function installCodexHooks(
   const dryRun = options.dryRun === true;
   const path = codexHooksPath(options.project);
 
+  const attachHook = (): "installed" | "up-to-date" | "skipped" =>
+    options.attachCommand === undefined
+      ? "skipped"
+      : installAttachHook(path, options.attachCommand);
   const agmsgd = await agmsgdState(dir, runner);
   if (agmsgd === "available" || agmsgd === "on" || agmsgd === "not-running") {
     if (dryRun) {
-      return { action: "would-configure", mode: "agmsgd", path };
+      return {
+        action: "would-configure",
+        mode: "agmsgd",
+        path,
+        attachHook: "skipped",
+      };
     }
     const enabled = await runner(
       join(dir, "agmsg"),
@@ -156,14 +207,29 @@ export async function installCodexHooks(
         `agmsgd is configured but the SessionStart hook file is missing: ${path}`,
       );
     }
-    return { action: "configured", mode: "agmsgd", path };
+    return {
+      action: "configured",
+      mode: "agmsgd",
+      path,
+      attachHook: attachHook(),
+    };
   }
 
   if (alreadyConfigured(path)) {
-    return { action: "up-to-date", mode: "monitor", path };
+    return {
+      action: "up-to-date",
+      mode: "monitor",
+      path,
+      attachHook: attachHook(),
+    };
   }
   if (dryRun) {
-    return { action: "would-configure", mode: "monitor", path };
+    return {
+      action: "would-configure",
+      mode: "monitor",
+      path,
+      attachHook: "skipped",
+    };
   }
 
   const script = join(dir, "delivery.sh");
@@ -184,5 +250,10 @@ export async function installCodexHooks(
       `agmsg reported success but ${path} is missing`,
     );
   }
-  return { action: "configured", mode: "monitor", path };
+  return {
+    action: "configured",
+    mode: "monitor",
+    path,
+    attachHook: attachHook(),
+  };
 }

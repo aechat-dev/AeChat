@@ -37,6 +37,9 @@ func testSnapshot() throws {
     check(snapshot.counts.sessions == 2, "session count")
     check(snapshot.eventSeq == 12, "snapshot event seq")
     check(snapshot.counts.online == 1, "online count")
+    check(
+        snapshot.counts.failedDeliveries == nil,
+        "old snapshot leaves failed deliveries unknown")
     check(snapshot.sessions.count == 2, "session rows")
     check(snapshot.sessions[0].displayName == "planner", "first session name")
     check(snapshot.sessions[0].address == "aechat-000000000001", "address")

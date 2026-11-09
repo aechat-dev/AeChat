@@ -38,7 +38,11 @@ afterEach(() => {
 const NOW = "2026-11-07T00:00:00.000Z";
 
 async function fixture(
-  options: { readNow?: string; expiringRequest?: boolean } = {},
+  options: {
+    readNow?: string;
+    expiringRequest?: boolean;
+    failureStatus?: "dead_letter" | "notify_failed";
+  } = {},
 ): Promise<Fixture> {
   const home = mkdtempSync(join(tmpdir(), "aechat-ui-query-"));
   dirs.push(home);
@@ -83,6 +87,11 @@ async function fixture(
     requestId: request.messageId,
     body: "tests passed",
   });
+  if (options.failureStatus !== undefined) {
+    writable.db
+      .prepare("UPDATE deliveries SET status = ? WHERE delivery_id = ?")
+      .run(options.failureStatus, notify.deliveryId);
+  }
   let expiringId: string | null = null;
   if (options.expiringRequest === true) {
     expiringId = (
@@ -138,6 +147,24 @@ describe("UiQueryService.snapshot", () => {
     expect(thread?.last_message.preview).toBe("tests passed");
     expect(thread?.pending_requests).toBe(0);
     expect(thread?.pending_deliveries).toBe(2);
+    expect(snapshot.counts.failed_deliveries).toBe(0);
+  });
+
+  it("counts dead-lettered deliveries", async () => {
+    const { ui } = await fixture({ failureStatus: "dead_letter" });
+
+    const snapshot = await ui.snapshot();
+
+    expect(snapshot.counts.failed_deliveries).toBe(1);
+  });
+
+  it("keeps retryable notify failures in the pending count", async () => {
+    const { ui } = await fixture({ failureStatus: "notify_failed" });
+
+    const snapshot = await ui.snapshot();
+
+    expect(snapshot.counts.failed_deliveries).toBe(0);
+    expect(snapshot.counts.pending_deliveries).toBeGreaterThanOrEqual(1);
   });
 });
 

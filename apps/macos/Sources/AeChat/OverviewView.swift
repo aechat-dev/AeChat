@@ -8,9 +8,10 @@ struct OverviewView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: Theme.Spacing.large) {
                 if let snapshot = state.snapshot {
-                    counts(snapshot.counts)
-                    transportModes
+                    health(snapshot.counts)
+                    secondaryCounts(snapshot.counts)
                     recentThreads(snapshot.threads)
+                    transportModes
                     Text("Updated \(Display.relative(snapshot.generatedAt))")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
@@ -31,9 +32,9 @@ struct OverviewView: View {
         .navigationTitle("Overview")
     }
 
-    private func counts(_ counts: UiCounts) -> some View {
+    private func health(_ counts: UiCounts) -> some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.small) {
-            Text("Sessions")
+            Text("Communication")
                 .font(Theme.Typography.sectionTitle)
             Grid(
                 alignment: .leading,
@@ -41,53 +42,62 @@ struct OverviewView: View {
                 verticalSpacing: Theme.Spacing.small
             ) {
                 GridRow {
-                    metric("Total", counts.sessions)
-                    metric("Online", counts.online)
-                    metric("Offline", counts.offline)
-                    metric("Unknown", counts.unknown)
-                    metric("Left", counts.left)
+                    healthMetric(
+                        "Active sessions", counts.online, tone: Theme.Palette.healthy)
+                    healthMetric(
+                        "Pending requests", counts.pendingRequests,
+                        tone: Theme.Palette.attention)
                 }
                 GridRow {
-                    metric("Pending requests", counts.pendingRequests)
-                    metric("Pending deliveries", counts.pendingDeliveries)
+                    healthMetric(
+                        "Pending deliveries", counts.pendingDeliveries,
+                        tone: Theme.Palette.attention)
+                    healthMetric(
+                        "Failed deliveries", counts.failedDeliveries,
+                        tone: Theme.Palette.failure)
                 }
             }
         }
     }
 
-    private func metric(_ title: String, _ value: Int) -> some View {
+    private func healthMetric(_ title: String, _ value: Int?, tone: Color) -> some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
-            Text(title)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            Text("\(value)")
-                .font(Theme.Typography.metric)
-        }
-        .frame(minWidth: 90, alignment: .leading)
-    }
-
-    private var transportModes: some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.small) {
-            Text("Transport modes")
-                .font(Theme.Typography.sectionTitle)
-            let modes = Display.transportModes(state.sessions)
-            if modes.isEmpty {
-                Text("No bindings")
+            HStack(spacing: Theme.Spacing.xSmall) {
+                Circle()
+                    .fill((value ?? 0) > 0 ? tone : Theme.Palette.muted)
+                    .frame(width: 8, height: 8)
+                Text(title)
                     .font(.caption)
                     .foregroundStyle(.secondary)
-            } else {
-                HStack(spacing: Theme.Spacing.medium) {
-                    ForEach(modes, id: \.mode) { entry in
-                        HStack(spacing: Theme.Spacing.small) {
-                            Text(entry.mode)
-                                .font(.caption.monospaced())
-                            Text("\(entry.count)")
-                                .font(.caption.monospacedDigit())
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                }
             }
+            Text(value.map(String.init) ?? "—")
+                .font(Theme.Typography.metric)
+                .foregroundStyle(value == nil ? .secondary : .primary)
+        }
+        .frame(minWidth: 110, alignment: .leading)
+    }
+
+    private func secondaryCounts(_ counts: UiCounts) -> some View {
+        HStack(spacing: Theme.Spacing.medium) {
+            Text("Total \(counts.sessions)")
+            Text("Offline \(counts.offline)")
+            Text("Unknown \(counts.unknown)")
+            Text("Left \(counts.left)")
+        }
+        .font(.caption)
+        .foregroundStyle(.secondary)
+    }
+
+    @ViewBuilder
+    private var transportModes: some View {
+        let modes = Display.transportModes(state.sessions)
+        if !modes.isEmpty {
+            Text(
+                "Transport · "
+                    + modes.map { "\($0.mode) \($0.count)" }.joined(separator: " · ")
+            )
+            .font(.caption)
+            .foregroundStyle(.secondary)
         }
     }
 

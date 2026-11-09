@@ -59,6 +59,7 @@ export interface UiCounts {
   left: number;
   pending_requests: number;
   pending_deliveries: number;
+  failed_deliveries: number;
 }
 
 export interface UiSnapshot {

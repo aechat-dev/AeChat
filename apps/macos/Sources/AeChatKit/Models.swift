@@ -25,6 +25,7 @@ public struct UiCounts: Decodable, Equatable {
     public let left: Int
     public let pendingRequests: Int
     public let pendingDeliveries: Int
+    public let failedDeliveries: Int?
 }
 
 public struct TransportView: Decodable, Equatable {

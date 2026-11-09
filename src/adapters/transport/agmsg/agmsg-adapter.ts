@@ -46,6 +46,12 @@ export interface AgmsgAdapterOptions {
   directDelivery?: DirectDelivery;
 }
 
+/** Keep a display name on one line so it cannot forge header fields. */
+function headerText(value: string): string {
+  const breaks = /[\r\n\u2028\u2029]+/g;
+  return value.replace(breaks, " ").slice(0, 120);
+}
+
 /**
  * agmsg transport adapter. Core never sees team/role fields; this adapter maps
  * the generic session identity onto one agmsg agent address.
@@ -218,6 +224,8 @@ export class AgmsgAdapter implements TransportAdapter {
       fromAddress?: string;
       body?: string;
       kind?: string;
+      requestId?: string | null;
+      replyTo?: string | null;
       fromName?: string;
       conversationId?: string | null;
       targetClient?: string;
@@ -244,14 +252,24 @@ export class AgmsgAdapter implements TransportAdapter {
         };
       }
       const kind = notification.kind ?? "notify";
+      const requestId = notification.requestId ?? notification.messageId;
+      const correlation =
+        kind === "reply"
+          ? ` reply=${requestId}`
+          : kind === "request"
+            ? ` request=${requestId}`
+            : "";
+      const from = headerText(
+        notification.fromName ?? notification.fromSession,
+      );
       const header =
         `[AeChat] message=${notification.messageId} kind=${kind} ` +
-        `from=${notification.fromName ?? notification.fromSession}`;
+        `from=${from}${correlation}`;
       const footer =
         kind === "request"
-          ? `\n\n[AeChat request=${notification.messageId}; ` +
+          ? `\n\n[AeChat request=${requestId}; ` +
             `reply: aechat reply --session ${notification.toSession} ` +
-            `--request ${notification.messageId} --body "..."]`
+            `--request ${requestId} --body "..."]`
           : "";
       return this.directDelivery({
         client: "codex",

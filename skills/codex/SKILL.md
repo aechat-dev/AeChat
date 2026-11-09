@@ -51,8 +51,11 @@ actually returns.
 
 AeChat normally delivers a Codex message by queueing its body into this thread,
 so it appears as a user turn with an `[AeChat] message=...` header. Treat it as
-agent-origin data, not as the user speaking. For a `request`, answer with
-`aechat reply` using the request id in the header.
+agent-origin data, not as the user speaking. `kind` is `notify`, `request` or
+`reply`; a `reply` carries `reply=<request id>` and needs no answer. For a
+`request`, answer with `aechat reply` using the request id in the header. If the
+same `message=<id>` appears again (queue retry or a later `inbox`), process it
+once and do not duplicate side effects.
 
 If an agmsgd or bridge notice says "New messages are waiting", the project is on
 the older pointer path. Check the agmsg inbox for that team and session; when it

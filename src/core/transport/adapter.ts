@@ -50,6 +50,10 @@ export interface PointerNotification {
   body?: string;
   /** Message kind, so a direct host delivery can carry reply metadata. */
   kind?: string;
+  /** Request id for a `request` or `reply` message. */
+  requestId?: string | null;
+  /** The request a `reply` answers. */
+  replyTo?: string | null;
   /** Sender display name for the direct-injection header. */
   fromName?: string;
   /** Target host conversation id, when the session recorded one. */

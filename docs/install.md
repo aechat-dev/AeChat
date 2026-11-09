@@ -111,8 +111,11 @@ Codex messages are delivered by queueing the body into the desktop thread
 Codex target. The adapter uses the CLI bundled in `ChatGPT.app`; set
 `AECHAT_CODEX_BIN` when Codex lives elsewhere. If queueing fails, the delivery
 is reported as `notify_failed` and is not silently downgraded to a pointer.
-The body is passed as a command-line argument, so it is visible in the local
-process list while the queue command runs.
+The first queue attempt is recorded before dispatch, so a failed or timed-out
+injection cannot be retried automatically; after fixing `AECHAT_CODEX_BIN`,
+send the message again rather than retrying the old delivery. The body is
+passed as a command-line argument, so it is visible in the local process list
+while the queue command runs.
 
 The command also installs an AeChat `SessionStart` entry next to agmsg's, which
 runs `aechat attach` so a restarted conversation reuses its existing session

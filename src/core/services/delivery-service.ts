@@ -373,7 +373,12 @@ export class DeliveryService {
         : { fromAddress: fromBinding.address }),
       ...(message === undefined
         ? {}
-        : { body: message.body, kind: message.kind }),
+        : {
+            body: message.body,
+            kind: message.kind,
+            requestId: message.requestId,
+            replyTo: message.replyTo,
+          }),
       conversationId: target?.conversationId ?? null,
       ...(target === undefined
         ? {}
@@ -422,6 +427,7 @@ export class DeliveryService {
           transport: toBinding.transport,
           mode: toBinding.mode,
           ts: notifyAt,
+          data: { delivery: direct ? "direct" : "pointer" },
         });
       });
       return {
@@ -446,6 +452,7 @@ export class DeliveryService {
         mode: toBinding.mode,
         ts: notifyAt,
         errorDetail: error,
+        data: { delivery: direct ? "direct" : "pointer" },
       });
     });
     return {

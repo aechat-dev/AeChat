@@ -1,7 +1,10 @@
 import { spawn, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
+import { chmodSync, mkdtempSync, writeFileSync } from "node:fs";
 import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
@@ -211,6 +214,39 @@ describe("install script", () => {
     );
   });
 
+  it("resolves the latest stable release with --stable", () => {
+    const dir = mkdtempSync(join(tmpdir(), "aechat-install-stable-"));
+    const curl = join(dir, "curl");
+    writeFileSync(
+      curl,
+      '#!/bin/sh\nprintf \'%s\\n\' \'{"tag_name":"v0.1.0","draft":false,"prerelease":false}\'\n',
+    );
+    chmodSync(curl, 0o755);
+    const result = spawnSync("bash", [script, "--stable", "--dry-run"], {
+      encoding: "utf8",
+      env: { ...process.env, PATH: `${dir}:${process.env.PATH}` },
+    });
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain("tag: v0.1.0");
+  });
+
+  it("rejects a prerelease returned for --stable", () => {
+    const dir = mkdtempSync(join(tmpdir(), "aechat-install-stable-"));
+    const curl = join(dir, "curl");
+    writeFileSync(
+      curl,
+      '#!/bin/sh\nprintf \'%s\\n\' \'{"tag_name":"v0.2.0-alpha.1","draft":false,"prerelease":true}\'\n',
+    );
+    chmodSync(curl, 0o755);
+    const result = spawnSync("bash", [script, "--stable", "--dry-run"], {
+      encoding: "utf8",
+      env: { ...process.env, PATH: `${dir}:${process.env.PATH}` },
+    });
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain("no stable release found");
+  });
   it("documents its options in help", () => {
     const result = run("--help");
 

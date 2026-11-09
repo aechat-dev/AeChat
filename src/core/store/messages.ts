@@ -357,6 +357,20 @@ export class DeliveryRepository {
     return row === undefined ? undefined : deliveryFromRow(row);
   }
 
+  /**
+   * Deliveries that permanently failed. Retryable `notify_failed` rows stay
+   * in the pending count, so they are deliberately excluded here.
+   */
+  countDeadLettered(): number {
+    const row = this.db
+      .prepare(
+        `SELECT COUNT(*) AS count FROM deliveries
+         WHERE status = 'dead_letter'`,
+      )
+      .get() as { count: number };
+    return Number(row.count);
+  }
+
   getForMessageSession(
     messageId: string,
     sessionId: string,

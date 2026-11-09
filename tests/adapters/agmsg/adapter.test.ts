@@ -477,6 +477,35 @@ describe("AgmsgAdapter", () => {
     );
   });
 
+  it("normalizes a trailing backslash in the sender", async () => {
+    const cli = fakeCli();
+    const direct = vi.fn(async () => ({ ok: true }));
+    const adapter = new AgmsgAdapter({
+      cli,
+      team: "aechat-test",
+      directDelivery: direct,
+    });
+    const binding = await adapter.register(SESSION, "aechat-cccccccccccc");
+
+    await adapter.notify(binding, {
+      messageId: "msg-7",
+      fromSession: "from-session",
+      fromName: "trail\\",
+      toSession: "target-session",
+      body: "body",
+      kind: "notify",
+      conversationId: "01a1aeb5-55d4-79c3-bfa7-e1d96c4fd2e5",
+      targetClient: "codex",
+      targetProject: "/project",
+    });
+
+    const body = (direct.mock.calls[0] as unknown as [{ body: string }])[0]
+      .body;
+    expect(body.split("\n")[0]).toBe(
+      '[AeChat] message=msg-7 kind=notify from="trail/"',
+    );
+  });
+
   it("fails a Codex direct delivery without a thread id instead of sending a pointer", async () => {
     const cli = fakeCli();
     const direct = vi.fn(async () => ({ ok: true }));

@@ -58,7 +58,7 @@ the message is durable and pull-only.
   in the Codex desktop conversation and that no `[agmsg:…]` notice appeared.
   Codex ran a turn and answered, so direct injection drives a turn.
 - Injected text carries one header line (`[AeChat] message=<id> kind=<kind>
-  from=<name>`); `kind` is `notify`, `request` or `reply`. Requests add
+  from="<name>"`); `kind` is `notify`, `request` or `reply`. Requests add
   `request=<id>` and the reply command; replies add `reply=<request id>`.
 - Request E2E: `aechat send --request` was injected directly into the desktop
   thread (`01a1c059-…`), Codex answered with `aechat reply`, and the sender's

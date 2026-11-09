@@ -49,7 +49,11 @@ export interface AgmsgAdapterOptions {
 /** Keep a display name on one line so it cannot forge header fields. */
 function headerText(value: string): string {
   const breaks = /[\r\n\u2028\u2029]+/g;
-  return value.replace(breaks, " ").replace(/"/g, "'").slice(0, 120);
+  return value
+    .replace(breaks, " ")
+    .replace(/\\/g, "/")
+    .replace(/"/g, "'")
+    .slice(0, 120);
 }
 
 /**

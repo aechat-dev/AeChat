@@ -81,12 +81,30 @@ public struct ThreadParticipant: Decodable, Equatable {
     public let displayName: String
     public let client: String
     public let project: String
+
+    public init(
+        sessionId: String,
+        displayName: String,
+        client: String,
+        project: String
+    ) {
+        self.sessionId = sessionId
+        self.displayName = displayName
+        self.client = client
+        self.project = project
+    }
 }
 
 public struct ThreadLastMessage: Decodable, Equatable {
     public let messageId: String
     public let kind: String
     public let preview: String
+
+    public init(messageId: String, kind: String, preview: String) {
+        self.messageId = messageId
+        self.kind = kind
+        self.preview = preview
+    }
 }
 
 public struct ThreadSummary: Decodable, Identifiable, Equatable {
@@ -98,6 +116,22 @@ public struct ThreadSummary: Decodable, Identifiable, Equatable {
     public let pendingDeliveries: Int
 
     public var id: String { key }
+
+    public init(
+        key: String,
+        participants: [ThreadParticipant],
+        lastMessageAt: String,
+        lastMessage: ThreadLastMessage,
+        pendingRequests: Int,
+        pendingDeliveries: Int
+    ) {
+        self.key = key
+        self.participants = participants
+        self.lastMessageAt = lastMessageAt
+        self.lastMessage = lastMessage
+        self.pendingRequests = pendingRequests
+        self.pendingDeliveries = pendingDeliveries
+    }
 }
 
 public struct UiSnapshot: Decodable, Equatable {

@@ -68,9 +68,11 @@ struct SessionsView: View {
     }
 
     private var threads: [ThreadSummary] {
-        (state.snapshot?.threads ?? []).sorted {
-            $0.lastMessageAt > $1.lastMessageAt
-        }
+        ThreadFilter.visible(
+            state.snapshot?.threads ?? [],
+            visibleSessionIds: Set(state.filteredSessions.map(\.sessionId)),
+            onlyPending: state.onlyPending
+        )
     }
 
     private var groups: [SessionGroup] {

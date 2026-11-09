@@ -215,6 +215,36 @@ describe("SessionService.attach", () => {
     expect(attached.session.sessionId).not.toBe(first.session.sessionId);
   });
 
+  it("reuses a live session whose id is the host session id", async () => {
+    const { service, sessions, bindings } = setup();
+    sessions.create({
+      sessionId: "thread-5",
+      displayName: "codex-main",
+      client: "codex",
+      project: "/tmp/project",
+      lastSeenAt: "2026-11-09T00:00:00.000Z",
+      createdAt: "2026-11-09T00:00:00.000Z",
+    });
+    bindings.create({
+      bindingId: "binding-thread-5",
+      sessionId: "thread-5",
+      transport: "fake",
+      address: "aechat-thread5",
+      state: "bound",
+    });
+
+    const attached = await service.attach({
+      client: "codex",
+      project: "/tmp/project",
+      conversationId: "thread-5",
+      hostSessionId: "thread-5",
+    });
+
+    expect(attached.attached).toBe("existing");
+    expect(attached.session.sessionId).toBe("thread-5");
+    expect(sessions.get("thread-5")?.conversationId).toBe("thread-5");
+  });
+
   it("rejects two live sessions for one conversation", async () => {
     const { service } = setup();
     for (const name of ["one", "two"]) {

@@ -39,12 +39,39 @@ the message is durable and pull-only.
 | Leave and release | ✅ 2026-11-08 | ◐ 2026-11-09 sessions left, binding not re-checked | `pnpm e2e:local`; Codex host run |
 | Host model reads and replies (manual turn) | ✅ 2026-11-08 (headless turn, pull) | ✅ 2026-11-09 (headless turn, pull) | Host runs |
 | Push notification (`notification_receive`) | ? requires host hook | ◐ 2026-11-09 agmsgd notice reached the desktop thread | See the 2026-11-09 agmsgd evidence |
+| Message body injected as a user turn | ◐ `aechat watch` JSONL events | ✅ 2026-11-09 `codex queue` direct injection | See the 2026-11-09 direct-injection evidence |
 | Busy receive (`busy_receive`) | ? | ? | Phase 0 saw injection, no reply |
 | Idle wakeup (`idle_wakeup`) | ◐ agmsg Monitor only, 2026-11-06 | ? | Not managed by AeChat; re-arm untested |
 | Resume / rebind across host restarts | ? | ? | Unit tests only |
 | Conversation-level binding | ✗ v1 reports `host_role` | ✗ | No host conversation ID capture |
 
 ## Evidence log
+
+### 2026-11-09 — Codex direct body injection
+
+- `aechat send` from this Claude Code session to `codex-main`
+  (`01a1bf39-…`) returned `status=notified` at 12:12:53Z.
+- The message was injected with the desktop app's own queue
+  (`codex queue --thread 01a1aeb5-… --message=<body>`), not an agmsg pointer.
+- The thread rollout records it as `"role":"user"` with
+  `provenance: user`; the user confirmed it appears as a normal user message
+  in the Codex desktop conversation and that no `[agmsg:…]` notice appeared.
+  Codex ran a turn and answered, so direct injection drives a turn.
+- Injected text carries one header line (`[AeChat] message=<id> kind=<kind>
+  from=<name>`); `kind` is `notify`, `request` or `reply`. Requests add
+  `request=<id>` and the reply command; replies add `reply=<request id>`.
+- Request E2E: `aechat send --request` was injected directly into the desktop
+  thread (`01a1c059-…`), Codex answered with `aechat reply`, and the sender's
+  `aechat wait --request` completed with `status=replied`. Codex also sent a
+  standalone `aechat send` notification (`01a1c05a-…`), which arrived as
+  `delivery_status=delivered`.
+- Bodies beginning with `-` are passed as `--message=<body>`, never as a
+  separate argv option.
+- Conversation id is the thread UUID recorded on the AeChat session; without
+  it, or when the Codex CLI is unavailable, notify fails instead of silently
+  falling back to the pull pointer.
+- Delivery records `direct_attempted` before queueing, so a timeout after
+  enqueue is not retried and cannot duplicate the user turn.
 
 ### 2026-11-09 — Codex desktop agmsgd notice and request/reply
 

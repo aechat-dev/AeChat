@@ -11,9 +11,11 @@ import { join } from "node:path";
 
 import { afterEach, describe, expect, it } from "vitest";
 import {
+  codexExecutable,
   codexHooksPath,
   installAttachHook,
   installCodexHooks,
+  queueCodexMessage,
 } from "../../../src/adapters/hosts/codex.js";
 
 const roots: string[] = [];
@@ -319,6 +321,105 @@ describe("codex delivery setup", () => {
 
     await expect(installCodexHooks({ project: root, runner })).rejects.toThrow(
       "no agmsg",
+    );
+  });
+});
+
+describe("queueCodexMessage", () => {
+  const thread = "01a1aeb5-55d4-79c3-bfa7-e1d96c4fd2e5";
+
+  it("queues the body as a user turn in the thread", async () => {
+    const calls: string[][] = [];
+    const result = await queueCodexMessage(
+      { thread, body: "hello from AeChat" },
+      {
+        executable: "/opt/codex",
+        runner: async (file, args) => {
+          calls.push([file, ...args]);
+          return { exitCode: 0, stdout: "queued", stderr: "" };
+        },
+      },
+    );
+
+    expect(result).toEqual({ ok: true });
+    expect(calls).toEqual([
+      [
+        "/opt/codex",
+        "queue",
+        "--thread",
+        thread,
+        "--message=hello from AeChat",
+      ],
+    ]);
+  });
+
+  it("passes a body starting with a dash as one option value", async () => {
+    const calls: string[][] = [];
+    await queueCodexMessage(
+      { thread, body: "- list item" },
+      {
+        executable: "/opt/codex",
+        runner: async (_file, args) => {
+          calls.push([...args]);
+          return { exitCode: 0, stdout: "queued", stderr: "" };
+        },
+      },
+    );
+
+    expect(calls[0]).toEqual([
+      "queue",
+      "--thread",
+      thread,
+      "--message=- list item",
+    ]);
+  });
+
+  it("reports the CLI error instead of falling back to a pointer", async () => {
+    const result = await queueCodexMessage(
+      { thread, body: "hello" },
+      {
+        executable: "/opt/codex",
+        runner: async () => ({
+          exitCode: 127,
+          stdout: "",
+          stderr: "queue_exit_127",
+        }),
+      },
+    );
+
+    expect(result).toEqual({ ok: false, error: "queue_exit_127" });
+  });
+
+  it("rejects a non-thread id and an empty body before exec", async () => {
+    const runner = async () => {
+      throw new Error("must not run");
+    };
+    await expect(
+      queueCodexMessage(
+        { thread: "not-a-uuid", body: "hello" },
+        { executable: "/opt/codex", runner },
+      ),
+    ).resolves.toMatchObject({ ok: false });
+    await expect(
+      queueCodexMessage(
+        { thread, body: "" },
+        { executable: "/opt/codex", runner },
+      ),
+    ).resolves.toMatchObject({ ok: false });
+  });
+
+  it("names the missing executable", async () => {
+    const result = await queueCodexMessage(
+      { thread, body: "hello" },
+      { executable: "" },
+    );
+    expect(result.ok).toBe(false);
+    expect(result.error).toContain("AECHAT_CODEX_BIN");
+  });
+
+  it("prefers AECHAT_CODEX_BIN over the bundled app path", () => {
+    expect(codexExecutable({ AECHAT_CODEX_BIN: "/custom/codex" })).toBe(
+      "/custom/codex",
     );
   });
 });

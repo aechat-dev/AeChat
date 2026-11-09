@@ -172,6 +172,13 @@ export class SessionRepository {
     return rows.map(sessionFromRow);
   }
 
+  /** Record the host conversation a session belongs to after an attach. */
+  updateConversationId(id: SessionId, conversationId: string): void {
+    this.db
+      .prepare("UPDATE sessions SET conversation_id = ? WHERE session_id = ?")
+      .run(conversationId, id);
+  }
+
   list(opts: { includeLeft?: boolean } = {}): SessionRecord[] {
     const sql = opts.includeLeft
       ? "SELECT * FROM sessions ORDER BY created_at, session_id"

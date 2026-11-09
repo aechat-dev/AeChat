@@ -30,6 +30,7 @@ function item(messageId: string): InboxItem {
       ackedAt: null,
       repliedAt: null,
       lastError: null,
+      directAttempted: false,
     },
     deliveryToken: null,
   };

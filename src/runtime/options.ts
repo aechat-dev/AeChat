@@ -1,6 +1,7 @@
 import { homedir } from "node:os";
 import { join } from "node:path";
 
+import { queueCodexMessage } from "../adapters/hosts/codex.js";
 import { AgmsgAdapter } from "../adapters/transport/agmsg/agmsg-adapter.js";
 import { AgmsgCli } from "../adapters/transport/agmsg/agmsg-cli.js";
 import { nowIso } from "../core/time.js";
@@ -46,6 +47,18 @@ export function resolveTransport(options: AppOptions = {}): {
     transport: new AgmsgAdapter({
       cli,
       team: options.team ?? process.env["AECHAT_TEAM"] ?? "aechat",
+      directDelivery: async (input) => {
+        const queued = await queueCodexMessage({
+          thread: input.conversationId,
+          body: input.body,
+        });
+        return queued.ok
+          ? { ok: true }
+          : {
+              ok: false,
+              ...(queued.error === undefined ? {} : { error: queued.error }),
+            };
+      },
     }),
     agmsgVersion: () => cli.version(),
   };

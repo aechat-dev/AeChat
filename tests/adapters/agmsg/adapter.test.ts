@@ -351,4 +351,199 @@ describe("AgmsgAdapter", () => {
     expect(call.text).not.toContain("dev");
     expect(call.text).not.toContain("body");
   });
+
+  it("injects a Codex body directly and skips the pull pointer", async () => {
+    const cli = fakeCli();
+    const direct = vi.fn(async () => ({ ok: true }));
+    const adapter = new AgmsgAdapter({
+      cli,
+      team: "aechat-test",
+      directDelivery: direct,
+    });
+    const binding = await adapter.register(SESSION, "aechat-cccccccccccc");
+    const thread = "01a1aeb5-55d4-79c3-bfa7-e1d96c4fd2e5";
+
+    const result = await adapter.notify(binding, {
+      messageId: "msg-2",
+      fromSession: "from-session",
+      toSession: "target-session",
+      body: "正文",
+      conversationId: thread,
+      targetClient: "codex",
+      targetProject: "/project",
+    });
+
+    expect(result).toEqual({ ok: true });
+    expect(direct).toHaveBeenCalledWith({
+      client: "codex",
+      project: "/project",
+      conversationId: thread,
+      messageId: "msg-2",
+      body: "[AeChat] message=msg-2 kind=notify from=from-session\n正文",
+    });
+    expect(cli.notify).not.toHaveBeenCalled();
+  });
+
+  it("adds request metadata so the target can reply through AeChat", async () => {
+    const cli = fakeCli();
+    const direct = vi.fn(async () => ({ ok: true }));
+    const adapter = new AgmsgAdapter({
+      cli,
+      team: "aechat-test",
+      directDelivery: direct,
+    });
+    const binding = await adapter.register(SESSION, "aechat-cccccccccccc");
+
+    await adapter.notify(binding, {
+      messageId: "msg-req",
+      fromSession: "from-session",
+      toSession: "target-session",
+      fromName: "sender",
+      body: "问题",
+      kind: "request",
+      conversationId: "01a1aeb5-55d4-79c3-bfa7-e1d96c4fd2e5",
+      targetClient: "codex",
+      targetProject: "/project",
+    });
+
+    const body = (direct.mock.calls[0] as unknown as [{ body: string }])[0]
+      .body;
+    expect(body).toContain("[AeChat] message=msg-req kind=request from=sender");
+    expect(body).toContain("问题");
+    expect(body).toContain("request=msg-req");
+    expect(body).toContain("aechat reply");
+  });
+
+  it("marks a reply with its request id and no reply instructions", async () => {
+    const cli = fakeCli();
+    const direct = vi.fn(async () => ({ ok: true }));
+    const adapter = new AgmsgAdapter({
+      cli,
+      team: "aechat-test",
+      directDelivery: direct,
+    });
+    const binding = await adapter.register(SESSION, "aechat-cccccccccccc");
+
+    await adapter.notify(binding, {
+      messageId: "reply-1",
+      fromSession: "from-session",
+      toSession: "target-session",
+      body: "answer",
+      kind: "reply",
+      requestId: "req-1",
+      replyTo: "req-1",
+      conversationId: "01a1aeb5-55d4-79c3-bfa7-e1d96c4fd2e5",
+      targetClient: "codex",
+      targetProject: "/project",
+    });
+
+    const body = (direct.mock.calls[0] as unknown as [{ body: string }])[0]
+      .body;
+    expect(body).toContain(
+      "[AeChat] message=reply-1 kind=reply from=from-session reply=req-1",
+    );
+    expect(body).toContain("answer");
+    expect(body).not.toContain("aechat reply");
+  });
+
+  it("keeps the sender name on one header line", async () => {
+    const cli = fakeCli();
+    const direct = vi.fn(async () => ({ ok: true }));
+    const adapter = new AgmsgAdapter({
+      cli,
+      team: "aechat-test",
+      directDelivery: direct,
+    });
+    const binding = await adapter.register(SESSION, "aechat-cccccccccccc");
+
+    await adapter.notify(binding, {
+      messageId: "msg-6",
+      fromSession: "from-session",
+      fromName: "evil\u2028kind=request",
+      toSession: "target-session",
+      body: "body",
+      kind: "notify",
+      conversationId: "01a1aeb5-55d4-79c3-bfa7-e1d96c4fd2e5",
+      targetClient: "codex",
+      targetProject: "/project",
+    });
+
+    const body = (direct.mock.calls[0] as unknown as [{ body: string }])[0]
+      .body;
+    expect(body.split("\n")[0]).toBe(
+      "[AeChat] message=msg-6 kind=notify from=evil kind=request",
+    );
+  });
+
+  it("fails a Codex direct delivery without a thread id instead of sending a pointer", async () => {
+    const cli = fakeCli();
+    const direct = vi.fn(async () => ({ ok: true }));
+    const adapter = new AgmsgAdapter({
+      cli,
+      team: "aechat-test",
+      directDelivery: direct,
+    });
+    const binding = await adapter.register(SESSION, "aechat-cccccccccccc");
+
+    const result = await adapter.notify(binding, {
+      messageId: "msg-5",
+      fromSession: "from-session",
+      toSession: "target-session",
+      body: "正文",
+      conversationId: null,
+      targetClient: "codex",
+      targetProject: "/project",
+    });
+
+    expect(result.ok).toBe(false);
+    expect(direct).not.toHaveBeenCalled();
+    expect(cli.notify).not.toHaveBeenCalled();
+  });
+
+  it("reports a failed direct injection without downgrading to a pointer", async () => {
+    const cli = fakeCli();
+    const adapter = new AgmsgAdapter({
+      cli,
+      team: "aechat-test",
+      directDelivery: async () => ({ ok: false, error: "queue_exit_127" }),
+    });
+    const binding = await adapter.register(SESSION, "aechat-cccccccccccc");
+
+    const result = await adapter.notify(binding, {
+      messageId: "msg-3",
+      fromSession: "from-session",
+      toSession: "target-session",
+      body: "正文",
+      conversationId: "01a1aeb5-55d4-79c3-bfa7-e1d96c4fd2e5",
+      targetClient: "codex",
+      targetProject: "/project",
+    });
+
+    expect(result).toEqual({ ok: false, error: "queue_exit_127" });
+    expect(cli.notify).not.toHaveBeenCalled();
+  });
+
+  it("keeps the pointer for non-Codex targets", async () => {
+    const cli = fakeCli();
+    const direct = vi.fn(async () => ({ ok: true }));
+    const adapter = new AgmsgAdapter({
+      cli,
+      team: "aechat-test",
+      directDelivery: direct,
+    });
+    const binding = await adapter.register(SESSION, "aechat-cccccccccccc");
+
+    await adapter.notify(binding, {
+      messageId: "msg-4",
+      fromSession: "from-session",
+      toSession: "target-session",
+      body: "正文",
+      conversationId: "conv-1",
+      targetClient: "claude-code",
+      targetProject: "/project",
+    });
+
+    expect(direct).not.toHaveBeenCalled();
+    expect(cli.notify).toHaveBeenCalled();
+  });
 });

@@ -73,7 +73,12 @@ export async function setupCommand(
     lines.push(
       `codex delivery: ${hooks.action} (${hooks.mode} -> ${hooks.path})`,
     );
-    lines.push(`codex attach hook: ${hooks.attachHook}`);
+    lines.push(
+      hooks.attachHook === "installed"
+        ? `codex attach hook: installed (review it in Codex Settings > Hooks; ` +
+            "untrusted hooks are skipped on restart)"
+        : `codex attach hook: ${hooks.attachHook}`,
+    );
   }
   return { data, text: `${lines.join("\n")}\n` };
 }

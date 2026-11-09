@@ -18,6 +18,7 @@ const databases: Array<{ close(): void }> = [];
 
 function setup(
   options: ConstructorParameters<typeof FakeTransportAdapter>[0] = {},
+  toClient = "claude-code",
 ) {
   const db = openDatabase(":memory:");
   databases.push(db);
@@ -52,8 +53,9 @@ function setup(
   sessions.create({
     sessionId: "to-session",
     displayName: "to",
-    client: "claude-code",
+    client: toClient,
     project: "/tmp/to",
+    conversationId: "conv-to",
     lastSeenAt: "2026-11-06T00:00:00.000Z",
     createdAt: "2026-11-06T00:00:00.000Z",
   });
@@ -101,6 +103,8 @@ describe("DeliveryService.send", () => {
       expect.objectContaining({
         messageId: result.messageId,
         fromAddress: "aechat-from",
+        body: "hello",
+        conversationId: "conv-to",
       }),
     );
   });
@@ -234,5 +238,48 @@ describe("DeliveryService.send", () => {
         body: "hello",
       }),
     ).rejects.toMatchObject({ code: "target_left" });
+  });
+});
+
+describe("DeliveryService direct injection retry", () => {
+  it("does not retry a failed Codex direct injection", async () => {
+    const { service, deliveries } = setup({ notifyFails: true }, "codex");
+
+    const sent = await service.send({
+      fromSession: "from-session",
+      toSession: "to-session",
+      kind: "notify",
+      body: "hello",
+    });
+    expect(sent.status).toBe("notify_failed");
+    expect(deliveries.get(sent.deliveryId)?.directAttempted).toBe(true);
+
+    const retried = await service.retry({
+      sessionId: "from-session",
+      messageId: sent.messageId,
+    });
+    expect(retried).toMatchObject({
+      retried: false,
+      status: "notify_failed",
+    });
+    expect(deliveries.get(sent.deliveryId)?.directAttempted).toBe(true);
+  });
+
+  it("still retries a non-direct notify failure", async () => {
+    const { service } = setup({ notifyFails: true }, "claude-code");
+
+    const sent = await service.send({
+      fromSession: "from-session",
+      toSession: "to-session",
+      kind: "notify",
+      body: "hello",
+    });
+    expect(sent.status).toBe("notify_failed");
+
+    const retried = await service.retry({
+      sessionId: "from-session",
+      messageId: sent.messageId,
+    });
+    expect(retried.retried).toBe(true);
   });
 });

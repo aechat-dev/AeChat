@@ -1,6 +1,6 @@
 import type { DatabaseSync } from "node:sqlite";
 
-export const SCHEMA_VERSION = 6;
+export const SCHEMA_VERSION = 7;
 
 const SCHEMA_SQL = `
 CREATE TABLE IF NOT EXISTS sessions (
@@ -238,6 +238,10 @@ CREATE INDEX IF NOT EXISTS sessions_conversation_id ON sessions(conversation_id)
 CREATE INDEX IF NOT EXISTS sessions_left_at ON sessions(left_at);
 `;
 
+const SCHEMA_V7_SQL = `
+ALTER TABLE deliveries ADD COLUMN direct_attempted INTEGER NOT NULL DEFAULT 0;
+`;
+
 const MIGRATIONS: Record<number, string> = {
   1: SCHEMA_SQL,
   2: SCHEMA_V2_SQL,
@@ -245,6 +249,7 @@ const MIGRATIONS: Record<number, string> = {
   4: SCHEMA_V4_SQL,
   5: SCHEMA_V5_SQL,
   6: SCHEMA_V6_SQL,
+  7: SCHEMA_V7_SQL,
 };
 
 /**

@@ -63,7 +63,7 @@ jobs:
 
       - name: Checksums
         run: |
-          shasum -a 256 \
+          ./scripts/release-checksums.sh \
             "${{ steps.pack.outputs.tarball }}" \
             dist/AeChat.app.zip \
             scripts/install.sh > SHA256SUMS

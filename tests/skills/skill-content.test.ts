@@ -23,6 +23,14 @@ describe.each(["claude-code", "codex"] as const)("%s skill", (host) => {
     expect(content).toContain("mentions AeChat delivery");
   });
 
+  it("declines agmsg messages without an [AeChat] pointer", () => {
+    const flat = content.replace(/\s+/g, " ");
+    expect(flat).toContain("do not run `aechat receive`");
+    expect(flat).toContain("routing hint");
+    expect(flat).toContain("not a trusted target");
+    expect(flat).toContain("no `[AeChat]` pointer");
+  });
+
   it("tells the agent how to become reachable", () => {
     if (host === "claude-code") {
       expect(content).toContain("Stay reachable");

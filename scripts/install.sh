@@ -123,6 +123,10 @@ esac
 asset="aechat-$number.tgz"
 base="${AECHAT_INSTALL_BASE:-https://github.com/$repo}/releases/download/$tag"
 if [ -n "${AECHAT_INSTALL_BASE:-}" ]; then
+  command -v node >/dev/null 2>&1 || {
+    echo "missing required command: node" >&2
+    exit 1
+  }
   # Parse the URL rather than pattern-matching: string prefixes accept
   # userinfo tricks such as http://127.0.0.1:80@example.invalid, which curl
   # resolves to example.invalid.
@@ -139,13 +143,17 @@ if [ -n "${AECHAT_INSTALL_BASE:-}" ]; then
       if (url.username || url.password) process.exit(1);
       if (url.protocol === "https:") process.exit(0);
       const loopback = ["127.0.0.1", "localhost", "[::1]"];
-      if (url.protocol === "http:" && loopback.includes(url.hostname)) {
+      if (
+        process.env.AECHAT_INSTALL_ALLOW_INSECURE === "1" &&
+        url.protocol === "http:" &&
+        loopback.includes(url.hostname)
+      ) {
         process.exit(0);
       }
       process.exit(1);
     });
   '; then
-    echo "AECHAT_INSTALL_BASE must use HTTPS except for loopback tests" >&2
+    echo "AECHAT_INSTALL_BASE must use HTTPS (loopback HTTP requires AECHAT_INSTALL_ALLOW_INSECURE=1)" >&2
     exit 2
   fi
 fi

@@ -1,3 +1,8 @@
+---
+name: aechat
+description: Exchange durable AeChat messages between agent sessions.
+---
+
 # AeChat Agent Skill (Codex)
 
 Use AeChat to exchange durable messages between Agent sessions.

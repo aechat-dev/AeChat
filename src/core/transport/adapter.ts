@@ -43,6 +43,16 @@ export interface PointerNotification {
   toSession: SessionId;
   /** Sender's transport address, when the adapter needs it for routing. */
   fromAddress?: string;
+  /**
+   * The durable message body. Adapters that can inject a host turn use it to
+   * deliver the message directly instead of sending a pull pointer.
+   */
+  body?: string;
+  /** Target host conversation id, when the session recorded one. */
+  conversationId?: string | null;
+  /** Target host client and project, for adapters with direct host delivery. */
+  targetClient?: string;
+  targetProject?: string;
 }
 
 export interface NotifyResult {

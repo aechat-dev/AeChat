@@ -39,12 +39,26 @@ the message is durable and pull-only.
 | Leave and release | ✅ 2026-11-08 | ◐ 2026-11-09 sessions left, binding not re-checked | `pnpm e2e:local`; Codex host run |
 | Host model reads and replies (manual turn) | ✅ 2026-11-08 (headless turn, pull) | ✅ 2026-11-09 (headless turn, pull) | Host runs |
 | Push notification (`notification_receive`) | ? requires host hook | ◐ 2026-11-09 agmsgd notice reached the desktop thread | See the 2026-11-09 agmsgd evidence |
+| Message body injected as a user turn | ◐ `aechat watch` JSONL events | ✅ 2026-11-09 `codex queue` direct injection | See the 2026-11-09 direct-injection evidence |
 | Busy receive (`busy_receive`) | ? | ? | Phase 0 saw injection, no reply |
 | Idle wakeup (`idle_wakeup`) | ◐ agmsg Monitor only, 2026-11-06 | ? | Not managed by AeChat; re-arm untested |
 | Resume / rebind across host restarts | ? | ? | Unit tests only |
 | Conversation-level binding | ✗ v1 reports `host_role` | ✗ | No host conversation ID capture |
 
 ## Evidence log
+
+### 2026-11-09 — Codex direct body injection
+
+- `aechat send` from this Claude Code session to `codex-main`
+  (`01a1bf39-…`) returned `status=notified` at 12:12:53Z.
+- The message was injected with the desktop app's own queue
+  (`codex queue --thread 01a1aeb5-… --message <body>`), not an agmsg pointer.
+- The thread rollout records it as `"role":"user"` with
+  `provenance: user`; the user confirmed it appears as a normal user message
+  in the Codex desktop conversation and that no `[agmsg:…]` notice appeared.
+- Conversation id is the thread UUID recorded on the AeChat session; without
+  it, or when the Codex CLI is unavailable, notify fails instead of silently
+  falling back to the pull pointer.
 
 ### 2026-11-09 — Codex desktop agmsgd notice and request/reply
 

@@ -35,6 +35,106 @@ export function codexHooksPath(project: string): string {
   return join(project, ".codex", "hooks.json");
 }
 
+const DEFAULT_CODEX_BIN =
+  "/Applications/ChatGPT.app/Contents/Resources/codex-cli/CodexCLI.app/Contents/MacOS/codex";
+const THREAD_ID =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+export interface CodexQueueOptions {
+  env?: NodeJS.ProcessEnv;
+  /** Codex CLI path; an empty string forces the "not found" path. */
+  executable?: string;
+  timeoutMs?: number;
+  runner?: (
+    file: string,
+    args: readonly string[],
+    timeoutMs: number,
+  ) => Promise<{ exitCode: number; stdout?: string; stderr: string }>;
+}
+
+export interface CodexQueueResult {
+  ok: boolean;
+  error?: string;
+}
+
+/** The Codex CLI that owns the desktop thread store. */
+export function codexExecutable(env: NodeJS.ProcessEnv = process.env): string {
+  const configured = env["AECHAT_CODEX_BIN"];
+  if (configured !== undefined && configured !== "") {
+    return configured;
+  }
+  return existsSync(DEFAULT_CODEX_BIN) ? DEFAULT_CODEX_BIN : "";
+}
+
+function runnerWithEnv(
+  env: NodeJS.ProcessEnv,
+): NonNullable<CodexQueueOptions["runner"]> {
+  return (file, args, timeoutMs) =>
+    new Promise((resolve) => {
+      execFile(
+        file,
+        [...args],
+        { timeout: timeoutMs, maxBuffer: 1024 * 1024, encoding: "utf8", env },
+        (error, stdout, stderr) => {
+          const code =
+            error === null
+              ? 0
+              : (((error as { code?: unknown }).code as number | undefined) ??
+                1);
+          const detail =
+            stderr.trim() === "" && error !== null ? error.message : stderr;
+          resolve({
+            exitCode: typeof code === "number" ? code : 1,
+            stdout,
+            stderr: detail,
+          });
+        },
+      );
+    });
+}
+
+/**
+ * Queue the message body as a user turn in an existing Codex thread. This is
+ * the desktop app's own queue path; the body appears in the conversation
+ * instead of a "go pull your inbox" pointer.
+ */
+export async function queueCodexMessage(
+  input: { thread: string; body: string },
+  options: CodexQueueOptions = {},
+): Promise<CodexQueueResult> {
+  if (!THREAD_ID.test(input.thread)) {
+    return { ok: false, error: `invalid Codex thread id: ${input.thread}` };
+  }
+  if (input.body === "") {
+    return { ok: false, error: "message body must not be empty" };
+  }
+  const executable = options.executable ?? codexExecutable(options.env);
+  if (executable === "") {
+    return {
+      ok: false,
+      error:
+        "Codex CLI not found; set AECHAT_CODEX_BIN to the desktop app's codex binary",
+    };
+  }
+  const env = options.env ?? process.env;
+  const runner = options.runner ?? runnerWithEnv(env);
+  const result = await runner(
+    executable,
+    ["queue", "--thread", input.thread, "--message", input.body],
+    options.timeoutMs ?? 30_000,
+  );
+  if (result.exitCode !== 0) {
+    return {
+      ok: false,
+      error:
+        result.stderr.trim() === ""
+          ? `codex queue exited ${result.exitCode}`
+          : result.stderr.trim(),
+    };
+  }
+  return { ok: true };
+}
+
 function defaultRunner(
   file: string,
   args: readonly string[],

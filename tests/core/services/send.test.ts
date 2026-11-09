@@ -54,6 +54,7 @@ function setup(
     displayName: "to",
     client: "claude-code",
     project: "/tmp/to",
+    conversationId: "conv-to",
     lastSeenAt: "2026-11-06T00:00:00.000Z",
     createdAt: "2026-11-06T00:00:00.000Z",
   });
@@ -101,6 +102,8 @@ describe("DeliveryService.send", () => {
       expect.objectContaining({
         messageId: result.messageId,
         fromAddress: "aechat-from",
+        body: "hello",
+        conversationId: "conv-to",
       }),
     );
   });

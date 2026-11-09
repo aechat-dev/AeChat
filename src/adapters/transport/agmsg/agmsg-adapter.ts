@@ -18,9 +18,32 @@ import {
   parseLockState,
 } from "./mapping.js";
 
+export interface DirectDeliveryInput {
+  client: string;
+  project: string;
+  conversationId: string;
+  messageId: string;
+  body: string;
+}
+
+export interface DirectDeliveryResult {
+  ok: boolean;
+  error?: string;
+}
+
+/**
+ * Host-specific direct injection (for example Codex's thread queue). When it
+ * is configured for a Codex target, the body goes into the conversation and
+ * the agmsg pointer is not sent.
+ */
+export type DirectDelivery = (
+  input: DirectDeliveryInput,
+) => Promise<DirectDeliveryResult>;
+
 export interface AgmsgAdapterOptions {
   cli: AgmsgCliPort;
   team: string;
+  directDelivery?: DirectDelivery;
 }
 
 /**
@@ -32,10 +55,12 @@ export class AgmsgAdapter implements TransportAdapter {
 
   private readonly cli: AgmsgCliPort;
   private readonly team: string;
+  private readonly directDelivery: DirectDelivery | undefined;
 
   constructor(options: AgmsgAdapterOptions) {
     this.cli = options.cli;
     this.team = options.team;
+    this.directDelivery = options.directDelivery;
   }
 
   async register(
@@ -191,8 +216,30 @@ export class AgmsgAdapter implements TransportAdapter {
       fromSession: string;
       toSession: string;
       fromAddress?: string;
+      body?: string;
+      conversationId?: string | null;
+      targetClient?: string;
+      targetProject?: string;
     },
   ): Promise<NotifyResult> {
+    // Codex desktop owns a thread queue: inject the body as a user turn
+    // instead of asking the agent to pull a pointer. A failure is reported,
+    // not silently downgraded to the indirect path.
+    if (
+      this.directDelivery !== undefined &&
+      notification.targetClient === "codex" &&
+      notification.body !== undefined &&
+      notification.conversationId !== undefined &&
+      notification.conversationId !== null
+    ) {
+      return this.directDelivery({
+        client: "codex",
+        project: notification.targetProject ?? "",
+        conversationId: notification.conversationId,
+        messageId: notification.messageId,
+        body: notification.body,
+      });
+    }
     const result = await this.cli.notify({
       team: binding.team ?? this.team,
       from: notification.fromAddress ?? notification.fromSession,

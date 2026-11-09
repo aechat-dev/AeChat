@@ -361,6 +361,8 @@ export class DeliveryService {
       };
     }
 
+    const message = this.messages.get(input.messageId);
+    const target = this.sessions.get(input.toSession);
     const notification: PointerNotification = {
       messageId: input.messageId,
       fromSession: input.fromSession,
@@ -368,6 +370,11 @@ export class DeliveryService {
       ...(fromBinding === undefined
         ? {}
         : { fromAddress: fromBinding.address }),
+      ...(message === undefined ? {} : { body: message.body }),
+      conversationId: target?.conversationId ?? null,
+      ...(target === undefined
+        ? {}
+        : { targetClient: target.client, targetProject: target.project }),
     };
 
     let notifyResult: { ok: boolean; error?: string };

@@ -52,8 +52,11 @@ cp skills/claude-code/SKILL.md /tmp/aechat-host-test/.claude/skills/aechat/SKILL
 ```
 
 For Codex, copy `skills/codex/SKILL.md` to the project's skill directory and
-record the Codex CLI version. Codex host tests are blocked until the usage
-limit resets (2026-11-09 13:51 on the current machine).
+record the Codex CLI version. Codex host tests were first run on 2026-11-09;
+see [compatibility.md](compatibility.md) for the recorded evidence. Codex's
+default `shell_environment_policy.inherit=core` strips `AECHAT_HOME`; pass
+`-c shell_environment_policy.inherit=all` for an isolated host turn, or the
+CLI will target the real `~/.aechat`.
 
 ### Run
 

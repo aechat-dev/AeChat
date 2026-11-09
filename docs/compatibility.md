@@ -29,15 +29,15 @@ the message is durable and pull-only.
 
 | Scenario | Claude Code | Codex | Evidence |
 |---|---|---|---|
-| Register two isolated sessions | ✅ 2026-11-08 | ? | `pnpm e2e:local` |
-| Automatic binding from the host session | ✅ 2026-11-08 | ? | `pnpm e2e:local`; host run |
-| Bind with `bound_scope=host_role` | ✅ 2026-11-08 | ? | `pnpm e2e:local`; Codex claim not confirmed |
+| Register two isolated sessions | ✅ 2026-11-08 | ◐ 2026-11-09 (one Codex + peer) | `pnpm e2e:local`; Codex host run |
+| Automatic binding from the host session | ✅ 2026-11-08 | ◐ 2026-11-09 claim accepted, not bound | `pnpm e2e:local`; Codex host run |
+| Bind with `bound_scope=host_role` | ✅ 2026-11-08 | ? confirm not run; `bound_scope=none` | `pnpm e2e:local`; Codex claim stale |
 | Host initiates a request and waits for the reply | ✅ 2026-11-08 | ? | Host run, 2026-11-08 |
-| Durable send + pull (`inbox`) | ✅ 2026-11-08 | ? | `pnpm e2e:local` |
-| Request → ack → reply → `wait` | ✅ 2026-11-08 | ? | `pnpm e2e:local` |
-| Audit chain (`send` → `inbox_claim` → `ack` → `reply`) | ✅ 2026-11-08 | ? | `pnpm e2e:local` |
-| Leave and release | ✅ 2026-11-08 | ? | `pnpm e2e:local` |
-| Host model reads and replies (manual turn) | ✅ 2026-11-08 (headless turn, pull) | ? | Host run, 2026-11-08 |
+| Durable send + pull (`inbox`) | ✅ 2026-11-08 | ✅ 2026-11-09 | `pnpm e2e:local`; Codex receive |
+| Request → ack → reply → `wait` | ✅ 2026-11-08 | ✅ 2026-11-09 | `pnpm e2e:local`; Codex host run |
+| Audit chain (`send` → `inbox_claim` → `ack` → `reply`) | ✅ 2026-11-08 | ✅ 2026-11-09 | `pnpm e2e:local`; Codex host run |
+| Leave and release | ✅ 2026-11-08 | ◐ 2026-11-09 sessions left, binding not re-checked | `pnpm e2e:local`; Codex host run |
+| Host model reads and replies (manual turn) | ✅ 2026-11-08 (headless turn, pull) | ✅ 2026-11-09 (headless turn, pull) | Host runs |
 | Push notification (`notification_receive`) | ? requires host hook | ? | Current local E2E is pull-only |
 | Busy receive (`busy_receive`) | ? | ? | Phase 0 saw injection, no reply |
 | Idle wakeup (`idle_wakeup`) | ◐ agmsg Monitor only, 2026-11-06 | ? | Not managed by AeChat; re-arm untested |
@@ -45,6 +45,33 @@ the message is durable and pull-only.
 | Conversation-level binding | ✗ v1 reports `host_role` | ✗ | No host conversation ID capture |
 
 ## Evidence log
+
+### 2026-11-09 — Codex headless pull and reply
+
+- Host: Codex CLI 0.167.0-alpha.3.2, configured model `gpt-5.6-sol`,
+  agmsg 1.7.1, Node 24, macOS.
+- Isolated `AECHAT_HOME` and temporary agmsg team. A peer session sent a
+  request while a single `codex exec` turn ran in a sandboxed project.
+- The turn ran `aechat register --client codex` and read `CODEX_THREAD_ID`
+  (`01a1befe-f26c-7e51-8441-77fb8b63c7ea`), then `receive` returned
+  `status=delivered`; the host acknowledged and replied `codex-e2e-ok`. The
+  peer's `wait` returned `replied`, and the audit chain was
+  `send → inbox_claim → ack → send → reply`.
+- Binding: `transportClaimState=accepted` but `claimed=false`,
+  `bound_scope=none`, `bound_state=invalid`, transport `dead`. `aechat
+  confirm` was not run, so no `host_role` claim is made for Codex.
+- After the turn, both `aechat leave` calls ran; `list --all` reports both
+  sessions as `status=left`. The agmsg team was deleted immediately after, so
+  transport-side binding release was not re-checked.
+- Skill loading initially failed: Codex requires YAML frontmatter in
+  `SKILL.md`. Frontmatter was added after the run; the turn followed the
+  explicit commands rather than a loaded skill.
+- Environment note: the Codex shell policy inherits only `core` by default;
+  the run passed `-c shell_environment_policy.inherit=all` to expose
+  `AECHAT_HOME` and `AECHAT_TEAM` to the turn.
+- Caveat: a user-triggered headless turn, not idle wakeup or busy receive.
+- Not run: idle wakeup, busy receive, Codex-initiated request, resume,
+  conversation-level binding.
 
 ### 2026-11-08 — Claude Code auto-bind and outbound request
 

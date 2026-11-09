@@ -12,6 +12,13 @@ function skill(host: "claude-code" | "codex"): string {
 describe.each(["claude-code", "codex"] as const)("%s skill", (host) => {
   const content = skill(host);
 
+  it("starts with YAML frontmatter for host skill loaders", () => {
+    expect(content.startsWith("---\nname: aechat\n")).toBe(true);
+    expect(content).toContain("description:");
+    const closing = content.indexOf("\n---\n", 4);
+    expect(closing).toBeGreaterThan(0);
+  });
+
   it("registers with the correct host and confirms the binding", () => {
     expect(content).toContain("aechat register --name");
     expect(content).toContain(`--client ${host}`);

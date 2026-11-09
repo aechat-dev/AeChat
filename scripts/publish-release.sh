@@ -10,12 +10,27 @@ notes=${2:?usage: publish-release.sh <tag> <notes-file> <asset>...}
 shift 2
 [ $# -gt 0 ] || { echo "no release assets given" >&2; exit 2; }
 
-state=$(gh release view "$tag" --json isDraft --jq '.isDraft' 2>/dev/null) ||
-  state="missing"
+view_err=$(mktemp "${TMPDIR:-/tmp}/aechat-release-view.XXXXXX")
+trap 'rm -f "$view_err"' EXIT
+if state=$(gh release view "$tag" --json isDraft --jq '.isDraft' 2>"$view_err"); then
+  :
+else
+  if grep -q "release not found" "$view_err"; then
+    state="missing"
+  else
+    cat "$view_err" >&2
+    exit 1
+  fi
+fi
 
 case "$state" in
   true)
     echo "Resuming draft release $tag"
+    edit=(--title "AeChat $tag" --notes-file "$notes")
+    if [[ "$tag" == *-* ]]; then
+      edit+=(--prerelease)
+    fi
+    gh release edit "$tag" "${edit[@]}"
     ;;
   false)
     echo "release $tag is already published" >&2

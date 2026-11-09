@@ -63,7 +63,7 @@ jobs:
 
       - name: Checksums
         run: |
-          shasum -a 256 \
+          ./scripts/release-checksums.sh \
             "${{ steps.pack.outputs.tarball }}" \
             dist/AeChat.app.zip \
             scripts/install.sh > SHA256SUMS
@@ -75,13 +75,9 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          prerelease=()
-          if [[ "$GITHUB_REF_NAME" == *-* ]]; then
-            prerelease=(--prerelease)
-          fi
-          gh release create "$GITHUB_REF_NAME" "${prerelease[@]}" \
-            --title "AeChat $GITHUB_REF_NAME" \
-            --notes-file release-notes.md \
+          # Draft first, upload everything, then publish. A failed upload
+          # leaves a draft that a re-run can resume.
+          ./scripts/publish-release.sh "$GITHUB_REF_NAME" release-notes.md \
             "${{ steps.pack.outputs.tarball }}" \
             SHA256SUMS \
             dist/AeChat.app.zip \

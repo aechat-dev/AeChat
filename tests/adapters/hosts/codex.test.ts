@@ -2,6 +2,7 @@ import {
   existsSync,
   mkdirSync,
   mkdtempSync,
+  readFileSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
@@ -11,6 +12,7 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import {
   codexHooksPath,
+  installAttachHook,
   installCodexHooks,
 } from "../../../src/adapters/hosts/codex.js";
 
@@ -75,6 +77,7 @@ describe("codex delivery setup", () => {
       action: "configured",
       mode: "agmsgd",
       path: codexHooksPath(root),
+      attachHook: "skipped",
     });
     expect(calls.some((call) => call.includes("agmsgd"))).toBe(true);
     expect(existsSync(codexHooksPath(root))).toBe(true);
@@ -171,6 +174,7 @@ describe("codex delivery setup", () => {
       action: "configured",
       mode: "monitor",
       path: codexHooksPath(root),
+      attachHook: "skipped",
     });
     expect(calls.some((call) => call.includes("monitor"))).toBe(true);
   });
@@ -220,6 +224,88 @@ describe("codex delivery setup", () => {
 
     expect(result.action).toBe("up-to-date");
     expect(result.mode).toBe("monitor");
+  });
+
+  it("appends AeChat's attach hook without dropping agmsg's entry", () => {
+    const root = project();
+    mkdirSync(join(root, ".codex"), { recursive: true });
+    writeFileSync(
+      codexHooksPath(root),
+      JSON.stringify({
+        hooks: {
+          SessionStart: [
+            {
+              matcher: "",
+              hooks: [{ type: "command", command: "agmsg session-start.sh" }],
+            },
+          ],
+        },
+      }),
+    );
+    const command = "node cli.js attach --client codex --project /p";
+
+    expect(installAttachHook(codexHooksPath(root), command)).toBe("installed");
+    expect(installAttachHook(codexHooksPath(root), command)).toBe("up-to-date");
+
+    const parsed = JSON.parse(readFileSync(codexHooksPath(root), "utf8")) as {
+      hooks: { SessionStart: unknown[] };
+    };
+    expect(parsed.hooks.SessionStart).toHaveLength(2);
+    expect(JSON.stringify(parsed)).toContain("agmsg session-start.sh");
+    expect(JSON.stringify(parsed)).toContain("attach --client codex");
+  });
+
+  it("replaces a stale AeChat attach command in place", () => {
+    const root = project();
+    mkdirSync(join(root, ".codex"), { recursive: true });
+    writeFileSync(
+      codexHooksPath(root),
+      JSON.stringify({
+        hooks: {
+          SessionStart: [
+            {
+              matcher: "",
+              hooks: [{ type: "command", command: "agmsg session-start.sh" }],
+            },
+            {
+              matcher: "",
+              hooks: [
+                {
+                  type: "command",
+                  command: "node old/cli.js attach --client codex",
+                },
+              ],
+            },
+          ],
+        },
+      }),
+    );
+    const command = "node new/cli.js attach --client codex";
+
+    expect(installAttachHook(codexHooksPath(root), command)).toBe("installed");
+
+    const parsed = JSON.parse(readFileSync(codexHooksPath(root), "utf8")) as {
+      hooks: { SessionStart: unknown[] };
+    };
+    expect(parsed.hooks.SessionStart).toHaveLength(2);
+    const text = JSON.stringify(parsed);
+    expect(text).toContain("new/cli.js");
+    expect(text).not.toContain("old/cli.js");
+    expect(text).toContain("agmsg session-start.sh");
+  });
+
+  it("skips malformed hooks files instead of throwing", () => {
+    const root = project();
+    mkdirSync(join(root, ".codex"), { recursive: true });
+    writeFileSync(codexHooksPath(root), "{not json");
+
+    expect(
+      installAttachHook(
+        codexHooksPath(root),
+        "node cli.js attach --client codex",
+      ),
+    ).toBe("skipped");
+    expect(readFileSync(codexHooksPath(root), "utf8")).toBe("{not json");
   });
 
   it("fails when agmsg cannot configure the project", async () => {

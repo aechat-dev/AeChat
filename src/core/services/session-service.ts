@@ -68,6 +68,22 @@ export interface ClaimResult {
   warnings?: string[];
 }
 
+export interface AttachInput {
+  displayName?: string;
+  client: Client;
+  project: string;
+  conversationId: string;
+  hostSessionId: string;
+}
+
+export interface AttachResult {
+  session: Session;
+  binding: TransportBindingRecord;
+  /** `existing` reuses the conversation's session; `registered` creates one. */
+  attached: "existing" | "registered";
+  claim: ClaimResult;
+}
+
 export type WhoamiInput = { sessionId: string } | { conversationId: string };
 
 export type SessionListEntry = Session & {
@@ -340,6 +356,58 @@ export class SessionService {
       bindingState,
       session: confirmed.session,
       ...(warnings === undefined ? {} : { warnings }),
+    };
+  }
+
+  /**
+   * Reattach the conversation's existing session, or register one when the
+   * conversation has no live session. Host start hooks call this so a restart
+   * reuses the same session id and address instead of creating duplicates.
+   */
+  async attach(input: AttachInput): Promise<AttachResult> {
+    const matches = this.sessions
+      .findByConversationId(input.conversationId)
+      .filter((session) => session.leftAt === null);
+    if (matches.length > 1) {
+      throw new AechatError(
+        "ambiguous_target",
+        `multiple live sessions for conversation: ${input.conversationId}`,
+      );
+    }
+    if (matches.length === 1) {
+      const session = matches[0] as Session;
+      const binding = this.bindings.listForSession(session.sessionId).at(-1);
+      if (binding === undefined) {
+        throw new AechatError(
+          "transport_unavailable",
+          `session has no transport binding: ${session.sessionId}`,
+        );
+      }
+      const claim = await this.claim(session.sessionId, input.hostSessionId);
+      return {
+        session: claim.session,
+        binding,
+        attached: "existing",
+        claim,
+      };
+    }
+    const registered = await this.register({
+      displayName:
+        input.displayName ??
+        `${input.client}-${input.conversationId.slice(0, 8)}`,
+      client: input.client,
+      project: input.project,
+      conversationId: input.conversationId,
+    });
+    const claim = await this.claim(
+      registered.session.sessionId,
+      input.hostSessionId,
+    );
+    return {
+      session: claim.session,
+      binding: registered.binding,
+      attached: "registered",
+      claim,
     };
   }
 

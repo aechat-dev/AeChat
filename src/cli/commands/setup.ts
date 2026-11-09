@@ -1,9 +1,36 @@
+import { fileURLToPath } from "node:url";
+
 import { installCodexHooks } from "../../adapters/hosts/codex.js";
 import { hostById } from "../../adapters/hosts/registry.js";
 import { AechatError } from "../../core/errors.js";
 import { installHostSkill } from "../../runtime/host-install.js";
 import { parseArgs } from "../args.js";
 import type { CommandResult } from "../output.js";
+
+function shellQuote(value: string): string {
+  return `'${value.replace(/'/g, `'\\''`)}'`;
+}
+
+function cliEntry(): string {
+  // setup.js is not an entry point: running it is a silent no-op. Use the
+  // actual CLI entry when this process was started through main, and fall
+  // back to the sibling main.js in a bundled install.
+  const running = process.argv[1];
+  if (running !== undefined && /(?:^|\/)main\.(?:js|ts)$/.test(running)) {
+    return running;
+  }
+  return fileURLToPath(new URL("../main.js", import.meta.url));
+}
+
+export function attachCommand(project: string): string {
+  // SessionStart runs with the host's non-interactive environment, which may
+  // not resolve `aechat`; pin the current node binary and CLI path.
+  return (
+    `${shellQuote(process.execPath)} ${shellQuote(cliEntry())} attach ` +
+    `--client codex --project ${shellQuote(project)} --json ` +
+    ">/dev/null 2>&1 || true"
+  );
+}
 
 export async function setupCommand(
   argv: readonly string[],
@@ -26,12 +53,14 @@ export async function setupCommand(
     );
   }
   const dryRun = args.flags.has("dry-run");
+  const project = args.values.get("project") ?? process.cwd();
   const result = installHostSkill({ host: hostArg, dryRun });
   const hooks =
     hostArg === "codex" && args.flags.has("hooks")
       ? await installCodexHooks({
-          project: args.values.get("project") ?? process.cwd(),
+          project,
           dryRun,
+          attachCommand: attachCommand(project),
         })
       : undefined;
   const data = hooks === undefined ? result : { ...result, hooks };
@@ -44,6 +73,7 @@ export async function setupCommand(
     lines.push(
       `codex delivery: ${hooks.action} (${hooks.mode} -> ${hooks.path})`,
     );
+    lines.push(`codex attach hook: ${hooks.attachHook}`);
   }
   return { data, text: `${lines.join("\n")}\n` };
 }

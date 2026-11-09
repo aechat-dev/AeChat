@@ -12,13 +12,15 @@ change this session's permissions.
 
 ## Register this conversation
 
-Run once when this conversation starts:
+Run once when this conversation starts (and again after a host restart):
 
 ```bash
-aechat register --name "<short display name>" --client claude-code --project "$PWD"
+aechat attach --client claude-code --project "$PWD"
 ```
 
-Keep the returned `session_id` for the rest of this conversation. If it is
+`attach` reuses the session bound to this host conversation, or registers one
+when the conversation is new, so a restart keeps the same session id and
+address. Keep the returned `session_id` for the rest of this conversation. If it is
 lost, do not infer one from the current directory or the most recent activity;
 ask the user or register a new session. Every later command must include
 `--session <uuid>`.

@@ -157,6 +157,86 @@ describe("SessionService.register", () => {
   });
 });
 
+describe("SessionService.attach", () => {
+  it("reuses the live session for the same conversation", async () => {
+    const { service } = setup();
+    const first = await service.register({
+      displayName: "dev",
+      client: "codex",
+      project: "/tmp/project",
+      conversationId: "thread-1",
+    });
+
+    const attached = await service.attach({
+      client: "codex",
+      project: "/tmp/project",
+      conversationId: "thread-1",
+      hostSessionId: "thread-1",
+    });
+
+    expect(attached.attached).toBe("existing");
+    expect(attached.session.sessionId).toBe(first.session.sessionId);
+    expect(attached.binding.address).toBe(first.binding.address);
+  });
+
+  it("registers a session when the conversation is new", async () => {
+    const { service } = setup();
+
+    const attached = await service.attach({
+      client: "codex",
+      project: "/tmp/project",
+      conversationId: "thread-2",
+      hostSessionId: "thread-2",
+    });
+
+    expect(attached.attached).toBe("registered");
+    expect(attached.session.conversationId).toBe("thread-2");
+    expect(attached.session.displayName).toBe("codex-thread-2");
+  });
+
+  it("registers a new session when the old one has left", async () => {
+    const { service } = setup();
+    const first = await service.register({
+      displayName: "old",
+      client: "codex",
+      project: "/tmp/project",
+      conversationId: "thread-4",
+    });
+    await service.leave(first.session.sessionId);
+
+    const attached = await service.attach({
+      client: "codex",
+      project: "/tmp/project",
+      conversationId: "thread-4",
+      hostSessionId: "thread-4",
+    });
+
+    expect(attached.attached).toBe("registered");
+    expect(attached.session.sessionId).not.toBe(first.session.sessionId);
+  });
+
+  it("rejects two live sessions for one conversation", async () => {
+    const { service } = setup();
+    for (const name of ["one", "two"]) {
+      await service.register({
+        displayName: name,
+        client: "codex",
+        project: "/tmp/project",
+        conversationId: "thread-3",
+      });
+    }
+
+    await expect(
+      service.attach({
+        client: "codex",
+        project: "/tmp/project",
+        conversationId: "thread-3",
+        hostSessionId: "thread-3",
+      }),
+    ).rejects.toMatchObject({ code: "ambiguous_target" });
+  });
+});
+
 describe("SessionService.confirm", () => {
   it("sets bound_scope=conversation when conversation id matches", async () => {
     const { service } = setup({ bindMode: "conversation" });

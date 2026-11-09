@@ -19,6 +19,7 @@ const databases: Array<{ close(): void }> = [];
 function setup(
   options: ConstructorParameters<typeof FakeTransportAdapter>[0] = {},
   toClient = "claude-code",
+  toConversationId: string | null = "conv-to",
 ) {
   const db = openDatabase(":memory:");
   databases.push(db);
@@ -55,7 +56,7 @@ function setup(
     displayName: "to",
     client: toClient,
     project: "/tmp/to",
-    conversationId: "conv-to",
+    ...(toConversationId === null ? {} : { conversationId: toConversationId }),
     lastSeenAt: "2026-11-06T00:00:00.000Z",
     createdAt: "2026-11-06T00:00:00.000Z",
   });
@@ -265,6 +266,24 @@ describe("DeliveryService direct injection retry", () => {
     expect(deliveries.get(sent.deliveryId)?.directAttempted).toBe(true);
   });
 
+  it("audits a Codex target without a thread id as blocked", async () => {
+    const { service, events } = setup({ notifyFails: true }, "codex", null);
+
+    const sent = await service.send({
+      fromSession: "from-session",
+      toSession: "to-session",
+      kind: "notify",
+      body: "hello",
+    });
+
+    expect(sent.status).toBe("notify_failed");
+    const fail = events
+      .listForSession("to-session")
+      .find((event) => event.event === "notify_fail");
+    expect(JSON.parse(fail?.dataJson ?? "{}")).toMatchObject({
+      delivery: "blocked",
+    });
+  });
   it("still retries a non-direct notify failure", async () => {
     const { service } = setup({ notifyFails: true }, "claude-code");
 

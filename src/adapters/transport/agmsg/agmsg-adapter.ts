@@ -49,7 +49,7 @@ export interface AgmsgAdapterOptions {
 /** Keep a display name on one line so it cannot forge header fields. */
 function headerText(value: string): string {
   const breaks = /[\r\n\u2028\u2029]+/g;
-  return value.replace(breaks, " ").slice(0, 120);
+  return value.replace(breaks, " ").replace(/"/g, "'").slice(0, 120);
 }
 
 /**
@@ -264,7 +264,7 @@ export class AgmsgAdapter implements TransportAdapter {
       );
       const header =
         `[AeChat] message=${notification.messageId} kind=${kind} ` +
-        `from=${from}${correlation}`;
+        `from="${from}"${correlation}`;
       const footer =
         kind === "request"
           ? `\n\n[AeChat request=${requestId}; ` +

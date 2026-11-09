@@ -245,6 +245,35 @@ describe("SessionService.attach", () => {
     expect(sessions.get("thread-5")?.conversationId).toBe("thread-5");
   });
 
+  it("does not reuse a host-session-id row from another project", async () => {
+    const { service, sessions, bindings } = setup();
+    sessions.create({
+      sessionId: "thread-6",
+      displayName: "other-project",
+      client: "codex",
+      project: "/tmp/other",
+      lastSeenAt: "2026-11-09T00:00:00.000Z",
+      createdAt: "2026-11-09T00:00:00.000Z",
+    });
+    bindings.create({
+      bindingId: "binding-thread-6",
+      sessionId: "thread-6",
+      transport: "fake",
+      address: "aechat-thread6",
+      state: "bound",
+    });
+
+    const attached = await service.attach({
+      client: "codex",
+      project: "/tmp/project",
+      conversationId: "thread-6",
+      hostSessionId: "thread-6",
+    });
+
+    expect(attached.attached).toBe("registered");
+    expect(attached.session.sessionId).not.toBe("thread-6");
+  });
+
   it("rejects two live sessions for one conversation", async () => {
     const { service } = setup();
     for (const name of ["one", "two"]) {

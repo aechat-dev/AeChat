@@ -377,7 +377,8 @@ export class SessionService {
       if (
         byHostId !== undefined &&
         byHostId.leftAt === null &&
-        byHostId.client === input.client
+        byHostId.client === input.client &&
+        byHostId.project === input.project
       ) {
         matches = [byHostId];
         if (byHostId.conversationId !== input.conversationId) {

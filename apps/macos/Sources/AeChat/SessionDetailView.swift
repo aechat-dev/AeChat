@@ -33,6 +33,7 @@ struct SessionDetailView: View {
                 header(session)
                 capabilitySection(session.capabilities)
                 threads(for: session)
+                messageHistory(for: session)
             }
             .padding(Theme.Spacing.large)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -91,7 +92,7 @@ struct SessionDetailView: View {
 
     private func capabilitySection(_ report: CapabilityReport) -> some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.small) {
-            Text("Capabilities")
+            Text("Communication capabilities")
                 .font(Theme.Typography.sectionTitle)
             HStack(spacing: Theme.Spacing.medium) {
                 capability(
@@ -108,9 +109,11 @@ struct SessionDetailView: View {
                     "idle", supported: report.supported.idleWakeup,
                     available: report.available.idleWakeup)
             }
-            Text("wakeup \(report.wakeupLevel) · supported vs available")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            Text(
+                "wakeup \(report.wakeupLevel) · supported means the host declares it; available means it was observed"
+            )
+            .font(.caption)
+            .foregroundStyle(.secondary)
         }
     }
 
@@ -141,22 +144,95 @@ struct SessionDetailView: View {
                     .foregroundStyle(.secondary)
             } else {
                 ForEach(related) { thread in
-                    HStack(alignment: .top, spacing: Theme.Spacing.small) {
-                        VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
-                            Text(thread.participants.map(\.displayName).joined(separator: " ↔ "))
+                    let isActive = thread.key == state.activeThread?.key
+                    Button {
+                        state.selectThread(thread)
+                    } label: {
+                        HStack(alignment: .top, spacing: Theme.Spacing.small) {
+                            VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
+                                Text(
+                                    thread.participants.map(\.displayName)
+                                        .joined(separator: " ↔ ")
+                                )
                                 .font(.callout.weight(.medium))
-                            Text(thread.lastMessage.preview)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .lineLimit(1)
-                        }
-                        Spacer()
-                        Text("\(thread.pendingRequests) req · \(thread.pendingDeliveries) del")
+                                Text(thread.lastMessage.preview)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(1)
+                            }
+                            Spacer()
+                            Text(
+                                "\(thread.pendingRequests) req · \(thread.pendingDeliveries) del"
+                            )
                             .font(.caption2.monospacedDigit())
                             .foregroundStyle(.secondary)
+                        }
+                        .padding(Theme.Spacing.small)
+                        .background(
+                            isActive ? Theme.Palette.raisedSurface : Color.clear,
+                            in: RoundedRectangle(cornerRadius: Theme.Radius.small)
+                        )
+                        .contentShape(Rectangle())
                     }
-                    Divider()
+                    .buttonStyle(.plain)
                 }
+            }
+        }
+    }
+
+    private func messageHistory(for session: SessionView) -> some View {
+        let messages = state.orderedMessages.filter {
+            $0.fromSession == session.sessionId || $0.toSession == session.sessionId
+        }
+        return VStack(alignment: .leading, spacing: Theme.Spacing.small) {
+            Text("Open thread history")
+                .font(Theme.Typography.sectionTitle)
+            if state.activeThread == nil {
+                Text("Select a thread above")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else if messages.isEmpty && state.isLoadingMessages {
+                ProgressView("Loading messages…")
+                    .controlSize(.small)
+            } else if messages.isEmpty {
+                Text("No messages in the open thread")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else {
+                ForEach(Array(messages.suffix(8).reversed())) { message in
+                    Button {
+                        state.selectMessage(message.messageId)
+                    } label: {
+                        VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
+                            HStack(spacing: Theme.Spacing.xSmall) {
+                                Text(state.displayName(for: message.fromSession))
+                                    .font(.caption.weight(.medium))
+                                Text("→")
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                                Text(state.displayName(for: message.toSession))
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                Text(message.kind)
+                                    .font(.caption2.monospaced())
+                                    .foregroundStyle(.secondary)
+                                Spacer()
+                                Text(Display.relative(message.createdAt))
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Text(Display.sanitizedBody(message.body))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(2)
+                        }
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                }
+                Text("Select a message to inspect its delivery and audit chain.")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
             }
         }
     }

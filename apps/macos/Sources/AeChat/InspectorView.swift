@@ -27,6 +27,16 @@ struct InspectorView: View {
             }
         }
         .navigationTitle("Inspector")
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    state.selectMessage(nil)
+                } label: {
+                    Label("Close inspector", systemImage: "xmark.circle")
+                }
+                .keyboardShortcut(.escape, modifiers: [])
+            }
+        }
     }
 
     private func content(_ log: UiLog) -> some View {

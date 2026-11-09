@@ -348,9 +348,29 @@ describe("queueCodexMessage", () => {
         "queue",
         "--thread",
         thread,
-        "--message",
-        "hello from AeChat",
+        "--message=hello from AeChat",
       ],
+    ]);
+  });
+
+  it("passes a body starting with a dash as one option value", async () => {
+    const calls: string[][] = [];
+    await queueCodexMessage(
+      { thread, body: "- list item" },
+      {
+        executable: "/opt/codex",
+        runner: async (_file, args) => {
+          calls.push([...args]);
+          return { exitCode: 0, stdout: "queued", stderr: "" };
+        },
+      },
+    );
+
+    expect(calls[0]).toEqual([
+      "queue",
+      "--thread",
+      thread,
+      "--message=- list item",
     ]);
   });
 

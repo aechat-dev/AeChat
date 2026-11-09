@@ -68,6 +68,21 @@ describe("sessions host schema", () => {
         evidence_json TEXT,
         UNIQUE(transport, address)
       );
+      CREATE TABLE deliveries (
+        delivery_id TEXT PRIMARY KEY,
+        message_id TEXT NOT NULL,
+        session_id TEXT NOT NULL,
+        status TEXT NOT NULL,
+        delivery_token TEXT UNIQUE,
+        lease_expires_at TEXT,
+        attempts INTEGER NOT NULL DEFAULT 0,
+        notified_at TEXT,
+        delivered_at TEXT,
+        acked_at TEXT,
+        replied_at TEXT,
+        last_error TEXT,
+        UNIQUE(message_id, session_id)
+      );
       INSERT INTO sessions (
         session_id, display_name, client, project, last_seen_at, created_at
       ) VALUES (

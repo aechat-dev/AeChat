@@ -379,8 +379,63 @@ describe("AgmsgAdapter", () => {
       project: "/project",
       conversationId: thread,
       messageId: "msg-2",
-      body: "正文",
+      body: "[AeChat] message=msg-2 kind=notify from=from-session\n正文",
     });
+    expect(cli.notify).not.toHaveBeenCalled();
+  });
+
+  it("adds request metadata so the target can reply through AeChat", async () => {
+    const cli = fakeCli();
+    const direct = vi.fn(async () => ({ ok: true }));
+    const adapter = new AgmsgAdapter({
+      cli,
+      team: "aechat-test",
+      directDelivery: direct,
+    });
+    const binding = await adapter.register(SESSION, "aechat-cccccccccccc");
+
+    await adapter.notify(binding, {
+      messageId: "msg-req",
+      fromSession: "from-session",
+      toSession: "target-session",
+      fromName: "sender",
+      body: "问题",
+      kind: "request",
+      conversationId: "01a1aeb5-55d4-79c3-bfa7-e1d96c4fd2e5",
+      targetClient: "codex",
+      targetProject: "/project",
+    });
+
+    const body = (direct.mock.calls[0] as unknown as [{ body: string }])[0]
+      .body;
+    expect(body).toContain("[AeChat] message=msg-req kind=request from=sender");
+    expect(body).toContain("问题");
+    expect(body).toContain("request=msg-req");
+    expect(body).toContain("aechat reply");
+  });
+
+  it("fails a Codex direct delivery without a thread id instead of sending a pointer", async () => {
+    const cli = fakeCli();
+    const direct = vi.fn(async () => ({ ok: true }));
+    const adapter = new AgmsgAdapter({
+      cli,
+      team: "aechat-test",
+      directDelivery: direct,
+    });
+    const binding = await adapter.register(SESSION, "aechat-cccccccccccc");
+
+    const result = await adapter.notify(binding, {
+      messageId: "msg-5",
+      fromSession: "from-session",
+      toSession: "target-session",
+      body: "正文",
+      conversationId: null,
+      targetClient: "codex",
+      targetProject: "/project",
+    });
+
+    expect(result.ok).toBe(false);
+    expect(direct).not.toHaveBeenCalled();
     expect(cli.notify).not.toHaveBeenCalled();
   });
 

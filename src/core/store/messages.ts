@@ -60,6 +60,8 @@ export interface DeliveryRecord {
   ackedAt: string | null;
   repliedAt: string | null;
   lastError: string | null;
+  /** A host queue call may have landed; never re-inject automatically. */
+  directAttempted: boolean;
 }
 
 export interface InsertDeliveryInput {
@@ -138,6 +140,7 @@ function deliveryFromRow(row: Row): DeliveryRecord {
     ackedAt: nullableString(row["acked_at"]),
     repliedAt: nullableString(row["replied_at"]),
     lastError: redactErrorDetail(nullableString(row["last_error"])),
+    directAttempted: Number(row["direct_attempted"] ?? 0) === 1,
   };
 }
 
@@ -405,6 +408,21 @@ export class DeliveryRepository {
         `UPDATE deliveries
          SET status = 'stored', last_error = NULL
          WHERE delivery_id = ? AND status IN ('stored', 'notify_failed')`,
+      )
+      .run(deliveryId);
+    return Number(result.changes) > 0;
+  }
+
+  /**
+   * Mark that a direct host injection is about to run. The flag deliberately
+   * survives a failed notify: the queue call may have landed even when the
+   * CLI timed out, so a retry must not inject the same body again.
+   */
+  claimDirectAttempt(deliveryId: string): boolean {
+    const result = this.db
+      .prepare(
+        `UPDATE deliveries SET direct_attempted = 1
+         WHERE delivery_id = ? AND direct_attempted = 0`,
       )
       .run(deliveryId);
     return Number(result.changes) > 0;

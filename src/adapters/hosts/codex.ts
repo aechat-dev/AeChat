@@ -120,7 +120,9 @@ export async function queueCodexMessage(
   const runner = options.runner ?? runnerWithEnv(env);
   const result = await runner(
     executable,
-    ["queue", "--thread", input.thread, "--message", input.body],
+    // `--message=<body>` is one argv token: a body starting with "-" must not
+    // be parsed as an option.
+    ["queue", "--thread", input.thread, `--message=${input.body}`],
     options.timeoutMs ?? 30_000,
   );
   if (result.exitCode !== 0) {

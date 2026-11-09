@@ -363,6 +363,7 @@ export class DeliveryService {
 
     const message = this.messages.get(input.messageId);
     const target = this.sessions.get(input.toSession);
+    const sender = this.sessions.get(input.fromSession);
     const notification: PointerNotification = {
       messageId: input.messageId,
       fromSession: input.fromSession,
@@ -370,12 +371,31 @@ export class DeliveryService {
       ...(fromBinding === undefined
         ? {}
         : { fromAddress: fromBinding.address }),
-      ...(message === undefined ? {} : { body: message.body }),
+      ...(message === undefined
+        ? {}
+        : { body: message.body, kind: message.kind }),
       conversationId: target?.conversationId ?? null,
       ...(target === undefined
         ? {}
         : { targetClient: target.client, targetProject: target.project }),
+      ...(sender === undefined ? {} : { fromName: sender.displayName }),
     };
+
+    // A direct host injection may land even when the CLI times out, so mark
+    // the attempt before dispatch and never re-inject automatically.
+    const direct =
+      message !== undefined &&
+      target?.client === "codex" &&
+      target.conversationId !== null &&
+      target.conversationId !== undefined;
+    if (direct && !this.deliveries.claimDirectAttempt(input.deliveryId)) {
+      return {
+        messageId: input.messageId,
+        deliveryId: input.deliveryId,
+        status: "notify_failed",
+        error: "direct injection already attempted; not retried automatically",
+      };
+    }
 
     let notifyResult: { ok: boolean; error?: string };
     try {
@@ -481,6 +501,17 @@ export class DeliveryService {
       );
     }
 
+    if (
+      delivery.directAttempted &&
+      (delivery.status === "notify_failed" || delivery.status === "stored")
+    ) {
+      return {
+        messageId: message.messageId,
+        deliveryId: delivery.deliveryId,
+        retried: false,
+        status: delivery.status,
+      };
+    }
     if (delivery.status !== "stored" && delivery.status !== "notify_failed") {
       return {
         messageId: message.messageId,

@@ -217,6 +217,8 @@ export class AgmsgAdapter implements TransportAdapter {
       toSession: string;
       fromAddress?: string;
       body?: string;
+      kind?: string;
+      fromName?: string;
       conversationId?: string | null;
       targetClient?: string;
       targetProject?: string;
@@ -227,17 +229,36 @@ export class AgmsgAdapter implements TransportAdapter {
     // not silently downgraded to the indirect path.
     if (
       this.directDelivery !== undefined &&
-      notification.targetClient === "codex" &&
-      notification.body !== undefined &&
-      notification.conversationId !== undefined &&
-      notification.conversationId !== null
+      notification.targetClient === "codex"
     ) {
+      if (
+        notification.body === undefined ||
+        notification.conversationId === undefined ||
+        notification.conversationId === null
+      ) {
+        return {
+          ok: false,
+          error:
+            "Codex direct delivery needs the message body and the thread id; " +
+            "run aechat attach so the session records its conversation id",
+        };
+      }
+      const kind = notification.kind ?? "notify";
+      const header =
+        `[AeChat] message=${notification.messageId} kind=${kind} ` +
+        `from=${notification.fromName ?? notification.fromSession}`;
+      const footer =
+        kind === "request"
+          ? `\n\n[AeChat request=${notification.messageId}; ` +
+            `reply: aechat reply --session ${notification.toSession} ` +
+            `--request ${notification.messageId} --body "..."]`
+          : "";
       return this.directDelivery({
         client: "codex",
         project: notification.targetProject ?? "",
         conversationId: notification.conversationId,
         messageId: notification.messageId,
-        body: notification.body,
+        body: `${header}\n${notification.body}${footer}`,
       });
     }
     const result = await this.cli.notify({

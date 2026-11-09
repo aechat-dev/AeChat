@@ -101,6 +101,21 @@ describe("event cursor", () => {
         error_detail TEXT,
         data_json TEXT
       );
+      CREATE TABLE deliveries (
+        delivery_id TEXT PRIMARY KEY,
+        message_id TEXT NOT NULL,
+        session_id TEXT NOT NULL,
+        status TEXT NOT NULL,
+        delivery_token TEXT UNIQUE,
+        lease_expires_at TEXT,
+        attempts INTEGER NOT NULL DEFAULT 0,
+        notified_at TEXT,
+        delivered_at TEXT,
+        acked_at TEXT,
+        replied_at TEXT,
+        last_error TEXT,
+        UNIQUE(message_id, session_id)
+      );
       PRAGMA user_version = 4;
     `);
     const insert = db.prepare(

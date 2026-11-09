@@ -48,6 +48,10 @@ export interface PointerNotification {
    * deliver the message directly instead of sending a pull pointer.
    */
   body?: string;
+  /** Message kind, so a direct host delivery can carry reply metadata. */
+  kind?: string;
+  /** Sender display name for the direct-injection header. */
+  fromName?: string;
   /** Target host conversation id, when the session recorded one. */
   conversationId?: string | null;
   /** Target host client and project, for adapters with direct host delivery. */

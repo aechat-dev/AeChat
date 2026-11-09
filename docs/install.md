@@ -105,6 +105,15 @@ the project once:
 aechat setup codex --hooks --project "$PWD"
 ```
 
+Codex messages are delivered by queueing the body into the desktop thread
+(`codex queue`), so they appear in the conversation as user turns with an
+`[AeChat] message=...` header; AeChat no longer sends a pull pointer for a
+Codex target. The adapter uses the CLI bundled in `ChatGPT.app`; set
+`AECHAT_CODEX_BIN` when Codex lives elsewhere. If queueing fails, the delivery
+is reported as `notify_failed` and is not silently downgraded to a pointer.
+The body is passed as a command-line argument, so it is visible in the local
+process list while the queue command runs.
+
 The command also installs an AeChat `SessionStart` entry next to agmsg's, which
 runs `aechat attach` so a restarted conversation reuses its existing session
 instead of going offline. The hook is installed and points at the CLI entry

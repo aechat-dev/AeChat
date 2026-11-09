@@ -93,7 +93,7 @@ Commands:
   retry      --session <uuid> (--message <message-id> | --delivery <delivery-id>)
   doctor     [--json]
   init       [--json] [--dry-run]
-  setup      <host> [--json] [--dry-run]
+  setup      <host> [--hooks] [--project <path>] [--json] [--dry-run]
   resume     --session <uuid> [--force]
   leave      --session <uuid>
   history    --session <uuid> [--limit <n>] [--json]

@@ -98,6 +98,18 @@ The skill is instructions for the Agent, not an automatic permission grant.
 It requires explicit registration, JSON-first reads, an `ack` after processing,
 and treats all message text as agent-origin data.
 
+Codex also needs the agmsg bridge for a live `host_role` binding. Configure the
+project once:
+
+```bash
+aechat setup codex --hooks --project "$PWD"
+```
+
+Then launch Codex through the agmsg Codex shim or the shell function printed by
+`agmsg delivery set monitor codex "$PWD"`. The SessionStart hook starts the
+bridge. Without it, registration still stores the session and the pull path
+works, but `bound_scope` stays `none` and the host has no live role lock.
+
 ## 4. Register, bind and confirm
 
 Each host conversation registers separately:
@@ -108,9 +120,10 @@ aechat register --name "reviewer" --client claude-code --project "$PWD"
 
 When `register` runs inside the host and the host session id is available, it
 claims the binding automatically. Claude Code exports `CLAUDE_CODE_SESSION_ID`;
-Codex exports `CODEX_THREAD_ID`; `AGMSG_SESSION_ID` overrides both. If the
-result has `bound_scope=none` and a non-null `bind_directive`, run that
-directive in the same conversation:
+Codex exports `CODEX_THREAD_ID`; `AGMSG_SESSION_ID` overrides both. The host
+session id is also stored as `conversation_id`, so `whoami --conversation`
+addresses that exact conversation. If the result has `bound_scope=none` and a
+non-null `bind_directive`, run that directive in the same conversation:
 
 - Claude Code: `/agmsg actas <address>`
 - Codex: `$agmsg actas <address>`

@@ -53,6 +53,31 @@ describe("aechat watch", () => {
     });
   });
 
+  it("uses the full peek window by default", async () => {
+    const inbox = vi.fn(async () => []);
+    const ctx = { delivery: { inbox } } as unknown as CommandContext;
+
+    await watchCommand(["--session", "self", "--once"], ctx);
+
+    expect(inbox).toHaveBeenCalledWith({
+      sessionId: "self",
+      limit: 100,
+      peek: true,
+    });
+  });
+
+  it("rejects a limit outside the peek window", async () => {
+    const inbox = vi.fn(async () => []);
+    const ctx = { delivery: { inbox } } as unknown as CommandContext;
+
+    await expect(
+      watchCommand(["--session", "self", "--once", "--limit", "101"], ctx),
+    ).rejects.toThrow("--limit must be an integer in 1..100");
+    await expect(
+      watchCommand(["--session", "self", "--once", "--limit", "0"], ctx),
+    ).rejects.toThrow("--limit must be an integer in 1..100");
+  });
+
   it("emits JSONL once and returns the emitted count", async () => {
     const inbox = vi.fn(async () => [item("m1")]);
     const ctx = { delivery: { inbox } } as unknown as CommandContext;

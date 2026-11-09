@@ -341,7 +341,7 @@ describe("AgmsgAdapter", () => {
       from: "aechat-sender",
       to: "aechat-cccccccccccc",
       text:
-        "[AeChat] msg=msg-1 session=target-session " +
+        "[AeChat] msg=msg-1 session=target-session use_skill=aechat " +
         "action=aechat inbox --session target-session",
     });
     const call = (cli.notify as ReturnType<typeof vi.fn>).mock

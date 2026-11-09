@@ -32,6 +32,7 @@ import { uiLogCommand } from "./commands/ui-log.js";
 import { uiMessagesCommand } from "./commands/ui-messages.js";
 import { uiSnapshotCommand } from "./commands/ui-snapshot.js";
 import { waitCommand } from "./commands/wait.js";
+import { watchCommand } from "./commands/watch.js";
 import { whoamiCommand } from "./commands/whoami.js";
 import { errorEnvelope, isCommandResult, render } from "./output.js";
 
@@ -52,6 +53,7 @@ const COMMANDS = new Set([
   "probe",
   "send",
   "inbox",
+  "watch",
   "receive",
   "ack",
   "show",
@@ -84,6 +86,7 @@ Commands:
              (--body <text> | --body-file <path>) [--request] [--deadline <seconds>]
              [--dedup-key <key>] [--ttl <seconds>]
   inbox      --session <uuid> [--peek] [--json] [--limit <n>]
+  watch      --session <uuid> [--interval <seconds>] [--limit <n>] [--once]
   receive    --session <uuid> [--timeout <seconds>] [--json]
   ack        --session <uuid> --delivery <token>
   show       --session <uuid> --message <message-id> [--json]
@@ -202,6 +205,9 @@ export async function main(argv: readonly string[]): Promise<number> {
           break;
         case "receive":
           data = await receiveCommand(rest, ctx);
+          break;
+        case "watch":
+          data = await watchCommand(rest, ctx);
           break;
         case "ack":
           data = ackCommand(rest, ctx);

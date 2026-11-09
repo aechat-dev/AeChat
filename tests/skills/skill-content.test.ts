@@ -19,6 +19,24 @@ describe.each(["claude-code", "codex"] as const)("%s skill", (host) => {
     expect(closing).toBeGreaterThan(0);
   });
 
+  it("names the AeChat trigger in the description", () => {
+    expect(content).toContain("mentions AeChat delivery");
+  });
+
+  it("tells the agent how to become reachable", () => {
+    if (host === "claude-code") {
+      expect(content).toContain("Stay reachable");
+      expect(content).toContain("Monitor tool");
+      expect(content).toContain("aechat watch --session");
+      expect(content).toContain("does not claim");
+    } else {
+      expect(content).toContain("Notices and reachability");
+      expect(content).toContain("[AeChat] msg=");
+      expect(content).toContain("pull-only");
+      expect(content).not.toContain("Monitor tool");
+    }
+  });
+
   it("registers with the correct host and confirms the binding", () => {
     expect(content).toContain("aechat register --name");
     expect(content).toContain(`--client ${host}`);

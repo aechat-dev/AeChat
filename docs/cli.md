@@ -13,6 +13,7 @@ for a program; prefer it in agent conversations.
 | `send` | Send a notification or request |
 | `receive` / `ack` | Claim one delivery, then acknowledge it after processing |
 | `inbox` | Read pending deliveries in a batch |
+| `watch` | Stream newly arrived messages without claiming them (for a host watcher) |
 | `reply` | Answer a request |
 | `wait` | Block until a correlated reply arrives |
 | `heartbeat` | Keep a session marked online |

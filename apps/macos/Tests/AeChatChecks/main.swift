@@ -431,9 +431,12 @@ func testThreadFilter() {
     let filtered = ThreadFilter.visible(
         threads, visibleSessionIds: ["s1", "s3"], onlyPending: false)
     check(filtered.map(\.key) == ["b", "a"], "thread keeps one visible side and sorts")
-    let bothHidden = ThreadFilter.visible(
+    let oneSide = ThreadFilter.visible(
         threads, visibleSessionIds: ["s5"], onlyPending: false)
-    check(bothHidden.map(\.key) == ["c"], "thread hidden when no side visible")
+    check(oneSide.map(\.key) == ["c"], "thread stays when one side is visible")
+    let noneVisible = ThreadFilter.visible(
+        threads, visibleSessionIds: [], onlyPending: false)
+    check(noneVisible.isEmpty, "no visible sessions hides every thread")
     let pendingOnly = ThreadFilter.visible(
         threads, visibleSessionIds: ["s1", "s2", "s3", "s4"], onlyPending: true)
     check(pendingOnly.map(\.key) == ["b"], "pending filter keeps only pending thread")

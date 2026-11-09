@@ -75,7 +75,7 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .frame(width: 520, height: 560)
+        .frame(minWidth: 440, minHeight: 480)
         .task {
             if state.doctor == nil {
                 await state.loadDoctor()

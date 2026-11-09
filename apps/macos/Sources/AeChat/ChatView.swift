@@ -44,10 +44,15 @@ struct ChatView: View {
         HStack(spacing: Theme.Spacing.small) {
             Text(participants(thread))
                 .font(Theme.Typography.sectionTitle)
+                .lineLimit(1)
+                .truncationMode(.middle)
+                .layoutPriority(1)
             Text("\(thread.pendingRequests) req · \(thread.pendingDeliveries) delivery")
                 .font(.caption2.monospacedDigit())
                 .foregroundStyle(.secondary)
-            Spacer()
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+            Spacer(minLength: Theme.Spacing.small)
             HStack(spacing: Theme.Spacing.xSmall) {
                 Circle()
                     .fill(
@@ -58,7 +63,9 @@ struct ChatView: View {
                 Text(state.streamConnected ? "live" : "reconnecting")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
+                    .lineLimit(1)
             }
+            .fixedSize()
             if state.hasNewActivity {
                 Button {
                     state.markActivitySeen()

@@ -10,7 +10,7 @@ struct AeChatApp: App {
             RootView()
                 .environmentObject(state)
                 .tint(Theme.Palette.accent)
-                .frame(minWidth: 1_000, minHeight: 640)
+                .frame(minWidth: 760, minHeight: 560)
         }
         .windowToolbarStyle(.unified)
 
@@ -77,7 +77,7 @@ struct RootView: View {
 
     private var sidebar: some View {
         SessionsView()
-            .navigationSplitViewColumnWidth(min: 220, ideal: 260)
+            .navigationSplitViewColumnWidth(min: 200, ideal: 240, max: 320)
     }
 
     @ViewBuilder
@@ -116,17 +116,14 @@ struct RootView: View {
             Label("No sessions yet", systemImage: "person.2.badge.plus")
         } description: {
             VStack(spacing: Theme.Spacing.small) {
-                Text("Register a conversation from each host, then refresh.")
                 Text(
-                    "aechat register --name <name> --client claude-code --project \"$PWD\""
+                    "Open each host conversation and ask its agent to use the aechat skill. The agents register themselves and find each other."
                 )
-                .font(.caption.monospaced())
-                .textSelection(.enabled)
                 Text(
-                    "aechat register --name <name> --client codex --project \"$PWD\""
+                    "No display names, addresses, or session ids need to be configured here."
                 )
-                .font(.caption.monospaced())
-                .textSelection(.enabled)
+                .font(.caption)
+                .foregroundStyle(.secondary)
             }
         } actions: {
             Button("Refresh") {

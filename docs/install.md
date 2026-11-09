@@ -140,7 +140,16 @@ Without either path, registration still stores the session and the pull path
 works, but messages are not delivered automatically and `bound_scope` may stay
 `none`.
 
-## 4. Register, bind and confirm
+## 4. Connect two conversations through the skill
+
+The normal flow is skill-only: in each host conversation, tell the agent one
+sentence such as "use the aechat skill to connect this conversation to
+`<target>`". The skill runs `attach`, registers the conversation, discovers the
+target with `aechat list --json`, and reports the result. The user does not
+need to supply a display name, project, client, session id or address; those
+are agent-facing identifiers.
+
+The commands below are for debugging or for hosts without the skill.
 
 Each host conversation attaches separately. Use `attach` at conversation start
 and after a host restart; it reuses the existing session for this conversation

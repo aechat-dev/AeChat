@@ -51,6 +51,7 @@ surface is verified against a real host.
 - One-line install (`npx aechat init` or an installer) and a released CLI.
 - MCP and SDK entry points over the same core.
 - Groups, broadcast and subscriptions, if they remain communication features.
+  See the [group messaging design](group-messaging.md).
 - Additional host adapters, written without touching the core.
 
 ## Not goals

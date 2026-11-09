@@ -365,9 +365,29 @@ export class SessionService {
    * reuses the same session id and address instead of creating duplicates.
    */
   async attach(input: AttachInput): Promise<AttachResult> {
-    const matches = this.sessions
+    let matches = this.sessions
       .findByConversationId(input.conversationId)
       .filter((session) => session.leftAt === null);
+    if (matches.length === 0) {
+      // A host session id is unique per conversation. Older registrations may
+      // have used it as the AeChat session id while recording a different (or
+      // no) conversation id; reuse that row and repair the conversation link
+      // instead of creating a duplicate identity on restart.
+      const byHostId = this.sessions.get(input.hostSessionId);
+      if (
+        byHostId !== undefined &&
+        byHostId.leftAt === null &&
+        byHostId.client === input.client
+      ) {
+        matches = [byHostId];
+        if (byHostId.conversationId !== input.conversationId) {
+          this.sessions.updateConversationId(
+            byHostId.sessionId,
+            input.conversationId,
+          );
+        }
+      }
+    }
     if (matches.length > 1) {
       throw new AechatError(
         "ambiguous_target",

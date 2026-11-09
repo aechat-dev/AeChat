@@ -405,6 +405,40 @@ func testNewestNodeWins() throws {
     )
 }
 
+func testThreadFilter() {
+    func participant(_ id: String) -> ThreadParticipant {
+        ThreadParticipant(
+            sessionId: id, displayName: id, client: "codex", project: "/p")
+    }
+    func thread(
+        _ key: String, _ ids: [String], pending: Int = 0, at: String
+    ) -> ThreadSummary {
+        ThreadSummary(
+            key: key,
+            participants: ids.map(participant),
+            lastMessageAt: at,
+            lastMessage: ThreadLastMessage(
+                messageId: "m-\(key)", kind: "notify", preview: "p"),
+            pendingRequests: pending,
+            pendingDeliveries: 0
+        )
+    }
+    let threads = [
+        thread("a", ["s1", "s2"], at: "2026-11-09T10:00:00Z"),
+        thread("b", ["s3", "s4"], pending: 1, at: "2026-11-09T11:00:00Z"),
+        thread("c", ["s5", "s6"], at: "2026-11-09T12:00:00Z"),
+    ]
+    let filtered = ThreadFilter.visible(
+        threads, visibleSessionIds: ["s1", "s3"], onlyPending: false)
+    check(filtered.map(\.key) == ["b", "a"], "thread keeps one visible side and sorts")
+    let bothHidden = ThreadFilter.visible(
+        threads, visibleSessionIds: ["s5"], onlyPending: false)
+    check(bothHidden.map(\.key) == ["c"], "thread hidden when no side visible")
+    let pendingOnly = ThreadFilter.visible(
+        threads, visibleSessionIds: ["s1", "s2", "s3", "s4"], onlyPending: true)
+    check(pendingOnly.map(\.key) == ["b"], "pending filter keeps only pending thread")
+}
+
 do {
     try testSnapshot()
     try testErrorEnvelope()
@@ -413,6 +447,7 @@ do {
     try testMessageLogDoctor()
     try testBinaryLocator()
     testAgentTextSanitizer()
+    testThreadFilter()
     try testNewestNodeWins()
     try await testNodeLaunch()
 } catch {

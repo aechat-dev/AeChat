@@ -32,6 +32,8 @@ export interface BindResult {
   boundScope: BoundScope;
   conversationId: string | null;
   evidence: Record<string, unknown>;
+  /** Current delivery mode, when the adapter can read it again. */
+  mode?: string | null;
   reason?: string;
 }
 
@@ -46,6 +48,8 @@ export interface PointerNotification {
 export interface NotifyResult {
   ok: boolean;
   error?: string;
+  /** Non-fatal follow-up the caller should surface to the agent. */
+  warning?: string;
 }
 
 export interface TransportStatus {

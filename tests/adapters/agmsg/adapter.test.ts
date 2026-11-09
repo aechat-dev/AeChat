@@ -20,6 +20,7 @@ function fakeCli(overrides: Partial<AgmsgCliPort> = {}): AgmsgCliPort {
     version: vi.fn(async () => "1.7.1"),
     join: vi.fn(async () => ({ ok: true, stderr: "" })),
     claim: vi.fn(async () => ({ ok: true, stderr: "" })),
+    recordCodexSession: vi.fn(async () => ({ ok: true, stderr: "" })),
     notify: vi.fn(async () => ({ ok: true, stderr: "" })),
     teamJson: vi.fn(async () => ({ agents: {} })),
     deliveryStatus: vi.fn(async () => ({ mode: "monitor" })),
@@ -177,6 +178,51 @@ describe("AgmsgAdapter", () => {
       state: "pending",
       boundScope: "none",
     });
+  });
+
+  it("records the Codex thread when claiming a Codex seat", async () => {
+    const cli = fakeCli();
+    const adapter = new AgmsgAdapter({ cli, team: "aechat-test" });
+    const binding = await adapter.register(SESSION, "aechat-bbbbbbbbbbbb");
+
+    await expect(
+      adapter.claim({ ...SESSION, client: "codex" }, binding, "thread-1"),
+    ).resolves.toEqual({ ok: true });
+
+    expect(cli.recordCodexSession).toHaveBeenCalledWith({
+      team: "aechat-test",
+      agent: "aechat-bbbbbbbbbbbb",
+      project: "/tmp/project",
+      sessionId: "thread-1",
+    });
+  });
+
+  it("warns when the Codex thread cannot be recorded", async () => {
+    const cli = fakeCli({
+      recordCodexSession: vi.fn(async () => ({
+        ok: false,
+        stderr: "no thread",
+      })),
+    });
+    const adapter = new AgmsgAdapter({ cli, team: "aechat-test" });
+    const binding = await adapter.register(SESSION, "aechat-bbbbbbbbbbbb");
+
+    await expect(
+      adapter.claim({ ...SESSION, client: "codex" }, binding, "thread-1"),
+    ).resolves.toEqual({
+      ok: true,
+      warning: expect.stringContaining("pull-only"),
+    });
+  });
+
+  it("does not record a Codex thread for other hosts", async () => {
+    const cli = fakeCli();
+    const adapter = new AgmsgAdapter({ cli, team: "aechat-test" });
+    const binding = await adapter.register(SESSION, "aechat-bbbbbbbbbbbb");
+
+    await adapter.claim(SESSION, binding, "host-1");
+
+    expect(cli.recordCodexSession).not.toHaveBeenCalled();
   });
 
   it("register records the actual delivery mode", async () => {

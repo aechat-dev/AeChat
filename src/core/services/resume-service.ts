@@ -266,6 +266,9 @@ export class ResumeService {
     try {
       withImmediate(this.db, () => {
         this.bindings.updateState(binding.bindingId, result.state, at);
+        if (result.mode !== undefined && result.mode !== null) {
+          this.bindings.updateMode(binding.bindingId, result.mode);
+        }
         this.sessions.updateBinding({
           sessionId,
           boundScope: result.boundScope,

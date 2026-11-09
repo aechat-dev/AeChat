@@ -17,6 +17,8 @@ export interface FakeTransportOptions {
   registerFails?: boolean;
   notifyFails?: boolean;
   mode?: string;
+  /** Delivery mode reported when bind is checked; null means unavailable. */
+  boundMode?: string | null;
 }
 
 /**
@@ -32,6 +34,7 @@ export class FakeTransportAdapter implements TransportAdapter {
   private readonly registerFails: boolean;
   private readonly notifyFails: boolean;
   private readonly mode: string;
+  private readonly boundMode: string | null;
   private addressCounter = 0;
 
   constructor(options: FakeTransportOptions = {}) {
@@ -40,6 +43,7 @@ export class FakeTransportAdapter implements TransportAdapter {
     this.registerFails = options.registerFails ?? false;
     this.notifyFails = options.notifyFails ?? false;
     this.mode = options.mode ?? "test";
+    this.boundMode = options.boundMode ?? null;
   }
 
   register(
@@ -99,6 +103,7 @@ export class FakeTransportAdapter implements TransportAdapter {
       boundScope,
       conversationId:
         boundScope === "conversation" ? (conversationId ?? null) : null,
+      mode: this.boundMode,
       evidence: {
         sessionId: session.sessionId,
         address: binding.address,

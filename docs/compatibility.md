@@ -38,13 +38,34 @@ the message is durable and pull-only.
 | Audit chain (`send` → `inbox_claim` → `ack` → `reply`) | ✅ 2026-11-08 | ✅ 2026-11-09 | `pnpm e2e:local`; Codex host run |
 | Leave and release | ✅ 2026-11-08 | ◐ 2026-11-09 sessions left, binding not re-checked | `pnpm e2e:local`; Codex host run |
 | Host model reads and replies (manual turn) | ✅ 2026-11-08 (headless turn, pull) | ✅ 2026-11-09 (headless turn, pull) | Host runs |
-| Push notification (`notification_receive`) | ? requires host hook | ? | Current local E2E is pull-only |
+| Push notification (`notification_receive`) | ? requires host hook | ◐ 2026-11-09 agmsgd notice reached the desktop thread | See the 2026-11-09 agmsgd evidence |
 | Busy receive (`busy_receive`) | ? | ? | Phase 0 saw injection, no reply |
 | Idle wakeup (`idle_wakeup`) | ◐ agmsg Monitor only, 2026-11-06 | ? | Not managed by AeChat; re-arm untested |
 | Resume / rebind across host restarts | ? | ? | Unit tests only |
 | Conversation-level binding | ✗ v1 reports `host_role` | ✗ | No host conversation ID capture |
 
 ## Evidence log
+
+### 2026-11-09 — Codex desktop agmsgd notice and request/reply
+
+- Host: Codex desktop (ChatGPT.app, bundled `codex-cli 0.167.0-alpha.3.2`),
+  agmsg 1.7.1, macOS. AeChat sessions: this Claude Code session and a Codex
+  desktop conversation in project `研究计划`.
+- agmsgd was turned on for the Codex project (`this project: agmsgd`). The
+  first attempts failed with `queue_exit_127` because agmsgd's recorded
+  `meta.codex_path` pointed at a terminal shim; it was corrected by hand to the
+  CLI bundled inside ChatGPT.app. This is an environment repair, not a code
+  path exercised by AeChat yet.
+- With that path, `agmsgd` recorded `sent / accepted` and the Codex desktop
+  conversation received `[agmsg:<nonce>] New messages are waiting` and started
+  a model turn with no manual `receive`.
+- The turn read the agmsg inbox and the `[AeChat] msg=...` pointer but did not
+  invoke the aechat skill. After a human wrote "use the aechat skill ..." in the
+  conversation, Codex ran `receive → ack → reply`; the sender's chain was
+  `stored → notified → delivered → acked → replied` with reply `codex-ok`.
+- Caveat: automatic transport delivery only. Skill invocation and message
+  injection still required a human prompt (issues #62, #63). No claim is made
+  for terminal `codex` under agmsgd, or for automatic reply without a human.
 
 ### 2026-11-09 — Codex headless pull and reply
 

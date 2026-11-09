@@ -106,6 +106,7 @@ export class AgmsgAdapter implements TransportAdapter {
         state: "failed",
         boundScope: "none",
         conversationId: null,
+        mode: null,
         evidence: { roster: false },
         reason: "address is not registered in the agmsg roster",
       };
@@ -122,6 +123,7 @@ export class AgmsgAdapter implements TransportAdapter {
         state: lock === "stale" ? "stale" : "pending",
         boundScope: "none",
         conversationId: null,
+        mode: doctor.mode,
         evidence: { roster: true, lock },
         reason:
           lock === "stale"
@@ -136,6 +138,7 @@ export class AgmsgAdapter implements TransportAdapter {
       state: "bound",
       boundScope: "host_role",
       conversationId: null,
+      mode: doctor.mode,
       evidence: { roster: true, lock, conversationMatched: false },
     };
   }
@@ -151,7 +154,34 @@ export class AgmsgAdapter implements TransportAdapter {
       address: binding.address,
       sessionId: hostSessionId,
     });
-    return result.ok ? { ok: true } : { ok: false, error: result.stderr };
+    if (!result.ok) {
+      return { ok: false, error: result.stderr };
+    }
+    if (session.client === "codex") {
+      // agmsgd addresses a Codex seat by its recorded thread. The actas claim
+      // alone leaves role_session_missing, so record the thread now; a failure
+      // degrades to pull-only rather than rejecting the claim.
+      const recorded = await this.cli
+        .recordCodexSession({
+          team: binding.team ?? this.team,
+          agent: binding.address,
+          project: session.project,
+          sessionId: hostSessionId,
+        })
+        .catch((error: unknown) => ({
+          ok: false,
+          stderr: error instanceof Error ? error.message : String(error),
+        }));
+      if (!recorded.ok) {
+        return {
+          ok: true,
+          warning:
+            "Codex thread was not recorded for agmsgd; delivery may stay pull-only " +
+            `(${recorded.stderr.trim() || "no detail"})`,
+        };
+      }
+    }
+    return { ok: true };
   }
 
   async notify(

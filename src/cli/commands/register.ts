@@ -38,6 +38,7 @@ function autoBindView(result: ClaimResult): Record<string, unknown> {
     transportClaimState: result.transportClaimState,
     bindingState: result.bindingState,
     ...(result.reason === undefined ? {} : { reason: result.reason }),
+    ...(result.warnings === undefined ? {} : { warnings: result.warnings }),
   };
 }
 

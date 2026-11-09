@@ -64,6 +64,8 @@ export interface ClaimResult {
   bindingState: TransportState;
   session: Session;
   reason?: string;
+  /** Non-fatal transport follow-ups, e.g. a Codex seat that was not recorded. */
+  warnings?: string[];
 }
 
 export type WhoamiInput = { sessionId: string } | { conversationId: string };
@@ -283,6 +285,18 @@ export class SessionService {
       };
     }
 
+    const warning = result.warning;
+    const warnings = warning === undefined ? undefined : [warning];
+    if (warning !== undefined) {
+      this.events?.record({
+        event: "claim_warning",
+        level: "warn",
+        sessionId,
+        transport: record.transport,
+        errorDetail: warning,
+      });
+    }
+
     let confirmed: ConfirmResult;
     try {
       confirmed = await this.confirm(sessionId);
@@ -301,6 +315,7 @@ export class SessionService {
         reason:
           `transport accepted the claim but binding verification failed: ${detail}; ` +
           `run aechat confirm --session ${sessionId}, or aechat leave --session ${sessionId} and register again`,
+        ...(warnings === undefined ? {} : { warnings }),
       };
     }
 
@@ -315,6 +330,7 @@ export class SessionService {
         reason:
           `transport accepted the claim but no live binding was confirmed; ` +
           `run aechat confirm --session ${sessionId}, or aechat leave --session ${sessionId} and register again`,
+        ...(warnings === undefined ? {} : { warnings }),
       };
     }
     return {
@@ -323,6 +339,7 @@ export class SessionService {
       transportClaimState: "accepted",
       bindingState,
       session: confirmed.session,
+      ...(warnings === undefined ? {} : { warnings }),
     };
   }
 
@@ -379,6 +396,9 @@ export class SessionService {
     const at = this.now();
     const write = (): ConfirmResult => {
       this.bindings.updateState(record.bindingId, result.state, at);
+      if (result.mode !== undefined && result.mode !== null) {
+        this.bindings.updateMode(record.bindingId, result.mode);
+      }
 
       const update: {
         sessionId: string;

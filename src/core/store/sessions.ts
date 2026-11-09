@@ -326,6 +326,13 @@ export class TransportBindingRepository {
     return rows.map(bindingFromRow);
   }
 
+  updateMode(id: BindingId, mode: string): boolean {
+    const result = this.db
+      .prepare("UPDATE transport_bindings SET mode = ? WHERE binding_id = ?")
+      .run(mode, id);
+    return Number(result.changes) > 0;
+  }
+
   updateState(
     id: BindingId,
     state: TransportState,

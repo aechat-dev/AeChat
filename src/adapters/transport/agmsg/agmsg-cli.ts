@@ -14,7 +14,7 @@ export interface ExecResult {
 export type CommandRunner = (
   file: string,
   args: readonly string[],
-  options: { timeoutMs: number },
+  options: { timeoutMs: number; env?: NodeJS.ProcessEnv },
 ) => Promise<ExecResult>;
 
 export interface CommandResult {
@@ -36,6 +36,14 @@ export interface ClaimInput {
   sessionId: string;
 }
 
+export interface CodexSessionInput {
+  team: string;
+  agent: string;
+  project: string;
+  /** Host thread id used for the record; overrides the ambient env. */
+  sessionId: string;
+}
+
 export interface NotifyInput {
   team: string;
   from: string;
@@ -53,6 +61,7 @@ export interface AgmsgCliPort {
   version(): Promise<string>;
   join(input: JoinInput): Promise<CommandResult>;
   claim(input: ClaimInput): Promise<CommandResult>;
+  recordCodexSession(input: CodexSessionInput): Promise<CommandResult>;
   notify(input: NotifyInput): Promise<CommandResult>;
   teamJson(team: string): Promise<TeamJson>;
   deliveryStatus(client: string, project: string): Promise<{ mode: string }>;
@@ -74,7 +83,12 @@ export const execFileRunner: CommandRunner = (file, args, options) =>
     execFile(
       file,
       [...args],
-      { timeout: options.timeoutMs, maxBuffer: 1024 * 1024, encoding: "utf8" },
+      {
+        timeout: options.timeoutMs,
+        maxBuffer: 1024 * 1024,
+        encoding: "utf8",
+        ...(options.env === undefined ? {} : { env: options.env }),
+      },
       (error, stdout, stderr) => {
         if (error === null) {
           resolve({ stdout, stderr, exitCode: 0 });
@@ -112,10 +126,12 @@ export class AgmsgCli implements AgmsgCliPort {
   private async exec(
     script: string,
     args: readonly string[],
+    env?: NodeJS.ProcessEnv,
   ): Promise<ExecResult> {
     try {
       return await this.runner(joinPath(this.scriptsDir, script), args, {
         timeoutMs: this.timeoutMs,
+        ...(env === undefined ? {} : { env }),
       });
     } catch (error) {
       throw new AechatError(
@@ -166,6 +182,15 @@ export class AgmsgCli implements AgmsgCliPort {
       input.address,
       input.sessionId,
     ]);
+    return { ok: result.exitCode === 0, stderr: result.stderr.trim() };
+  }
+
+  async recordCodexSession(input: CodexSessionInput): Promise<CommandResult> {
+    const result = await this.exec(
+      "drivers/types/codex/codex-record-session.sh",
+      [input.team, input.agent, input.project],
+      { ...process.env, CODEX_THREAD_ID: input.sessionId },
+    );
     return { ok: result.exitCode === 0, stderr: result.stderr.trim() };
   }
 

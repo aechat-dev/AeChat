@@ -90,8 +90,22 @@ export function installAttachHook(
   }
   const sessionStart = (hooks as { SessionStart?: unknown }).SessionStart;
   const entries = Array.isArray(sessionStart) ? sessionStart : [];
-  if (JSON.stringify(entries).includes("attach --client codex")) {
-    return "up-to-date";
+  const owned = entries.findIndex((entry: unknown) =>
+    JSON.stringify(entry).includes("attach --client codex"),
+  );
+  if (owned >= 0) {
+    const entry = entries[owned] as {
+      hooks?: Array<{ type?: unknown; command?: unknown }>;
+    };
+    const current = entry.hooks?.[0]?.command;
+    if (current === command) {
+      return "up-to-date";
+    }
+    // Update the existing AeChat entry instead of appending a second one,
+    // so a stale CLI/project path from an earlier setup is repaired.
+    entry.hooks = [{ type: "command", command }];
+    writeFileSync(path, JSON.stringify(root), "utf8");
+    return "installed";
   }
   entries.push({
     matcher: "",

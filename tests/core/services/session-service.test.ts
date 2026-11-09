@@ -194,6 +194,27 @@ describe("SessionService.attach", () => {
     expect(attached.session.displayName).toBe("codex-thread-2");
   });
 
+  it("registers a new session when the old one has left", async () => {
+    const { service } = setup();
+    const first = await service.register({
+      displayName: "old",
+      client: "codex",
+      project: "/tmp/project",
+      conversationId: "thread-4",
+    });
+    await service.leave(first.session.sessionId);
+
+    const attached = await service.attach({
+      client: "codex",
+      project: "/tmp/project",
+      conversationId: "thread-4",
+      hostSessionId: "thread-4",
+    });
+
+    expect(attached.attached).toBe("registered");
+    expect(attached.session.sessionId).not.toBe(first.session.sessionId);
+  });
+
   it("rejects two live sessions for one conversation", async () => {
     const { service } = setup();
     for (const name of ["one", "two"]) {

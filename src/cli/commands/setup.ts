@@ -11,12 +11,22 @@ function shellQuote(value: string): string {
   return `'${value.replace(/'/g, `'\\''`)}'`;
 }
 
-function attachCommand(project: string): string {
+function cliEntry(): string {
+  // setup.js is not an entry point: running it is a silent no-op. Use the
+  // actual CLI entry when this process was started through main, and fall
+  // back to the sibling main.js in a bundled install.
+  const running = process.argv[1];
+  if (running !== undefined && /(?:^|\/)main\.(?:js|ts)$/.test(running)) {
+    return running;
+  }
+  return fileURLToPath(new URL("../main.js", import.meta.url));
+}
+
+export function attachCommand(project: string): string {
   // SessionStart runs with the host's non-interactive environment, which may
   // not resolve `aechat`; pin the current node binary and CLI path.
-  const cli = fileURLToPath(import.meta.url);
   return (
-    `${shellQuote(process.execPath)} ${shellQuote(cli)} attach ` +
+    `${shellQuote(process.execPath)} ${shellQuote(cliEntry())} attach ` +
     `--client codex --project ${shellQuote(project)} --json ` +
     ">/dev/null 2>&1 || true"
   );

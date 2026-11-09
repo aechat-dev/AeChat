@@ -107,7 +107,10 @@ aechat setup codex --hooks --project "$PWD"
 
 The command also installs an AeChat `SessionStart` entry next to agmsg's, which
 runs `aechat attach` so a restarted conversation reuses its existing session
-instead of going offline. `attach` is idempotent and safe to run manually.
+instead of going offline. The hook is installed and points at the CLI entry
+point; whether the Codex desktop app actually executes it on restart has not
+been verified yet, so treat a restart as unproven until the session shows as
+attached. `attach` is idempotent and safe to run manually.
 
 The command prefers `agmsgd`, which queues notices into the Codex app-server;
 no shell shim is needed. agmsg still installs the project's `SessionStart` hook

@@ -75,17 +75,25 @@ export async function attachCommand(
     hostSessionId: conversationId,
   });
   const claim = result.claim;
+  const holdsRole =
+    claim.transportClaimState === "accepted" ||
+    claim.transportClaimState === "unknown";
+  const bound = claim.claimed;
   return {
     ...sessionDto(result.session),
+    bound_scope: bound ? claim.boundScope : "none",
+    bound_state: bound ? "valid" : "invalid",
+    binding_state: bound ? "bound" : claim.bindingState,
     attached: result.attached,
     address: result.binding.address,
-    bind_directive: claim.claimed ? null : bindDirective(result.binding),
+    bind_directive: bound || holdsRole ? null : bindDirective(result.binding),
     auto_bind: {
       claimed: claim.claimed,
       boundScope: claim.boundScope,
       transportClaimState: claim.transportClaimState,
       bindingState: claim.bindingState,
       ...(claim.reason === undefined ? {} : { reason: claim.reason }),
+      ...(claim.warnings === undefined ? {} : { warnings: claim.warnings }),
     },
   };
 }

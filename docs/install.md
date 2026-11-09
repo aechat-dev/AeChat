@@ -167,10 +167,17 @@ when names are duplicated; choose the intended `session_id`.
 
 ## 5. Host hooks and delivery mode
 
-Host hooks are optional. Without one, run a heartbeat while the conversation is
-active and pull with `receive` (one message), `inbox` (a batch) or `wait
---request` (a correlated reply). `receive` exits 2 when no message arrives
-within `--timeout`; that is an empty poll, not a delivery failure:
+Host hooks are optional. A Claude Code conversation can arm `aechat watch` as a
+background task; each new message becomes a conversation event, and the agent
+claims it with `receive` before acknowledging. The watch shows at most
+`--limit` pending messages (100 by default) and does not update `last_seen`;
+a host Monitor task expires, and re-arming after expiry has not been verified,
+so the agent should try to re-arm and tell the user when delivery may have
+paused. Without a watcher, run
+a heartbeat while the conversation is active and pull with `receive` (one
+message), `inbox` (a batch) or `wait --request` (a correlated reply). `receive`
+exits 2 when no message arrives within `--timeout`; that is an empty poll, not a
+delivery failure:
 
 ```bash
 aechat heartbeat --session "<session_id>" --interval 30

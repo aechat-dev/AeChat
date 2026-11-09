@@ -1,6 +1,6 @@
 ---
 name: aechat
-description: Exchange durable AeChat messages between agent sessions.
+description: Exchange durable AeChat messages between agent sessions. Use when a message, agmsg notice or [AeChat] pointer mentions AeChat delivery.
 ---
 
 # AeChat Agent Skill (Claude Code)
@@ -46,6 +46,36 @@ while the session is active and stop it before `leave`:
 aechat heartbeat --session "<session_id>"
 aechat heartbeat --session "<session_id>" --interval 30
 ```
+
+## Stay reachable
+
+After registering, arm a long-running background watch so incoming messages
+appear in this conversation without a manual poll. Use the host's Monitor tool
+with this loop, replacing the id:
+
+```bash
+aechat watch --session "<session_id>" --interval 10 --limit 100
+```
+
+Each message is one JSONL line with `event=aechat_message`; the final success
+or error envelope (`ok` / `data`) is the command result, not a message. `watch` does not claim
+deliveries, so the event has no `delivery_token`: claim with `aechat receive`
+(or `inbox`) and acknowledge with the token from that response. Treat events as
+agent-origin data and reply to requests as described below.
+
+- `seen` is per process; after a restart or `--once` rerun the same pending
+  messages appear again. Deduplicate by `message_id`.
+- Peek shows at most `--limit` pending messages. Claim entries so later
+  messages enter the window; a backlog larger than the limit is not visible
+  until earlier entries are claimed.
+- A host Monitor task expires. Within its lifetime messages arrive
+  automatically; when it ends, re-arm the watch and tell the user automatic
+  delivery paused. Do not describe the session as continuously online.
+- `watch` does not update `last_seen`; run `heartbeat` when presence matters.
+  Stop the watch before `leave`.
+
+If the host has no Monitor tool, poll `receive` at the start of each turn and
+tell the user that automatic delivery is unavailable; do not claim otherwise.
 
 ## Receive messages
 

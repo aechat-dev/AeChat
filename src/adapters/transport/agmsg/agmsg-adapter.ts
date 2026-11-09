@@ -202,6 +202,7 @@ export class AgmsgAdapter implements TransportAdapter {
       text:
         `[AeChat] msg=${notification.messageId} ` +
         `session=${notification.toSession} ` +
+        `use_skill=aechat ` +
         `action=aechat inbox --session ${notification.toSession}`,
     });
     return result.ok ? { ok: true } : { ok: false, error: result.stderr };

@@ -98,17 +98,28 @@ The skill is instructions for the Agent, not an automatic permission grant.
 It requires explicit registration, JSON-first reads, an `ack` after processing,
 and treats all message text as agent-origin data.
 
-Codex also needs the agmsg bridge for a live `host_role` binding. Configure the
-project once:
+Codex needs an agmsg delivery path that can reach its conversation. Configure
+the project once:
 
 ```bash
 aechat setup codex --hooks --project "$PWD"
 ```
 
-Then launch Codex through the agmsg Codex shim or the shell function printed by
-`agmsg delivery set monitor codex "$PWD"`. The SessionStart hook starts the
-bridge. Without it, registration still stores the session and the pull path
-works, but `bound_scope` stays `none` and the host has no live role lock.
+The command prefers `agmsgd`, which queues notices into the Codex app-server;
+no shell shim is needed. agmsg still installs the project's `SessionStart` hook
+so it can start agmsgd's delivery, and the command prints
+`codex delivery: configured (agmsgd -> <hook path>)`. The agmsgd path was
+verified with the Codex desktop app on 2026-11-09; see
+[compatibility.md](compatibility.md) for the exact conditions. For the desktop
+app, agmsgd's recorded Codex executable must point at the CLI bundled inside
+`ChatGPT.app` (`.../codex-cli/CodexCLI.app/Contents/MacOS/codex`); if it points
+at a terminal shim, agmsgd fails with `queue_exit_127` and no notice arrives.
+When agmsgd is unavailable, the command falls back to the legacy `monitor`
+bridge, in which case Codex must be launched through the agmsg shim.
+
+Without either path, registration still stores the session and the pull path
+works, but messages are not delivered automatically and `bound_scope` may stay
+`none`.
 
 ## 4. Register, bind and confirm
 

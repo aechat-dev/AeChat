@@ -41,7 +41,9 @@ export async function setupCommand(
   }
   const lines = [`${result.host} skill: ${result.action} -> ${result.path}`];
   if (hooks !== undefined) {
-    lines.push(`codex hooks: ${hooks.action} -> ${hooks.path}`);
+    lines.push(
+      `codex delivery: ${hooks.action} (${hooks.mode} -> ${hooks.path})`,
+    );
   }
   return { data, text: `${lines.join("\n")}\n` };
 }

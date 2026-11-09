@@ -189,6 +189,23 @@ describe("SessionService.confirm", () => {
     expect(confirmed.session.boundScope).toBe("host_role");
   });
 
+  it("refreshes the stored delivery mode", async () => {
+    const { service, bindings } = setup({
+      mode: "off",
+      boundMode: "monitor",
+    });
+    const registered = await service.register({
+      displayName: "dev",
+      client: "codex",
+      project: "/tmp/project",
+    });
+
+    await service.confirm(registered.session.sessionId);
+
+    const stored = bindings.listForSession(registered.session.sessionId);
+    expect(stored.at(-1)?.mode).toBe("monitor");
+  });
+
   it("fails with session_not_found for an unknown session", async () => {
     const { service } = setup();
 

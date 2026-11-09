@@ -124,6 +124,15 @@ describe("ResumeService.confirm", () => {
     expect(bindings.getById("old-binding")?.state).toBe("bound");
   });
 
+  it("refreshes the stored delivery mode on resume", async () => {
+    const { resume, bindings } = setup({ boundMode: "monitor" });
+    await resume.begin({ sessionId: "old-session" });
+
+    await resume.confirm("old-session");
+
+    expect(bindings.getById("old-binding")?.mode).toBe("monitor");
+  });
+
   it("finishes resume and resets delivered-but-unacked rows to notified", async () => {
     const { resume, bindings, messages, deliveries } = setup();
     messages.insert({

@@ -158,7 +158,11 @@ final class AppState: ObservableObject {
     private func apply(snapshot fresh: UiSnapshot) {
         snapshot = fresh
         eventPolicy.reset(to: fresh.eventSeq)
-        if let key = selectedThreadKey,
+        if let id = selectedSessionId,
+            !fresh.sessions.contains(where: { $0.sessionId == id })
+        {
+            selectSession(nil)
+        } else if let key = selectedThreadKey,
             !fresh.threads.contains(where: { $0.key == key })
         {
             clearThreadSelection()
@@ -485,6 +489,7 @@ final class AppState: ObservableObject {
         eventPolicy.clear()
         stream.reset()
         streamConnected = false
+        selectSession(nil)
         Task {
             await refresh()
             await loadDoctor()

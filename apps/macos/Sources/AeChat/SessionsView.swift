@@ -8,23 +8,7 @@ struct SessionsView: View {
         VStack(spacing: 0) {
             filterBar
             Divider()
-            if state.isBinaryMissing {
-                ContentUnavailableView(
-                    "aechat not found",
-                    systemImage: "terminal",
-                    description: Text(
-                        "Set AECHAT_BIN, put aechat on PATH, or choose the binary from the error banner."
-                    )
-                )
-            } else if state.sessions.isEmpty && !state.isLoading {
-                ContentUnavailableView(
-                    "No sessions",
-                    systemImage: "person.2.slash",
-                    description: Text("No AeChat session is registered in this store.")
-                )
-            } else {
-                sessionList
-            }
+            sessionList
         }
         .searchable(text: $state.searchText, placement: .sidebar, prompt: "Search sessions")
         .navigationTitle("Sessions")

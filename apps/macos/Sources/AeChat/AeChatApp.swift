@@ -26,22 +26,21 @@ struct RootView: View {
     @EnvironmentObject private var state: AppState
 
     var body: some View {
-        NavigationSplitView {
-            SessionsView()
-                .navigationSplitViewColumnWidth(min: 220, ideal: 260)
-        } content: {
-            if state.activeThread != nil {
-                ChatView()
-                    .navigationSplitViewColumnWidth(min: 360, ideal: 520)
+        Group {
+            if state.selectedSessionId == nil {
+                NavigationSplitView {
+                    sidebar
+                } detail: {
+                    content
+                }
             } else {
-                OverviewView()
-                    .navigationSplitViewColumnWidth(min: 320, ideal: 400)
-            }
-        } detail: {
-            if state.selectedMessageId != nil {
-                InspectorView()
-            } else {
-                SessionDetailView()
+                NavigationSplitView {
+                    sidebar
+                } content: {
+                    content
+                } detail: {
+                    detail
+                }
             }
         }
         .toolbar {
@@ -73,6 +72,75 @@ struct RootView: View {
             if let error = state.errorMessage {
                 ErrorBanner(message: error, recovery: AnyView(pathChooser))
             }
+        }
+    }
+
+    private var sidebar: some View {
+        SessionsView()
+            .navigationSplitViewColumnWidth(min: 220, ideal: 260)
+    }
+
+    @ViewBuilder
+    private var content: some View {
+        if state.activeThread != nil {
+            ChatView()
+                .navigationSplitViewColumnWidth(min: 360, ideal: 520)
+        } else if state.isBinaryMissing {
+            missingBinary
+                .navigationSplitViewColumnWidth(min: 320, ideal: 400)
+        } else if isEmptyStore {
+            emptyStore
+                .navigationSplitViewColumnWidth(min: 320, ideal: 400)
+        } else {
+            OverviewView()
+                .navigationSplitViewColumnWidth(min: 320, ideal: 400)
+        }
+    }
+
+    private var isEmptyStore: Bool {
+        state.snapshot != nil && state.sessions.isEmpty && !state.isLoading
+    }
+
+    private var missingBinary: some View {
+        ContentUnavailableView(
+            "aechat not found",
+            systemImage: "terminal",
+            description: Text(
+                "Set AECHAT_BIN, put aechat on PATH, or choose the binary from the error banner."
+            )
+        )
+    }
+
+    private var emptyStore: some View {
+        ContentUnavailableView {
+            Label("No sessions yet", systemImage: "person.2.badge.plus")
+        } description: {
+            VStack(spacing: Theme.Spacing.small) {
+                Text("Register a conversation from each host, then refresh.")
+                Text(
+                    "aechat register --name <name> --client claude-code --project \"$PWD\""
+                )
+                .font(.caption.monospaced())
+                .textSelection(.enabled)
+                Text(
+                    "aechat register --name <name> --client codex --project \"$PWD\""
+                )
+                .font(.caption.monospaced())
+                .textSelection(.enabled)
+            }
+        } actions: {
+            Button("Refresh") {
+                Task { await state.refresh() }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var detail: some View {
+        if state.selectedMessageId != nil {
+            InspectorView()
+        } else {
+            SessionDetailView()
         }
     }
 

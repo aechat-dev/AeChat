@@ -31,7 +31,7 @@ struct SessionsView: View {
     }
 
     private var filterBar: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: Theme.Spacing.small) {
             Toggle("Left", isOn: $state.showLeft)
                 .toggleStyle(.checkbox)
             Toggle("Pending", isOn: $state.onlyPending)
@@ -43,8 +43,8 @@ struct SessionsView: View {
             }
         }
         .font(.caption)
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
+        .padding(.horizontal, Theme.Spacing.small)
+        .padding(.vertical, Theme.Spacing.small)
     }
 
     private var sessionList: some View {
@@ -102,18 +102,18 @@ private struct SessionRow: View {
     let pending: Bool
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: Theme.Spacing.small) {
             Circle()
                 .fill(Display.statusColor(session.status))
                 .frame(width: 8, height: 8)
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 6) {
+            VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
+                HStack(spacing: Theme.Spacing.small) {
                     Text(session.displayName)
                         .lineLimit(1)
                     if pending {
                         Image(systemName: "tray.full.fill")
                             .font(.caption2)
-                            .foregroundStyle(.orange)
+                            .foregroundStyle(Theme.Palette.attention)
                     }
                 }
                 Text("\(session.client) · \(Display.shortSession(session.sessionId))")
@@ -132,7 +132,7 @@ private struct SessionRow: View {
                     .lineLimit(1)
             }
             Spacer()
-            VStack(alignment: .trailing, spacing: 2) {
+            VStack(alignment: .trailing, spacing: Theme.Spacing.xSmall) {
                 Text(Display.relative(session.hostSeenAt ?? session.lastSeenAt))
                     .font(.caption2)
                     .foregroundStyle(.secondary)
@@ -143,6 +143,6 @@ private struct SessionRow: View {
                 }
             }
         }
-        .padding(.vertical, 2)
+        .padding(.vertical, Theme.Spacing.xSmall)
     }
 }

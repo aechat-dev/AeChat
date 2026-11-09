@@ -11,8 +11,8 @@ struct RequestCard: View {
     @AppStorage("AeChatUse24Hour") private var use24Hour = true
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 8) {
+        VStack(alignment: .leading, spacing: Theme.Spacing.small) {
+            HStack(spacing: Theme.Spacing.small) {
                 Label("request", systemImage: "questionmark.bubble")
                     .font(.caption.weight(.semibold))
                 statusChip
@@ -29,7 +29,7 @@ struct RequestCard: View {
 
             requestBody
 
-            HStack(spacing: 8) {
+            HStack(spacing: Theme.Spacing.small) {
                 Label("agent-origin", systemImage: "shield.lefthalf.filled")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
@@ -59,13 +59,13 @@ struct RequestCard: View {
                 }
             }
         }
-        .padding(12)
+        .padding(Theme.Spacing.medium)
         .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color.secondary.opacity(0.08))
+            RoundedRectangle(cornerRadius: Theme.Radius.large)
+                .fill(Theme.Palette.raisedSurface)
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 12)
+            RoundedRectangle(cornerRadius: Theme.Radius.large)
                 .stroke(statusColor.opacity(0.35), lineWidth: 1)
         )
         .contentShape(Rectangle())
@@ -83,7 +83,7 @@ struct RequestCard: View {
             tooLong && !expansion.expanded
             ? String(body.prefix(420)) + "…"
             : body
-        return VStack(alignment: .leading, spacing: 4) {
+        return VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
             Text(visible)
                 .font(.system(size: fontSize))
                 .textSelection(.enabled)
@@ -100,11 +100,10 @@ struct RequestCard: View {
 
     private var statusColor: Color {
         switch status {
-        case "open": return .orange
-        case "replied": return .green
-        case "expired": return .red
-        case "cancelled": return .secondary
-        default: return .secondary
+        case "open": return Theme.Palette.attention
+        case "replied": return Theme.Palette.healthy
+        case "expired": return Theme.Palette.failure
+        default: return Theme.Palette.muted
         }
     }
 
@@ -112,8 +111,8 @@ struct RequestCard: View {
         Text(status)
             .font(.caption2.monospaced())
             .foregroundStyle(statusColor)
-            .padding(.horizontal, 6)
-            .padding(.vertical, 2)
+            .padding(.horizontal, Theme.Spacing.xSmall)
+            .padding(.vertical, Theme.Spacing.xSmall)
             .background(Capsule().fill(statusColor.opacity(0.14)))
     }
 }

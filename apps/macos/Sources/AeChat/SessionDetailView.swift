@@ -29,31 +29,35 @@ struct SessionDetailView: View {
 
     private func content(_ session: SessionView) -> some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
                 header(session)
                 capabilitySection(session.capabilities)
                 threads(for: session)
             }
-            .padding(20)
+            .padding(Theme.Spacing.large)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 
     private func header(_ session: SessionView) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 8) {
+        VStack(alignment: .leading, spacing: Theme.Spacing.small) {
+            HStack(spacing: Theme.Spacing.small) {
                 Circle()
                     .fill(Display.statusColor(session.status))
                     .frame(width: 10, height: 10)
                 Text(session.displayName)
-                    .font(.title2.weight(.semibold))
+                    .font(Theme.Typography.screenTitle)
                 Text(session.status)
                     .font(.caption.monospaced())
                     .foregroundStyle(.secondary)
             }
             Text("\(session.client) · \(session.project)")
                 .foregroundStyle(.secondary)
-            Grid(alignment: .leading, horizontalSpacing: 18, verticalSpacing: 6) {
+            Grid(
+                alignment: .leading,
+                horizontalSpacing: Theme.Spacing.medium,
+                verticalSpacing: Theme.Spacing.small
+            ) {
                 GridRow {
                     label("Session")
                     Text(Display.shortSession(session.sessionId)).monospaced()
@@ -66,7 +70,7 @@ struct SessionDetailView: View {
                 }
                 GridRow {
                     label("Bound")
-                    HStack(spacing: 6) {
+                    HStack(spacing: Theme.Spacing.small) {
                         Text(session.boundScope)
                         Text(session.boundState)
                             .foregroundStyle(Display.bindingColor(session.boundState))
@@ -86,10 +90,10 @@ struct SessionDetailView: View {
     }
 
     private func capabilitySection(_ report: CapabilityReport) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: Theme.Spacing.small) {
             Text("Capabilities")
-                .font(.headline)
-            HStack(spacing: 16) {
+                .font(Theme.Typography.sectionTitle)
+            HStack(spacing: Theme.Spacing.medium) {
                 capability(
                     "pull", supported: report.supported.pull, available: report.available.pull)
                 capability(
@@ -111,13 +115,16 @@ struct SessionDetailView: View {
     }
 
     private func capability(_ name: String, supported: Bool, available: Bool) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
             Text(name)
                 .font(.caption.monospaced())
                 .foregroundStyle(.secondary)
             Text(supported ? (available ? "available" : "supported") : "no")
                 .font(.caption.weight(.medium))
-                .foregroundStyle(supported ? (available ? .green : .orange) : .secondary)
+                .foregroundStyle(
+                    supported
+                        ? (available ? Theme.Palette.healthy : Theme.Palette.attention)
+                        : Theme.Palette.muted)
         }
     }
 
@@ -125,17 +132,17 @@ struct SessionDetailView: View {
         let related = (state.snapshot?.threads ?? []).filter { thread in
             thread.participants.contains { $0.sessionId == session.sessionId }
         }
-        return VStack(alignment: .leading, spacing: 8) {
+        return VStack(alignment: .leading, spacing: Theme.Spacing.small) {
             Text("Threads")
-                .font(.headline)
+                .font(Theme.Typography.sectionTitle)
             if related.isEmpty {
                 Text("No AeChat messages for this session")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             } else {
                 ForEach(related) { thread in
-                    HStack(alignment: .top, spacing: 8) {
-                        VStack(alignment: .leading, spacing: 2) {
+                    HStack(alignment: .top, spacing: Theme.Spacing.small) {
+                        VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
                             Text(thread.participants.map(\.displayName).joined(separator: " ↔ "))
                                 .font(.callout.weight(.medium))
                             Text(thread.lastMessage.preview)

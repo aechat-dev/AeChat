@@ -22,16 +22,18 @@ struct MessageRow: View {
     var body: some View {
         HStack {
             if isOutgoing { Spacer(minLength: 40) }
-            VStack(alignment: isOutgoing ? .trailing : .leading, spacing: 6) {
+            VStack(alignment: isOutgoing ? .trailing : .leading, spacing: Theme.Spacing.xSmall) {
                 header
                 bodyText
                 footer
             }
-            .padding(10)
+            .padding(Theme.Spacing.small)
             .background(
-                RoundedRectangle(cornerRadius: 10)
+                RoundedRectangle(cornerRadius: Theme.Radius.large)
                     .fill(
-                        isOutgoing ? Color.accentColor.opacity(0.16) : Color.secondary.opacity(0.10)
+                        isOutgoing
+                            ? Theme.Palette.accent.opacity(0.16)
+                            : Theme.Palette.incomingSurface
                     )
             )
             .contentShape(Rectangle())
@@ -43,7 +45,7 @@ struct MessageRow: View {
     }
 
     private var header: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: Theme.Spacing.xSmall) {
             Text(state.displayName(for: message.fromSession))
                 .font(.caption.weight(.semibold))
             Text("→")
@@ -54,9 +56,9 @@ struct MessageRow: View {
                 .foregroundStyle(.secondary)
             Text(message.kind)
                 .font(.caption2.monospaced())
-                .padding(.horizontal, 5)
-                .padding(.vertical, 1)
-                .background(Capsule().fill(Color.secondary.opacity(0.14)))
+                .padding(.horizontal, Theme.Spacing.xSmall)
+                .padding(.vertical, Theme.Spacing.xSmall)
+                .background(Capsule().fill(Theme.Palette.muted.opacity(0.14)))
             Spacer(minLength: 0)
             Text(Display.timestamp(message.createdAt))
                 .font(.caption2)
@@ -71,7 +73,7 @@ struct MessageRow: View {
             tooLong && !expansion.expanded
             ? String(body.prefix(420)) + "…"
             : body
-        return VStack(alignment: .leading, spacing: 4) {
+        return VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
             Text(visible)
                 .font(.system(size: compact ? max(11, fontSize - 1) : fontSize))
                 .textSelection(.enabled)
@@ -88,7 +90,7 @@ struct MessageRow: View {
     }
 
     private var footer: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: Theme.Spacing.xSmall) {
             Label("agent-origin", systemImage: "shield.lefthalf.filled")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
@@ -112,26 +114,26 @@ struct MessageRow: View {
         Text(text)
             .font(.caption2.monospaced())
             .foregroundStyle(color)
-            .padding(.horizontal, 5)
-            .padding(.vertical, 1)
+            .padding(.horizontal, Theme.Spacing.xSmall)
+            .padding(.vertical, Theme.Spacing.xSmall)
             .background(Capsule().fill(color.opacity(0.12)))
     }
 
     private func deliveryColor(_ status: String) -> Color {
         switch status {
-        case "acked": return .green
-        case "delivered", "notified": return .blue
-        case "expired", "dead_letter": return .red
-        case "notify_failed": return .orange
-        default: return .secondary
+        case "acked": return Theme.Palette.healthy
+        case "delivered", "notified": return Theme.Palette.muted
+        case "expired", "dead_letter": return Theme.Palette.failure
+        case "notify_failed": return Theme.Palette.attention
+        default: return Theme.Palette.muted
         }
     }
 
     private func requestColor(_ status: String) -> Color {
         switch status {
-        case "replied": return .green
-        case "open": return .orange
-        default: return .secondary
+        case "replied": return Theme.Palette.healthy
+        case "open": return Theme.Palette.attention
+        default: return Theme.Palette.muted
         }
     }
 }

@@ -6,7 +6,7 @@ struct OverviewView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
+            VStack(alignment: .leading, spacing: Theme.Spacing.large) {
                 if let snapshot = state.snapshot {
                     counts(snapshot.counts)
                     transportModes
@@ -25,57 +25,60 @@ struct OverviewView: View {
                     )
                 }
             }
-            .padding(20)
+            .padding(Theme.Spacing.large)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .navigationTitle("Overview")
     }
 
     private func counts(_ counts: UiCounts) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: Theme.Spacing.small) {
             Text("Sessions")
-                .font(.headline)
-            Grid(alignment: .leading, horizontalSpacing: 24, verticalSpacing: 10) {
+                .font(Theme.Typography.sectionTitle)
+            Grid(
+                alignment: .leading,
+                horizontalSpacing: Theme.Spacing.large,
+                verticalSpacing: Theme.Spacing.small
+            ) {
                 GridRow {
                     metric("Total", counts.sessions)
-                    metric("Online", counts.online, color: .green)
-                    metric("Offline", counts.offline, color: .secondary)
-                    metric("Unknown", counts.unknown, color: .orange)
-                    metric("Left", counts.left, color: .purple)
+                    metric("Online", counts.online)
+                    metric("Offline", counts.offline)
+                    metric("Unknown", counts.unknown)
+                    metric("Left", counts.left)
                 }
                 GridRow {
-                    metric("Pending requests", counts.pendingRequests, color: .orange)
-                    metric("Pending deliveries", counts.pendingDeliveries, color: .orange)
+                    metric("Pending requests", counts.pendingRequests)
+                    metric("Pending deliveries", counts.pendingDeliveries)
                 }
             }
         }
     }
 
-    private func metric(_ title: String, _ value: Int, color: Color = .primary) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
+    private func metric(_ title: String, _ value: Int) -> some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
             Text(title)
                 .font(.caption)
                 .foregroundStyle(.secondary)
             Text("\(value)")
-                .font(.title2.monospacedDigit())
-                .foregroundStyle(color)
+                .font(Theme.Typography.metric)
         }
         .frame(minWidth: 90, alignment: .leading)
     }
 
     private var transportModes: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: Theme.Spacing.small) {
             Text("Transport modes")
-                .font(.headline)
+                .font(Theme.Typography.sectionTitle)
             let modes = Display.transportModes(state.sessions)
             if modes.isEmpty {
                 Text("No bindings")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             } else {
-                HStack(spacing: 16) {
+                HStack(spacing: Theme.Spacing.medium) {
                     ForEach(modes, id: \.mode) { entry in
-                        HStack(spacing: 6) {
+                        HStack(spacing: Theme.Spacing.small) {
                             Text(entry.mode)
                                 .font(.caption.monospaced())
                             Text("\(entry.count)")
@@ -89,9 +92,9 @@ struct OverviewView: View {
     }
 
     private func recentThreads(_ threads: [ThreadSummary]) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: Theme.Spacing.small) {
             Text("Recent activity")
-                .font(.headline)
+                .font(Theme.Typography.sectionTitle)
             if threads.isEmpty {
                 Text("No AeChat messages")
                     .font(.caption)
@@ -101,8 +104,8 @@ struct OverviewView: View {
                     Button {
                         state.selectSession(thread.participants.first?.sessionId)
                     } label: {
-                        HStack(alignment: .top, spacing: 8) {
-                            VStack(alignment: .leading, spacing: 2) {
+                        HStack(alignment: .top, spacing: Theme.Spacing.small) {
+                            VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
                                 Text(participants(thread))
                                     .font(.callout.weight(.medium))
                                     .lineLimit(1)
@@ -112,7 +115,7 @@ struct OverviewView: View {
                                     .lineLimit(1)
                             }
                             Spacer()
-                            VStack(alignment: .trailing, spacing: 2) {
+                            VStack(alignment: .trailing, spacing: Theme.Spacing.xSmall) {
                                 Text(thread.lastMessage.kind)
                                     .font(.caption2.monospaced())
                                     .foregroundStyle(.secondary)

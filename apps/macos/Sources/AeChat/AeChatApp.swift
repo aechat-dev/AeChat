@@ -9,6 +9,7 @@ struct AeChatApp: App {
         WindowGroup("AeChat") {
             RootView()
                 .environmentObject(state)
+                .tint(Theme.Palette.accent)
                 .frame(minWidth: 1_000, minHeight: 640)
         }
         .windowToolbarStyle(.unified)
@@ -16,6 +17,7 @@ struct AeChatApp: App {
         Settings {
             SettingsView()
                 .environmentObject(state)
+                .tint(Theme.Palette.accent)
         }
     }
 }
@@ -44,7 +46,7 @@ struct RootView: View {
         }
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
-                HStack(spacing: 8) {
+                HStack(spacing: Theme.Spacing.small) {
                     SettingsLink {
                         Label("Settings", systemImage: "gearshape")
                     }
@@ -97,17 +99,20 @@ struct ErrorBanner: View {
     }
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: Theme.Spacing.small) {
             Image(systemName: "exclamationmark.triangle.fill")
-                .foregroundStyle(.orange)
+                .foregroundStyle(Theme.Palette.attention)
             Text(message)
                 .font(.callout)
                 .lineLimit(2)
             Spacer()
             recovery
         }
-        .padding(12)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10))
+        .padding(Theme.Spacing.medium)
+        .background(
+            .regularMaterial,
+            in: RoundedRectangle(cornerRadius: Theme.Radius.large)
+        )
         .padding()
     }
 }

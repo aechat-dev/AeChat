@@ -111,12 +111,15 @@ private struct ThreadRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
             HStack(spacing: Theme.Spacing.small) {
-                Text(
-                    thread.participants
-                        .map(\.displayName)
-                        .joined(separator: " ↔ ")
-                )
-                .lineLimit(1)
+                ForEach(thread.participants, id: \.sessionId) { participant in
+                    HStack(spacing: Theme.Spacing.xSmall) {
+                        Circle()
+                            .fill(Display.clientColor(participant.client))
+                            .frame(width: 6, height: 6)
+                        Text(participant.displayName)
+                            .lineLimit(1)
+                    }
+                }
                 if pending {
                     Image(systemName: "tray.full.fill")
                         .font(.caption2)

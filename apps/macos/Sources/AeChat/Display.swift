@@ -41,6 +41,16 @@ enum Display {
         }
     }
 
+    /// A stable, non-brand color per host client so both sides of a pair are
+    /// visually distinguishable without inventing official logos.
+    static func clientColor(_ client: String) -> Color {
+        switch client {
+        case "claude-code": return Theme.Palette.accent
+        case "codex": return Theme.Palette.healthy
+        default: return Theme.Palette.muted
+        }
+    }
+
     /// Message bodies are agent text, never markup.
     static func sanitizedBody(_ text: String) -> String {
         AgentText.sanitized(text)

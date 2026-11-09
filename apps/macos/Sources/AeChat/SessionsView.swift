@@ -38,6 +38,20 @@ struct SessionsView: View {
                 set: { state.selectSession($0) }
             )
         ) {
+            if !threads.isEmpty {
+                Section("Conversations") {
+                    ForEach(threads) { thread in
+                        Button {
+                            state.selectedSessionId =
+                                thread.participants.first?.sessionId
+                            state.selectThread(thread)
+                        } label: {
+                            ThreadRow(thread: thread)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
             ForEach(groups) { group in
                 Section(group.title) {
                     ForEach(group.sessions) { session in
@@ -51,6 +65,12 @@ struct SessionsView: View {
             }
         }
         .listStyle(.sidebar)
+    }
+
+    private var threads: [ThreadSummary] {
+        (state.snapshot?.threads ?? []).sorted {
+            $0.lastMessageAt > $1.lastMessageAt
+        }
     }
 
     private var groups: [SessionGroup] {
@@ -79,6 +99,55 @@ private struct SessionGroup: Identifiable {
     let id: String
     let title: String
     let sessions: [SessionView]
+}
+
+private struct ThreadRow: View {
+    let thread: ThreadSummary
+
+    private var pending: Bool {
+        thread.pendingRequests > 0 || thread.pendingDeliveries > 0
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.xSmall) {
+            HStack(spacing: Theme.Spacing.small) {
+                ForEach(thread.participants, id: \.sessionId) { participant in
+                    HStack(spacing: Theme.Spacing.xSmall) {
+                        Circle()
+                            .fill(Display.clientColor(participant.client))
+                            .frame(width: 6, height: 6)
+                        Text(participant.displayName)
+                            .lineLimit(1)
+                    }
+                }
+                if pending {
+                    Image(systemName: "tray.full.fill")
+                        .font(.caption2)
+                        .foregroundStyle(Theme.Palette.attention)
+                }
+            }
+            Text(thread.lastMessage.preview)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+            HStack(spacing: Theme.Spacing.small) {
+                Text(
+                    thread.participants
+                        .map(\.client)
+                        .joined(separator: " + ")
+                )
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                Spacer()
+                Text(Display.relative(thread.lastMessageAt))
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(.vertical, Theme.Spacing.xSmall)
+        .contentShape(Rectangle())
+    }
 }
 
 private struct SessionRow: View {

@@ -162,6 +162,30 @@ describe("init and setup", () => {
     const { fake, capture } = fakeCodex(root, pluginSuccessBody());
     mkdirSync(join(root, "claude"), { recursive: true });
     mkdirSync(join(root, "codex-home"), { recursive: true });
+    mkdirSync(join(root, "project", ".codex"), { recursive: true });
+    const projectHooks = join(root, "project", ".codex", "hooks.json");
+    writeFileSync(
+      projectHooks,
+      JSON.stringify({
+        hooks: {
+          SessionStart: [
+            {
+              matcher: "",
+              hooks: [
+                {
+                  type: "command",
+                  command: "node main.js attach --client codex --stdin-session",
+                },
+              ],
+            },
+            {
+              matcher: "",
+              hooks: [{ type: "command", command: "agmsg session-start.sh" }],
+            },
+          ],
+        },
+      }),
+    );
     setEnv({
       AECHAT_CODEX_BIN: fake,
       AECHAT_HOME: join(root, "home"),
@@ -170,9 +194,16 @@ describe("init and setup", () => {
       PATH: "",
     });
 
-    const result = await setupCommand(["codex", "--plugin", "--json"]);
+    const result = await setupCommand([
+      "codex",
+      "--plugin",
+      "--project",
+      join(root, "project"),
+      "--json",
+    ]);
     const data = result.data as {
       plugin: { action: string; marketplace: string; path: string };
+      plugin_project_hook: string;
     };
 
     expect(data.plugin).toMatchObject({
@@ -180,6 +211,11 @@ describe("init and setup", () => {
       marketplace: "aechat-local",
       path: pluginRoot,
     });
+    expect(data.plugin_project_hook).toBe("removed");
+    expect(readFileSync(projectHooks, "utf8")).toContain("agmsg session-start");
+    expect(readFileSync(projectHooks, "utf8")).not.toContain(
+      "attach --client codex",
+    );
     expect(readFileSync(capture, "utf8")).toBe(
       `plugin marketplace add ${pluginRoot} --json\n` +
         "plugin add aechat-codex@aechat-local --json\n",
@@ -280,6 +316,8 @@ describe("init and setup", () => {
     const result = await setupCommand([
       "codex",
       "--plugin",
+      "--project",
+      join(root, "project"),
       "--dry-run",
       "--json",
     ]);

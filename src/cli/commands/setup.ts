@@ -1,8 +1,10 @@
 import { fileURLToPath } from "node:url";
 
 import {
+  codexHooksPath,
   installCodexHooks,
   installCodexPlugin,
+  removeAttachHook,
 } from "../../adapters/hosts/codex.js";
 import { hostById } from "../../adapters/hosts/registry.js";
 import { AechatError } from "../../core/errors.js";
@@ -85,6 +87,10 @@ export async function setupCommand(
       plugin.error ?? "could not install the Codex plugin",
     );
   }
+  const projectHook =
+    plugin === undefined
+      ? undefined
+      : removeAttachHook(codexHooksPath(project), dryRun);
   const data =
     hooks === undefined && plugin === undefined
       ? result
@@ -92,6 +98,9 @@ export async function setupCommand(
           ...result,
           ...(hooks === undefined ? {} : { hooks }),
           ...(plugin === undefined ? {} : { plugin }),
+          ...(projectHook === undefined
+            ? {}
+            : { plugin_project_hook: projectHook }),
         };
 
   if (args.flags.has("json")) {
@@ -120,6 +129,11 @@ export async function setupCommand(
           "then restart Codex",
       );
     }
+  }
+  if (projectHook === "removed" || projectHook === "would-remove") {
+    lines.push(
+      `codex project hook: ${projectHook} (the plugin hook replaces it)`,
+    );
   }
   return { data, text: `${lines.join("\n")}\n` };
 }

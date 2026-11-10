@@ -137,12 +137,18 @@ again; re-approve it in the same place. `AECHAT_BIN` overrides which `aechat`
 binary the hook runs, and the hook writes
 `$AECHAT_HOME/logs/codex-session-start.log` (default `~/.aechat/logs`).
 
+If a project still has AeChat's older project-level attach entry, running
+`aechat setup codex --plugin` in that project removes it (`codex project hook:
+removed`) while leaving agmsg's entries alone; two attach entries would run
+twice per start. Repeat in any other project that used `--hooks`, or delete the
+AeChat `SessionStart` entry by hand.
+
 `aechat setup codex --hooks --project "$PWD"` still installs the same hook as a
 project-level `.codex/hooks.json` entry when plugins are not an option. That
-copy is trusted per project, so it does not scale across many projects. Whether
-the Codex desktop app executes the hook on restart has not been verified yet,
-so treat a restart as unproven until the session shows as attached. `attach` is
-idempotent and safe to run manually.
+copy is trusted per project, so it does not scale across many projects. The
+plugin hook was observed executing on Codex desktop restart on 2026-11-10
+(`codex-session-start.log` `exit=0`); a restart is still unproven until the log
+shows the attach. `attach` is idempotent and safe to run manually.
 
 The command prefers `agmsgd`, which queues notices into the Codex app-server;
 no shell shim is needed. agmsg still installs the project's `SessionStart` hook

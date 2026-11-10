@@ -1,4 +1,5 @@
 import {
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readdirSync,
@@ -73,6 +74,51 @@ describe("withAttachLock", () => {
     await expect(
       withAttachLock("thread-1", async () => "ran", { home: dir }),
     ).resolves.toBe("ran");
+  });
+
+  it("does not let a reclaimed holder release its successor's lock", async () => {
+    const dir = home();
+    let releaseFirst: (() => void) | undefined;
+    const firstHeld = new Promise<void>((resolve) => {
+      releaseFirst = resolve;
+    });
+    let markSecond: (() => void) | undefined;
+    const secondHeld = new Promise<void>((resolve) => {
+      markSecond = resolve;
+    });
+    let releaseSecond: (() => void) | undefined;
+    const secondBlocked = new Promise<void>((resolve) => {
+      releaseSecond = resolve;
+    });
+
+    const first = withAttachLock(
+      "thread-1",
+      async () => {
+        await firstHeld;
+      },
+      { home: dir },
+    );
+    await new Promise((resolve) => setTimeout(resolve, 60));
+    const lock = join(dir, "locks", "attach-thread-1.lock");
+    const old = new Date(Date.now() - 120_000);
+    utimesSync(lock, old, old);
+
+    const second = withAttachLock(
+      "thread-1",
+      async () => {
+        markSecond?.();
+        await secondBlocked;
+      },
+      { home: dir },
+    );
+    await secondHeld;
+    releaseFirst?.();
+    await first;
+
+    expect(existsSync(lock)).toBe(true);
+    releaseSecond?.();
+    await second;
+    expect(existsSync(lock)).toBe(false);
   });
 
   it("keeps different conversations independent", async () => {

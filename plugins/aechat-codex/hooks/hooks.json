@@ -1,0 +1,16 @@
+{
+  "description": "Reattach the Codex conversation to its AeChat session on host start. Installed once as a plugin; Codex trusts the plugin hook, not each project file.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/session-start.mjs\"",
+            "timeout": 35
+          }
+        ]
+      }
+    ]
+  }
+}

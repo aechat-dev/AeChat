@@ -117,12 +117,28 @@ send the message again rather than retrying the old delivery. The body is
 passed as a command-line argument, so it is visible in the local process list
 while the queue command runs.
 
-The command also installs an AeChat `SessionStart` entry next to agmsg's, which
-runs `aechat attach` so a restarted conversation reuses its existing session
-instead of going offline. The hook is installed and points at the CLI entry
-point; whether the Codex desktop app actually executes it on restart has not
-been verified yet, so treat a restart as unproven until the session shows as
-attached. `attach` is idempotent and safe to run manually.
+For restart recovery, install AeChat's `SessionStart` hook as a Codex plugin so
+Codex asks for trust once instead of once per project:
+
+```bash
+codex plugin marketplace add "$PWD/plugins/aechat-codex"
+codex plugin add aechat-codex@aechat-local
+```
+
+Then approve the plugin hook once under Codex Settings > Hooks and restart
+Codex. The hook runs `aechat attach` with the thread id from the hook payload,
+so a restarted conversation reuses its existing session instead of going
+offline. After upgrading AeChat or the plugin, Codex may treat the changed hook
+command as new and ask for trust again; re-approve it in the same place.
+`AECHAT_BIN` overrides which `aechat` binary the hook runs, and the hook writes
+`$AECHAT_HOME/logs/codex-session-start.log` (default `~/.aechat/logs`).
+
+`aechat setup codex --hooks --project "$PWD"` still installs the same hook as a
+project-level `.codex/hooks.json` entry when plugins are not an option. That
+copy is trusted per project, so it does not scale across many projects. Whether
+the Codex desktop app executes the hook on restart has not been verified yet,
+so treat a restart as unproven until the session shows as attached. `attach` is
+idempotent and safe to run manually.
 
 The command prefers `agmsgd`, which queues notices into the Codex app-server;
 no shell shim is needed. agmsg still installs the project's `SessionStart` hook

@@ -1,9 +1,15 @@
 import { fileURLToPath } from "node:url";
 
-import { installCodexHooks } from "../../adapters/hosts/codex.js";
+import {
+  installCodexHooks,
+  installCodexPlugin,
+} from "../../adapters/hosts/codex.js";
 import { hostById } from "../../adapters/hosts/registry.js";
 import { AechatError } from "../../core/errors.js";
-import { installHostSkill } from "../../runtime/host-install.js";
+import {
+  codexPluginRoot,
+  installHostSkill,
+} from "../../runtime/host-install.js";
 import { parseArgs } from "../args.js";
 import type { CommandResult } from "../output.js";
 
@@ -52,6 +58,12 @@ export async function setupCommand(
       `--hooks is not supported for ${hostArg}; only codex has an agmsg hook installer`,
     );
   }
+  if (args.flags.has("plugin") && hostArg !== "codex") {
+    throw new AechatError(
+      "invalid_input",
+      `--plugin is not supported for ${hostArg}; only codex has a plugin package`,
+    );
+  }
   const dryRun = args.flags.has("dry-run");
   const project = args.values.get("project") ?? process.cwd();
   const result = installHostSkill({ host: hostArg, dryRun });
@@ -63,7 +75,18 @@ export async function setupCommand(
           attachCommand: attachCommand(project),
         })
       : undefined;
-  const data = hooks === undefined ? result : { ...result, hooks };
+  const plugin =
+    hostArg === "codex" && args.flags.has("plugin")
+      ? await installCodexPlugin({ pluginRoot: codexPluginRoot(), dryRun })
+      : undefined;
+  const data =
+    hooks === undefined && plugin === undefined
+      ? result
+      : {
+          ...result,
+          ...(hooks === undefined ? {} : { hooks }),
+          ...(plugin === undefined ? {} : { plugin }),
+        };
 
   if (args.flags.has("json")) {
     return { data };
@@ -79,6 +102,20 @@ export async function setupCommand(
             "untrusted hooks are skipped on restart)"
         : `codex attach hook: ${hooks.attachHook}`,
     );
+  }
+  if (plugin !== undefined) {
+    lines.push(
+      plugin.action === "failed"
+        ? `codex plugin: failed (${plugin.error})`
+        : `codex plugin: ${plugin.action} ` +
+            `(aechat-codex@${plugin.marketplace} -> ${plugin.path})`,
+    );
+    if (plugin.action === "installed") {
+      lines.push(
+        "codex plugin trust: approve it once in Codex Settings > Hooks, " +
+          "then restart Codex",
+      );
+    }
   }
   return { data, text: `${lines.join("\n")}\n` };
 }

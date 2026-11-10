@@ -1,0 +1,13 @@
+{
+  "name": "aechat-local",
+  "owner": {
+    "name": "AeChat"
+  },
+  "plugins": [
+    {
+      "name": "aechat-codex",
+      "source": "./",
+      "description": "AeChat SessionStart attach for every Codex project, installed and trusted once."
+    }
+  ]
+}

@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 
+import type { HostDescriptor } from "../../adapters/hosts/registry.js";
 import { hostById, hostSessionId } from "../../adapters/hosts/registry.js";
 import { AechatError } from "../../core/errors.js";
 import type { Session } from "../../core/services/session-service.js";
@@ -19,6 +20,31 @@ export function hookSessionId(raw: string): string | undefined {
   } catch {
     return undefined;
   }
+}
+
+/**
+ * The attach conversation id: an explicit hook payload beats the environment,
+ * so a stale AGMSG_SESSION_ID cannot redirect a session start. Without stdin
+ * (manual runs, older hooks) the env fallback is unchanged.
+ */
+export function attachConversationId(input: {
+  host: HostDescriptor;
+  stdin: boolean;
+  readStdin?: () => string;
+  env?: NodeJS.ProcessEnv;
+}): string | undefined {
+  const env = input.env ?? process.env;
+  const fromEnv = hostSessionId(input.host, env);
+  if (!input.stdin) {
+    return fromEnv;
+  }
+  let raw = "";
+  try {
+    raw = (input.readStdin ?? (() => readFileSync(0, "utf8")))();
+  } catch {
+    raw = "";
+  }
+  return hookSessionId(raw) ?? fromEnv;
 }
 
 function bindDirective(binding: {
@@ -74,16 +100,10 @@ export async function attachCommand(
       `attach requires a declared host client, received: ${client}`,
     );
   }
-  let conversationId = hostSessionId(host);
-  if (args.flags.has("stdin-session")) {
-    let raw = "";
-    try {
-      raw = readFileSync(0, "utf8");
-    } catch {
-      raw = "";
-    }
-    conversationId = hookSessionId(raw) ?? conversationId;
-  }
+  const conversationId = attachConversationId({
+    host,
+    stdin: args.flags.has("stdin-session"),
+  });
   if (conversationId === undefined) {
     throw new AechatError(
       "invalid_input",

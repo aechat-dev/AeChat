@@ -31,6 +31,11 @@ export function skillSourceRoot(): string {
   return fileURLToPath(new URL("../../skills", import.meta.url));
 }
 
+/** The bundled Codex plugin directory, shipped beside the CLI like skills/. */
+export function codexPluginRoot(): string {
+  return fileURLToPath(new URL("../../plugins/aechat-codex", import.meta.url));
+}
+
 export function hostPaths(
   hostId: string,
   env: NodeJS.ProcessEnv = process.env,

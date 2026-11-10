@@ -219,10 +219,8 @@ export function installAttachHook(
 }
 
 function isAttachHookEntry(entry: unknown): boolean {
-  const text = JSON.stringify(entry);
-  return (
-    text.includes("attach --client codex") && text.includes("--stdin-session")
-  );
+  // Same marker installAttachHook uses; older installs predate --stdin-session.
+  return JSON.stringify(entry).includes("attach --client codex");
 }
 
 /**

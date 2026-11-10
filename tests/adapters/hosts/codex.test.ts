@@ -271,7 +271,7 @@ describe("codex delivery setup", () => {
               hooks: [
                 {
                   type: "command",
-                  command: "node cli.js attach --client codex --stdin-session",
+                  command: "node cli.js attach --client codex --project /p",
                 },
               ],
             },

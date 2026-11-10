@@ -60,9 +60,9 @@ the message is durable and pull-only.
   sessions 576 ms apart. The plugin path now removes that entry
   (`setup codex --plugin`) and serializes attach per conversation.
 - A message sent from this Claude Code session to the new Codex session
-  returned `status=notified` (`delivery=direct`); Codex consumed the queue and
-  answered in-thread that it saw message `01a1c5fd-…`. No manual register was
-  needed after the restart.
+  returned `status=notified`; its audit event records `delivery=direct`. Codex
+  consumed the queue and answered in-thread that it saw message `01a1c5fd-…`.
+  No manual register was needed after the restart.
 - Bound scope is not fully automatic: agmsg refused the role claim with
   `agent pid unresolved for type=codex; parallel --continue/--resume isolation
   is degraded`, so the hook's attach returns a bind directive

@@ -485,10 +485,14 @@ export async function installCodexPlugin(
     };
   }
   const addedRoot = jsonObject(added.stdout)?.["installedRoot"];
-  if (
-    typeof addedRoot === "string" &&
-    !samePath(addedRoot, options.pluginRoot)
-  ) {
+  if (typeof addedRoot !== "string") {
+    return {
+      ...base,
+      action: "failed",
+      error: "Codex did not report the installed marketplace root",
+    };
+  }
+  if (!samePath(addedRoot, options.pluginRoot)) {
     return {
       ...base,
       action: "failed",
@@ -510,14 +514,16 @@ export async function installCodexPlugin(
       error: `could not install the Codex plugin: ${installed.stderr.trim()}`,
     };
   }
-  const installedJson = jsonObject(installed.stdout);
-  const installedVersion = installedJson?.["version"];
+  const installedVersion = jsonObject(installed.stdout)?.["version"];
+  if (typeof installedVersion !== "string") {
+    return {
+      ...base,
+      action: "failed",
+      error: "Codex did not report the installed plugin version",
+    };
+  }
   const bundled = bundledPluginVersion(options.pluginRoot);
-  if (
-    typeof installedVersion === "string" &&
-    bundled !== undefined &&
-    installedVersion !== bundled
-  ) {
+  if (bundled !== undefined && installedVersion !== bundled) {
     return {
       ...base,
       action: "failed",

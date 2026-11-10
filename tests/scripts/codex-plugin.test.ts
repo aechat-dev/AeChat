@@ -85,19 +85,31 @@ describe("Codex plugin hook", () => {
     expect(log.toString()).toContain(`session=${thread}`);
   });
 
-  it("does nothing when the payload has no session id", () => {
+  it("still runs attach when the payload has no session id", () => {
     const dir = mkdtempSync(join(tmpdir(), "aechat-plugin-"));
     const capture = join(dir, "capture");
-    const fake = fakeBinary(dir, `printf called > '${capture}'`);
+    const input = join(dir, "stdin");
+    const fake = fakeBinary(
+      dir,
+      `printf '%s' "$*" > '${capture}'\ncat > '${input}'`,
+    );
 
     const result = spawnSync("node", [script], {
       input: JSON.stringify({ cwd: "/tmp/project" }),
       encoding: "utf8",
-      env: { ...process.env, AECHAT_BIN: fake, AECHAT_HOME: dir },
+      env: {
+        ...process.env,
+        AECHAT_BIN: fake,
+        AECHAT_HOME: dir,
+        CODEX_THREAD_ID: "env-thread",
+      },
     });
 
     expect(result.status).toBe(0);
-    expect(() => readFileSync(capture, "utf8")).toThrow();
+    expect(readFileSync(capture, "utf8")).toContain("--stdin-session");
+    expect(readFileSync(input, "utf8")).toBe(
+      JSON.stringify({ cwd: "/tmp/project" }),
+    );
   });
 
   it("does not fail the host when attach cannot start", () => {

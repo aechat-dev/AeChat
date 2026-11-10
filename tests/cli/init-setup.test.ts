@@ -230,6 +230,24 @@ describe("init and setup", () => {
     expect(readFileSync(capture, "utf8")).not.toContain("plugin add");
   });
 
+  it("fails when Codex does not report the marketplace root", async () => {
+    const root = tempRoot();
+    const { fake } = fakeCodex(root, `echo "ok"`);
+    mkdirSync(join(root, "codex-home"), { recursive: true });
+    setEnv({
+      AECHAT_CODEX_BIN: fake,
+      AECHAT_HOME: join(root, "home"),
+      CODEX_HOME: join(root, "codex-home"),
+      PATH: "",
+    });
+
+    const result = await setupCommand(["codex", "--plugin", "--json"]);
+    const data = result.data as { plugin: { action: string; error: string } };
+
+    expect(data.plugin.action).toBe("failed");
+    expect(data.plugin.error).toContain("installed marketplace root");
+  });
+
   it("fails when Codex installs a different version", async () => {
     const root = tempRoot();
     const { fake } = fakeCodex(

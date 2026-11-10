@@ -110,6 +110,12 @@ export async function setupCommand(
         : `codex plugin: ${plugin.action} ` +
             `(aechat-codex@${plugin.marketplace} -> ${plugin.path})`,
     );
+    if (plugin.action === "installed") {
+      lines.push(
+        "codex plugin trust: approve it once in Codex Settings > Hooks, " +
+          "then restart Codex",
+      );
+    }
   }
   return { data, text: `${lines.join("\n")}\n` };
 }

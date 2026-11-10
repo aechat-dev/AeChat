@@ -74,11 +74,6 @@ const session =
 const hasCwd = typeof payload.cwd === "string" && payload.cwd.startsWith("/");
 const cwd = hasCwd ? payload.cwd : process.cwd();
 
-if (session === "") {
-  log("skip: hook payload has no session_id");
-  process.exit(0);
-}
-
 const binary = findBinary();
 if (binary === "") {
   log("skip: aechat not found; set AECHAT_BIN");

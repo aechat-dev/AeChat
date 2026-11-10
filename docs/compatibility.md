@@ -30,8 +30,8 @@ the message is durable and pull-only.
 | Scenario | Claude Code | Codex | Evidence |
 |---|---|---|---|
 | Register two isolated sessions | ✅ 2026-11-08 | ◐ 2026-11-09 (one Codex + peer) | `pnpm e2e:local`; Codex host run |
-| Automatic binding from the host session | ✅ 2026-11-08 | ◐ 2026-11-09 claim accepted, not bound | `pnpm e2e:local`; Codex host run |
-| Bind with `bound_scope=host_role` | ✅ 2026-11-08 | ? confirm not run; `bound_scope=none` | `pnpm e2e:local`; Codex claim stale |
+| Automatic binding from the host session | ✅ 2026-11-08 | ◐ 2026-11-10 plugin hook attaches; claim accepted with agent pid | See the 2026-11-10 evidence |
+| Bind with `bound_scope=host_role` | ✅ 2026-11-08 | ◐ 2026-11-10 confirm run, `host_role` accepted; list liveness still stale | See the 2026-11-10 evidence |
 | Host initiates a request and waits for the reply | ✅ 2026-11-08 | ? | Host run, 2026-11-08 |
 | Durable send + pull (`inbox`) | ✅ 2026-11-08 | ✅ 2026-11-09 | `pnpm e2e:local`; Codex receive |
 | Request → ack → reply → `wait` | ✅ 2026-11-08 | ✅ 2026-11-09 | `pnpm e2e:local`; Codex host run |
@@ -50,7 +50,7 @@ the message is durable and pull-only.
 ### 2026-11-10 — Codex plugin SessionStart attach and post-restart delivery
 
 - Host: Codex desktop (ChatGPT.app bundled CLI), agmsg 1.7.1, macOS; plugin
-  `aechat-codex@aechat-local` 0.1.4 trusted once in Settings > Hooks.
+  `aechat-codex@aechat-local` 0.1.4/0.1.5 trusted once in Settings > Hooks.
 - After a restart and opening a conversation, Codex ran the plugin hook:
   `2026-11-10T13:49:28Z session=01a0fae0-… cwd=…/研究计划 exit=0`.
   `aechat attach --stdin-session` stored that conversation id and registered
@@ -63,11 +63,17 @@ the message is durable and pull-only.
   returned `status=notified`; its audit event records `delivery=direct`. Codex
   consumed the queue and answered in-thread that it saw message `01a1c5fd-…`.
   No manual register was needed after the restart.
-- Bound scope is not fully automatic: agmsg refused the role claim with
-  `agent pid unresolved for type=codex; parallel --continue/--resume isolation
-  is degraded`, so the hook's attach returns a bind directive
-  (`$agmsg actas <address>`) for the agent to run. Direct injection works
-  without that role.
+- Plugin 0.1.5 pins agmsg's agent pid (selected by the hook's pid discovery:
+  ancestor walk, else pgrep). Resuming the original conversation `01a1c378-…`
+  then ran `session=01a1c378-… agent=52387 bound=host_role exit=0`: the same
+  session `01a1c378-a8f6-…` was reused, the role claim was accepted, and a
+  `confirm` audit event was written. No duplicate row appeared.
+- Without that pid (0.1.4), the claim was refused with `agent pid unresolved
+  for type=codex; parallel --continue/--resume isolation is degraded` and attach
+  returned the `$agmsg actas <address>` directive; direct injection worked even
+  then. `aechat list` still reports `bound_state=stale` because agmsg cannot
+  prove transport liveness without host activity; `bound_scope=host_role` is
+  stored by the accepted claim.
 
 ### 2026-11-09 — Codex direct body injection
 

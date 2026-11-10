@@ -200,11 +200,9 @@ describe("init and setup", () => {
       PATH: "",
     });
 
-    const result = await setupCommand(["codex", "--plugin", "--json"]);
-    const data = result.data as { plugin: { action: string; error: string } };
-
-    expect(data.plugin.action).toBe("failed");
-    expect(data.plugin.error).toContain("another source");
+    await expect(setupCommand(["codex", "--plugin", "--json"])).rejects.toThrow(
+      "another source",
+    );
     expect(readFileSync(capture, "utf8")).not.toContain("plugin add");
   });
 
@@ -222,11 +220,9 @@ describe("init and setup", () => {
       PATH: "",
     });
 
-    const result = await setupCommand(["codex", "--plugin", "--json"]);
-    const data = result.data as { plugin: { action: string; error: string } };
-
-    expect(data.plugin.action).toBe("failed");
-    expect(data.plugin.error).toContain("/tmp/other");
+    await expect(setupCommand(["codex", "--plugin", "--json"])).rejects.toThrow(
+      "/tmp/other",
+    );
     expect(readFileSync(capture, "utf8")).not.toContain("plugin add");
   });
 
@@ -241,11 +237,9 @@ describe("init and setup", () => {
       PATH: "",
     });
 
-    const result = await setupCommand(["codex", "--plugin", "--json"]);
-    const data = result.data as { plugin: { action: string; error: string } };
-
-    expect(data.plugin.action).toBe("failed");
-    expect(data.plugin.error).toContain("installed marketplace root");
+    await expect(setupCommand(["codex", "--plugin", "--json"])).rejects.toThrow(
+      "installed marketplace root",
+    );
   });
 
   it("fails when Codex installs a different version", async () => {
@@ -267,11 +261,9 @@ describe("init and setup", () => {
       PATH: "",
     });
 
-    const result = await setupCommand(["codex", "--plugin", "--json"]);
-    const data = result.data as { plugin: { action: string; error: string } };
-
-    expect(data.plugin.action).toBe("failed");
-    expect(data.plugin.error).toContain("0.0.1");
+    await expect(setupCommand(["codex", "--plugin", "--json"])).rejects.toThrow(
+      "0.0.1",
+    );
   });
 
   it("does not call Codex for a plugin dry run", async () => {

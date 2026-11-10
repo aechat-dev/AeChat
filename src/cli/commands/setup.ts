@@ -79,6 +79,12 @@ export async function setupCommand(
     hostArg === "codex" && args.flags.has("plugin")
       ? await installCodexPlugin({ pluginRoot: codexPluginRoot(), dryRun })
       : undefined;
+  if (plugin?.action === "failed") {
+    throw new AechatError(
+      "transport_unavailable",
+      plugin.error ?? "could not install the Codex plugin",
+    );
+  }
   const data =
     hooks === undefined && plugin === undefined
       ? result
@@ -105,10 +111,8 @@ export async function setupCommand(
   }
   if (plugin !== undefined) {
     lines.push(
-      plugin.action === "failed"
-        ? `codex plugin: failed (${plugin.error})`
-        : `codex plugin: ${plugin.action} ` +
-            `(aechat-codex@${plugin.marketplace} -> ${plugin.path})`,
+      `codex plugin: ${plugin.action} ` +
+        `(aechat-codex@${plugin.marketplace} -> ${plugin.path})`,
     );
     if (plugin.action === "installed") {
       lines.push(

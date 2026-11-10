@@ -11,5 +11,6 @@ describe("codex attach hook command", () => {
     expect(command).toContain(" attach ");
     expect(command).toContain("--client codex");
     expect(command).toContain("--project '/tmp/project'");
+    expect(command).toContain("--stdin-session");
   });
 });

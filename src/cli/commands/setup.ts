@@ -27,7 +27,7 @@ export function attachCommand(project: string): string {
   // not resolve `aechat`; pin the current node binary and CLI path.
   return (
     `${shellQuote(process.execPath)} ${shellQuote(cliEntry())} attach ` +
-    `--client codex --project ${shellQuote(project)} --json ` +
+    `--client codex --project ${shellQuote(project)} --stdin-session --json ` +
     ">/dev/null 2>&1 || true"
   );
 }

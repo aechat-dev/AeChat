@@ -1,9 +1,25 @@
+import { readFileSync } from "node:fs";
+
 import { hostById, hostSessionId } from "../../adapters/hosts/registry.js";
 import { AechatError } from "../../core/errors.js";
 import type { Session } from "../../core/services/session-service.js";
 import type { Client } from "../../core/types.js";
 import { parseArgs } from "../args.js";
 import type { CommandContext } from "./context.js";
+
+/** Codex hooks receive the thread id in their stdin JSON, not the env. */
+export function hookSessionId(raw: string): string | undefined {
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (typeof parsed !== "object" || parsed === null) {
+      return undefined;
+    }
+    const id = (parsed as { session_id?: unknown }).session_id;
+    return typeof id === "string" && id !== "" ? id : undefined;
+  } catch {
+    return undefined;
+  }
+}
 
 function bindDirective(binding: {
   evidenceJson: string | null;
@@ -58,11 +74,20 @@ export async function attachCommand(
       `attach requires a declared host client, received: ${client}`,
     );
   }
-  const conversationId = hostSessionId(host);
+  let conversationId = hostSessionId(host);
+  if (args.flags.has("stdin-session")) {
+    let raw = "";
+    try {
+      raw = readFileSync(0, "utf8");
+    } catch {
+      raw = "";
+    }
+    conversationId = hookSessionId(raw) ?? conversationId;
+  }
   if (conversationId === undefined) {
     throw new AechatError(
       "invalid_input",
-      `no host session id (${host.sessionEnv}) in the environment`,
+      `no host session id (${host.sessionEnv} or hook stdin) available`,
     );
   }
   const project = args.values.get("project") ?? process.cwd();

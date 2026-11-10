@@ -42,10 +42,32 @@ the message is durable and pull-only.
 | Message body injected as a user turn | ◐ `aechat watch` JSONL events | ✅ 2026-11-09 `codex queue` direct injection | See the 2026-11-09 direct-injection evidence |
 | Busy receive (`busy_receive`) | ? | ? | Phase 0 saw injection, no reply |
 | Idle wakeup (`idle_wakeup`) | ◐ agmsg Monitor only, 2026-11-06 | ? | Not managed by AeChat; re-arm untested |
-| Resume / rebind across host restarts | ? | ? | Unit tests only |
-| Conversation-level binding | ✗ v1 reports `host_role` | ✗ | No host conversation ID capture |
+| Resume / rebind across host restarts | ? | ◐ 2026-11-10 plugin SessionStart hook runs attach | See the 2026-11-10 evidence |
+| Conversation-level binding | ✗ v1 reports `host_role` | ◐ attach stores the hook `session_id` | See the 2026-11-10 evidence |
 
 ## Evidence log
+
+### 2026-11-10 — Codex plugin SessionStart attach and post-restart delivery
+
+- Host: Codex desktop (ChatGPT.app bundled CLI), agmsg 1.7.1, macOS; plugin
+  `aechat-codex@aechat-local` 0.1.4 trusted once in Settings > Hooks.
+- After a restart and opening a conversation, Codex ran the plugin hook:
+  `2026-11-10T13:49:28Z session=01a0fae0-… cwd=…/研究计划 exit=0`.
+  `aechat attach --stdin-session` stored that conversation id and registered
+  one session (`01a1c5b8-…`); `aechat list` showed exactly one row for it.
+- Earlier restarts reproduced a real defect: the project still had its old
+  project-level attach entry, so Codex ran attach twice and registered two
+  sessions 576 ms apart. The plugin path now removes that entry
+  (`setup codex --plugin`) and serializes attach per conversation.
+- A message sent from this Claude Code session to the new Codex session
+  returned `status=notified` (`delivery=direct`); Codex consumed the queue and
+  answered in-thread that it saw message `01a1c5fd-…`. No manual register was
+  needed after the restart.
+- Bound scope is not fully automatic: agmsg refused the role claim with
+  `agent pid unresolved for type=codex; parallel --continue/--resume isolation
+  is degraded`, so the hook's attach returns a bind directive
+  (`$agmsg actas <address>`) for the agent to run. Direct injection works
+  without that role.
 
 ### 2026-11-09 — Codex direct body injection
 

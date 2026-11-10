@@ -112,6 +112,29 @@ describe("Codex plugin hook", () => {
     );
   });
 
+  it("passes the Codex agent pid to attach", () => {
+    const dir = mkdtempSync(join(tmpdir(), "aechat-plugin-"));
+    const capture = join(dir, "capture");
+    const fake = fakeBinary(
+      dir,
+      `printf '%s' "$AGMSG_AGENT_PID" > '${capture}'`,
+    );
+
+    const result = spawnSync("node", [script], {
+      input: JSON.stringify({ session_id: thread, cwd: "/tmp/project" }),
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        AECHAT_BIN: fake,
+        AECHAT_AGENT_PID: "12345",
+        AECHAT_HOME: dir,
+      },
+    });
+
+    expect(result.status).toBe(0);
+    expect(readFileSync(capture, "utf8")).toBe("12345");
+  });
+
   it("does not fail the host when attach cannot start", () => {
     const dir = mkdtempSync(join(tmpdir(), "aechat-plugin-"));
     const result = spawnSync("node", [script], {

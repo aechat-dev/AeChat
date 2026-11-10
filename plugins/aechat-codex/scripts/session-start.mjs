@@ -80,6 +80,49 @@ if (binary === "") {
   process.exit(0);
 }
 
+// agmsg derives the instance id from the agent process. A hook process is not
+// an agent, so without this the claim falls back to the bare session id and is
+// refused. Walk up to the Codex app-server (or take AECHAT_AGENT_PID in tests).
+function commandOf(pid) {
+  const result = spawnSync("ps", ["-o", "command=", "-p", String(pid)], {
+    encoding: "utf8",
+    timeout: 2_000,
+  });
+  return result.status === 0 ? result.stdout.trim() : "";
+}
+
+function parentOf(pid) {
+  const result = spawnSync("ps", ["-o", "ppid=", "-p", String(pid)], {
+    encoding: "utf8",
+    timeout: 2_000,
+  });
+  return result.status === 0 ? Number(result.stdout.trim()) : NaN;
+}
+
+function findAgentPid() {
+  if (process.env.AECHAT_AGENT_PID) return process.env.AECHAT_AGENT_PID;
+  let pid = process.ppid;
+  for (let hops = 0; hops < 20 && Number.isInteger(pid) && pid > 1; hops++) {
+    const command = commandOf(pid);
+    if (/codex/i.test(command) && /app-server/.test(command)) {
+      return String(pid);
+    }
+    pid = parentOf(pid);
+  }
+  const found = spawnSync(
+    "pgrep",
+    ["-f", "CodexCLI.app/Contents/MacOS/codex.*app-server"],
+    { encoding: "utf8", timeout: 2_000 },
+  );
+  if (found.status === 0) {
+    const pids = found.stdout.trim().split("\n").filter(Boolean);
+    if (pids.length > 0) return pids[pids.length - 1];
+  }
+  return "";
+}
+
+const agentPid = findAgentPid();
+
 // Forward the payload on stdin and let attach resolve session_id there. That
 // keeps one precedence rule: hook stdin beats AGMSG_SESSION_ID/CODEX_THREAD_ID.
 const result = spawnSync(
@@ -94,14 +137,26 @@ const result = spawnSync(
     "--json",
   ],
   {
-    env: process.env,
+    env: {
+      ...process.env,
+      ...(agentPid === "" ? {} : { AGMSG_AGENT_PID: agentPid }),
+    },
     input: raw,
     encoding: "utf8",
     timeout: 30_000,
   },
 );
+let bound = "";
+try {
+  const parsed = JSON.parse(result.stdout ?? "{}");
+  bound = typeof parsed?.data?.bound_scope === "string" ? parsed.data.bound_scope : "";
+} catch {
+  bound = "";
+}
 log(
   `session=${session} cwd=${cwd}${hasCwd ? "" : " (cwd fallback)"} ` +
+    `agent=${agentPid === "" ? "none" : agentPid} ` +
+    `bound=${bound === "" ? "unknown" : bound} ` +
     `exit=${result.status ?? "null"} ` +
     `${(result.stderr ?? "").trim().slice(0, 300)}`,
 );

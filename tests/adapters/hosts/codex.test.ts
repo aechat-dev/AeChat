@@ -16,6 +16,7 @@ import {
   installAttachHook,
   installCodexHooks,
   queueCodexMessage,
+  removeAttachHook,
 } from "../../../src/adapters/hosts/codex.js";
 
 const roots: string[] = [];
@@ -255,6 +256,44 @@ describe("codex delivery setup", () => {
     expect(parsed.hooks.SessionStart).toHaveLength(2);
     expect(JSON.stringify(parsed)).toContain("agmsg session-start.sh");
     expect(JSON.stringify(parsed)).toContain("attach --client codex");
+  });
+
+  it("removes only AeChat's attach entry and keeps agmsg's", () => {
+    const root = project();
+    mkdirSync(join(root, ".codex"), { recursive: true });
+    writeFileSync(
+      codexHooksPath(root),
+      JSON.stringify({
+        hooks: {
+          SessionStart: [
+            {
+              matcher: "",
+              hooks: [
+                {
+                  type: "command",
+                  command: "node cli.js attach --client codex --stdin-session",
+                },
+              ],
+            },
+            {
+              matcher: "",
+              hooks: [{ type: "command", command: "agmsg session-start.sh" }],
+            },
+          ],
+        },
+      }),
+    );
+
+    expect(removeAttachHook(codexHooksPath(root), true)).toBe("would-remove");
+    expect(removeAttachHook(codexHooksPath(root))).toBe("removed");
+    expect(removeAttachHook(codexHooksPath(root))).toBe("absent");
+
+    const parsed = JSON.parse(readFileSync(codexHooksPath(root), "utf8")) as {
+      hooks: { SessionStart: unknown[] };
+    };
+    expect(parsed.hooks.SessionStart).toHaveLength(1);
+    expect(JSON.stringify(parsed)).toContain("agmsg session-start.sh");
+    expect(JSON.stringify(parsed)).not.toContain("attach --client codex");
   });
 
   it("replaces a stale AeChat attach command in place", () => {

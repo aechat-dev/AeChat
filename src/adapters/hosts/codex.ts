@@ -218,6 +218,58 @@ export function installAttachHook(
   return "installed";
 }
 
+function isAttachHookEntry(entry: unknown): boolean {
+  const text = JSON.stringify(entry);
+  return (
+    text.includes("attach --client codex") && text.includes("--stdin-session")
+  );
+}
+
+/**
+ * Remove AeChat's own SessionStart entry from a project's hooks file after the
+ * plugin hook is installed. Keeping both makes Codex run attach twice per
+ * start, which can register duplicate sessions; agmsg's entries are untouched.
+ */
+export function removeAttachHook(
+  path: string,
+  dryRun = false,
+): "removed" | "would-remove" | "absent" | "skipped" {
+  if (!existsSync(path)) {
+    return "absent";
+  }
+  let root: unknown;
+  try {
+    root = JSON.parse(readFileSync(path, "utf8"));
+  } catch {
+    return "skipped";
+  }
+  if (typeof root !== "object" || root === null) {
+    return "skipped";
+  }
+  const hooks = (root as { hooks?: unknown }).hooks;
+  if (typeof hooks !== "object" || hooks === null) {
+    return "skipped";
+  }
+  const sessionStart = (hooks as { SessionStart?: unknown }).SessionStart;
+  if (!Array.isArray(sessionStart)) {
+    return "absent";
+  }
+  const kept = sessionStart.filter((entry) => !isAttachHookEntry(entry));
+  if (kept.length === sessionStart.length) {
+    return "absent";
+  }
+  if (dryRun) {
+    return "would-remove";
+  }
+  if (kept.length === 0) {
+    delete (hooks as { SessionStart?: unknown }).SessionStart;
+  } else {
+    (hooks as { SessionStart?: unknown }).SessionStart = kept;
+  }
+  writeFileSync(path, JSON.stringify(root), "utf8");
+  return "removed";
+}
+
 function alreadyConfigured(path: string): boolean {
   if (!existsSync(path)) {
     return false;

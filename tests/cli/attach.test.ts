@@ -1,3 +1,7 @@
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { hostById } from "../../src/adapters/hosts/registry.js";
 import {
@@ -71,13 +75,24 @@ function ctxWith(attach: AttachResult): CommandContext {
 }
 
 let saved: string | undefined;
+let savedHome: string | undefined;
+let home: string;
 
 beforeEach(() => {
   saved = process.env["CODEX_THREAD_ID"];
   process.env["CODEX_THREAD_ID"] = "thread-1";
+  savedHome = process.env["AECHAT_HOME"];
+  home = mkdtempSync(join(tmpdir(), "aechat-attach-"));
+  process.env["AECHAT_HOME"] = home;
 });
 
 afterEach(() => {
+  rmSync(home, { recursive: true, force: true });
+  if (savedHome === undefined) {
+    delete process.env["AECHAT_HOME"];
+  } else {
+    process.env["AECHAT_HOME"] = savedHome;
+  }
   if (saved === undefined) {
     delete process.env["CODEX_THREAD_ID"];
   } else {

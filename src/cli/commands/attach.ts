@@ -6,6 +6,7 @@ import { AechatError } from "../../core/errors.js";
 import type { Session } from "../../core/services/session-service.js";
 import type { Client } from "../../core/types.js";
 import { parseArgs } from "../args.js";
+import { withAttachLock } from "../attach-lock.js";
 import type { CommandContext } from "./context.js";
 
 /** Codex hooks receive the thread id in their stdin JSON, not the env. */
@@ -112,13 +113,15 @@ export async function attachCommand(
   }
   const project = args.values.get("project") ?? process.cwd();
   const name = args.values.get("name");
-  const result = await ctx.service.attach({
-    ...(name === undefined || name === "" ? {} : { displayName: name }),
-    client: host.id as Client,
-    project,
-    conversationId,
-    hostSessionId: conversationId,
-  });
+  const result = await withAttachLock(conversationId, () =>
+    ctx.service.attach({
+      ...(name === undefined || name === "" ? {} : { displayName: name }),
+      client: host.id as Client,
+      project,
+      conversationId,
+      hostSessionId: conversationId,
+    }),
+  );
   const claim = result.claim;
   const holdsRole =
     claim.transportClaimState === "accepted" ||

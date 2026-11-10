@@ -14,7 +14,10 @@ log() {
 }
 
 node_bin=
-if command -v node >/dev/null 2>&1; then
+if [ -n "${AECHAT_NODE_BIN:-}" ] && [ -x "$AECHAT_NODE_BIN" ]; then
+  node_bin=$AECHAT_NODE_BIN
+fi
+if [ -z "$node_bin" ] && command -v node >/dev/null 2>&1; then
   node_bin=$(command -v node)
 fi
 if [ -z "$node_bin" ]; then

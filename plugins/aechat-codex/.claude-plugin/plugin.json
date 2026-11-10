@@ -1,6 +1,6 @@
 {
   "name": "aechat-codex",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Attach a Codex conversation to AeChat on SessionStart, once per plugin instead of once per project.",
   "author": {
     "name": "AeChat"

@@ -139,8 +139,13 @@ describe("Codex plugin hook", () => {
     expect(readFileSync(capture, "utf8")).toContain("--stdin-session");
   });
 
-  it("logs and exits 0 when node is not on PATH", () => {
+  it("honors AECHAT_NODE_BIN when PATH has no node", () => {
     const dir = mkdtempSync(join(tmpdir(), "aechat-plugin-"));
+    const capture = join(dir, "node-calls");
+    const fakeNode = join(dir, "node");
+    writeFileSync(fakeNode, `#!/bin/sh\nprintf '%s' "$*" > '${capture}'\n`);
+    chmodSync(fakeNode, 0o755);
+
     const result = spawnSync("/bin/sh", [wrapper], {
       input: JSON.stringify({ session_id: thread, cwd: "/tmp/project" }),
       encoding: "utf8",
@@ -149,12 +154,11 @@ describe("Codex plugin hook", () => {
         HOME: dir,
         PATH: "/usr/bin:/bin",
         AECHAT_HOME: dir,
+        AECHAT_NODE_BIN: fakeNode,
       },
     });
 
     expect(result.status).toBe(0);
-    expect(
-      readFileSync(join(dir, "logs", "codex-session-start.log"), "utf8"),
-    ).toContain("node not found");
+    expect(readFileSync(capture, "utf8")).toBe(script);
   });
 });

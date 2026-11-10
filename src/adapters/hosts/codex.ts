@@ -373,3 +373,94 @@ export async function installCodexHooks(
     attachHook: attachHook(),
   };
 }
+
+export interface CodexPluginOptions {
+  /** The `plugins/aechat-codex` directory shipped with AeChat. */
+  pluginRoot: string;
+  env?: NodeJS.ProcessEnv;
+  /** Codex CLI path; an empty string forces the "not found" path. */
+  executable?: string;
+  dryRun?: boolean;
+  runner?: (
+    file: string,
+    args: readonly string[],
+    timeoutMs: number,
+  ) => Promise<{ exitCode: number; stdout?: string; stderr: string }>;
+}
+
+export interface CodexPluginResult {
+  action: "installed" | "would-install" | "failed";
+  path: string;
+  marketplace: string;
+  error?: string;
+}
+
+const CODEX_MARKETPLACE = "aechat-local";
+
+function alreadyAdded(result: { stdout?: string; stderr: string }): boolean {
+  return /already|exists|duplicate/i.test(
+    `${result.stdout ?? ""}${result.stderr}`,
+  );
+}
+
+/**
+ * Install the SessionStart attach hook as a Codex plugin. Codex trusts a
+ * plugin hook once, so this replaces per-project hook files; the project-level
+ * hook stays available as a fallback for builds without plugin support.
+ */
+export async function installCodexPlugin(
+  options: CodexPluginOptions,
+): Promise<CodexPluginResult> {
+  const base = {
+    path: options.pluginRoot,
+    marketplace: CODEX_MARKETPLACE,
+  };
+  if (
+    !existsSync(join(options.pluginRoot, ".claude-plugin", "marketplace.json"))
+  ) {
+    return {
+      ...base,
+      action: "failed",
+      error: `bundled Codex plugin is missing: ${options.pluginRoot}`,
+    };
+  }
+  if (options.dryRun === true) {
+    return { ...base, action: "would-install" };
+  }
+  const executable =
+    options.executable ?? (codexExecutable(options.env) || "codex");
+  if (executable === "") {
+    return {
+      ...base,
+      action: "failed",
+      error:
+        "Codex CLI not found; set AECHAT_CODEX_BIN to the desktop app's codex binary",
+    };
+  }
+  const runner = options.runner ?? runnerWithEnv(options.env ?? process.env);
+  const added = await runner(
+    executable,
+    ["plugin", "marketplace", "add", options.pluginRoot],
+    60_000,
+  );
+  if (added.exitCode !== 0 && !alreadyAdded(added)) {
+    return {
+      ...base,
+      action: "failed",
+      error: `could not add the Codex marketplace: ${added.stderr.trim()}`,
+    };
+  }
+  const installed = await runner(
+    executable,
+    ["plugin", "add", `aechat-codex@${CODEX_MARKETPLACE}`],
+    60_000,
+  );
+  if (installed.exitCode !== 0 && !alreadyAdded(installed)) {
+    return {
+      ...base,
+      action: "failed",
+      error: `could not install the Codex plugin: ${installed.stderr.trim()}`,
+    };
+  }
+  return { ...base, action: "installed" };
+}

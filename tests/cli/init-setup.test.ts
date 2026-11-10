@@ -1,6 +1,15 @@
-import { existsSync, mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import {
+  chmodSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { afterEach, describe, expect, it } from "vitest";
 import type { CommandContext } from "../../src/cli/commands/context.js";
@@ -8,7 +17,10 @@ import { initCommand } from "../../src/cli/commands/init.js";
 import { setupCommand } from "../../src/cli/commands/setup.js";
 import { main } from "../../src/cli/main.js";
 
+const repo = fileURLToPath(new URL("../..", import.meta.url));
+
 const keys = [
+  "AECHAT_CODEX_BIN",
   "AECHAT_HOME",
   "CLAUDE_CONFIG_DIR",
   "CODEX_HOME",
@@ -108,6 +120,71 @@ describe("init and setup", () => {
     await expect(
       setupCommand(["claude-code", "--hooks", "--json"]),
     ).rejects.toThrow("only codex has an agmsg hook installer");
+  });
+
+  it("rejects --plugin for hosts without a plugin package", async () => {
+    await expect(
+      setupCommand(["claude-code", "--plugin", "--json"]),
+    ).rejects.toThrow("only codex has a plugin package");
+  });
+
+  it("installs the Codex plugin from the bundled copy", async () => {
+    const root = tempRoot();
+    const capture = join(root, "codex-calls");
+    const fake = join(root, "codex");
+    writeFileSync(fake, `#!/bin/sh\nprintf '%s\\n' "$*" >> '${capture}'\n`);
+    chmodSync(fake, 0o755);
+    mkdirSync(join(root, "claude"), { recursive: true });
+    mkdirSync(join(root, "codex-home"), { recursive: true });
+    setEnv({
+      AECHAT_CODEX_BIN: fake,
+      AECHAT_HOME: join(root, "home"),
+      CLAUDE_CONFIG_DIR: join(root, "claude"),
+      CODEX_HOME: join(root, "codex-home"),
+      PATH: "",
+    });
+
+    const result = await setupCommand(["codex", "--plugin", "--json"]);
+    const data = result.data as {
+      plugin: { action: string; marketplace: string; path: string };
+    };
+    const pluginRoot = join(repo, "plugins", "aechat-codex");
+
+    expect(data.plugin).toMatchObject({
+      action: "installed",
+      marketplace: "aechat-local",
+      path: pluginRoot,
+    });
+    expect(readFileSync(capture, "utf8")).toBe(
+      `plugin marketplace add ${pluginRoot}\n` +
+        "plugin add aechat-codex@aechat-local\n",
+    );
+  });
+
+  it("does not call Codex for a plugin dry run", async () => {
+    const root = tempRoot();
+    const capture = join(root, "codex-calls");
+    const fake = join(root, "codex");
+    writeFileSync(fake, `#!/bin/sh\nprintf '%s\\n' "$*" >> '${capture}'\n`);
+    chmodSync(fake, 0o755);
+    mkdirSync(join(root, "codex-home"), { recursive: true });
+    setEnv({
+      AECHAT_CODEX_BIN: fake,
+      AECHAT_HOME: join(root, "home"),
+      CODEX_HOME: join(root, "codex-home"),
+      PATH: "",
+    });
+
+    const result = await setupCommand([
+      "codex",
+      "--plugin",
+      "--dry-run",
+      "--json",
+    ]);
+    const data = result.data as { plugin: { action: string } };
+
+    expect(data.plugin.action).toBe("would-install");
+    expect(existsSync(capture)).toBe(false);
   });
 
   it("reports planned actions in a dry run without touching the disk", async () => {

@@ -1,6 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-
-import { attachCommand, hookSessionId } from "../../src/cli/commands/attach.js";
+import { hostById } from "../../src/adapters/hosts/registry.js";
+import {
+  attachCommand,
+  attachConversationId,
+  hookSessionId,
+} from "../../src/cli/commands/attach.js";
 import type { CommandContext } from "../../src/cli/commands/context.js";
 import type {
   AttachResult,
@@ -191,5 +195,46 @@ describe("hookSessionId", () => {
     expect(hookSessionId("not json")).toBeUndefined();
     expect(hookSessionId("{}")).toBeUndefined();
     expect(hookSessionId('{"session_id":""}')).toBeUndefined();
+  });
+});
+
+describe("attachConversationId", () => {
+  const host = hostById("codex");
+  if (host === undefined) {
+    throw new Error("codex host is not declared");
+  }
+  const payload = JSON.stringify({ session_id: "from-hook" });
+
+  it("lets the hook payload beat AGMSG_SESSION_ID and CODEX_THREAD_ID", () => {
+    expect(
+      attachConversationId({
+        host,
+        stdin: true,
+        readStdin: () => payload,
+        env: { AGMSG_SESSION_ID: "wrong", CODEX_THREAD_ID: "also-wrong" },
+      }),
+    ).toBe("from-hook");
+  });
+
+  it("falls back to the environment when stdin has no session", () => {
+    expect(
+      attachConversationId({
+        host,
+        stdin: true,
+        readStdin: () => "{}",
+        env: { CODEX_THREAD_ID: "thread-1" },
+      }),
+    ).toBe("thread-1");
+  });
+
+  it("does not read stdin unless --stdin-session was passed", () => {
+    expect(
+      attachConversationId({
+        host,
+        stdin: false,
+        readStdin: () => payload,
+        env: { CODEX_THREAD_ID: "thread-1" },
+      }),
+    ).toBe("thread-1");
   });
 });

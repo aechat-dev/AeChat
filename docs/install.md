@@ -121,16 +121,20 @@ For restart recovery, install AeChat's `SessionStart` hook as a Codex plugin so
 Codex asks for trust once instead of once per project:
 
 ```bash
-codex plugin marketplace add "$PWD/plugins/aechat-codex"
-codex plugin add aechat-codex@aechat-local
+aechat setup codex --plugin
 ```
 
-Then approve the plugin hook once under Codex Settings > Hooks and restart
-Codex. The hook runs `aechat attach` with the thread id from the hook payload,
-so a restarted conversation reuses its existing session instead of going
-offline. After upgrading AeChat or the plugin, Codex may treat the changed hook
-command as new and ask for trust again; re-approve it in the same place.
-`AECHAT_BIN` overrides which `aechat` binary the hook runs, and the hook writes
+The command finds the plugin shipped next to the installed CLI and runs
+`codex plugin marketplace add` and `codex plugin add` for you; it reports
+`codex plugin: installed (aechat-codex@aechat-local -> <path>)`. The same
+commands work manually with `codex plugin marketplace add <path>` followed by
+`codex plugin add aechat-codex@aechat-local`. Approve the plugin hook once
+under Codex Settings > Hooks and restart Codex. The hook runs `aechat attach`
+with the thread id from the hook payload, so a restarted conversation reuses
+its existing session instead of going offline. After upgrading AeChat or the
+plugin, Codex may treat the changed hook command as new and ask for trust
+again; re-approve it in the same place. `AECHAT_BIN` overrides which `aechat`
+binary the hook runs, and the hook writes
 `$AECHAT_HOME/logs/codex-session-start.log` (default `~/.aechat/logs`).
 
 `aechat setup codex --hooks --project "$PWD"` still installs the same hook as a

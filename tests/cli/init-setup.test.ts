@@ -185,6 +185,9 @@ describe("init and setup", () => {
     expect(settings.hooks.SessionStart[0]?.hooks[0]?.command).toContain(
       "--stdin-session",
     );
+    expect(settings.hooks.SessionStart[0]?.hooks[0]?.command).not.toContain(
+      "--project",
+    );
 
     const again = await setupCommand([
       "claude-code",

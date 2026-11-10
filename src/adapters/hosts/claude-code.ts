@@ -41,7 +41,11 @@ export function installClaudeHook(
   if (existsSync(settingsPath)) {
     try {
       const parsed: unknown = JSON.parse(readFileSync(settingsPath, "utf8"));
-      if (typeof parsed !== "object" || parsed === null) {
+      if (
+        typeof parsed !== "object" ||
+        parsed === null ||
+        Array.isArray(parsed)
+      ) {
         return { action: "skipped", path: settingsPath };
       }
       root = parsed as Record<string, unknown>;

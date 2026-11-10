@@ -31,13 +31,19 @@ function cliEntry(): string {
   return fileURLToPath(new URL("../main.js", import.meta.url));
 }
 
-export function attachCommand(project: string, client = "codex"): string {
+export function attachCommand(
+  project: string | undefined,
+  client = "codex",
+): string {
   // SessionStart runs with the host's non-interactive environment, which may
-  // not resolve `aechat`; pin the current node binary and CLI path.
+  // not resolve `aechat`; pin the current node binary and CLI path. A
+  // user-level hook omits --project so attach uses the host's cwd from stdin.
+  const target =
+    project === undefined ? "" : `--project ${shellQuote(project)} `;
   return (
     `${shellQuote(process.execPath)} ${shellQuote(cliEntry())} attach ` +
-    `--client ${client} --project ${shellQuote(project)} --stdin-session ` +
-    "--json >/dev/null 2>&1 || true"
+    `--client ${client} ${target}--stdin-session --json ` +
+    ">/dev/null 2>&1 || true"
   );
 }
 
@@ -91,7 +97,7 @@ export async function setupCommand(
     claudeSettings !== undefined
       ? installClaudeHook({
           settingsPath: claudeSettings,
-          command: attachCommand(project, "claude-code"),
+          command: attachCommand(undefined, "claude-code"),
           dryRun,
         })
       : undefined;

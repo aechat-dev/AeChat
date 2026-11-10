@@ -102,6 +102,15 @@ describe("installClaudeHook", () => {
     expect(() => readFileSync(path, "utf8")).toThrow();
   });
 
+  it("skips a non-object settings file", () => {
+    const path = settingsFile();
+    writeFileSync(path, "[]");
+    expect(installClaudeHook({ settingsPath: path, command }).action).toBe(
+      "skipped",
+    );
+    expect(readFileSync(path, "utf8")).toBe("[]");
+  });
+
   it("skips a malformed settings file instead of overwriting it", () => {
     const path = settingsFile();
     writeFileSync(path, "{not json");

@@ -15,6 +15,7 @@ import { describe, expect, it } from "vitest";
 const repo = fileURLToPath(new URL("../..", import.meta.url));
 const root = join(repo, "plugins", "aechat-codex");
 const script = join(root, "scripts", "session-start.mjs");
+const wrapper = join(root, "scripts", "session-start.sh");
 const thread = "01a1aeb5-55d4-79c3-bfa7-e1d96c4fd2e5";
 
 function json(path: string): Record<string, unknown> {
@@ -39,7 +40,7 @@ describe("Codex plugin hook", () => {
     expect(plugin["name"]).toBe("aechat-codex");
     expect(JSON.stringify(marketplace)).toContain("aechat-codex");
     expect(hooks.hooks.SessionStart[0]?.hooks[0]?.command).toContain(
-      "session-start.mjs",
+      "session-start.sh",
     );
   });
 
@@ -115,5 +116,45 @@ describe("Codex plugin hook", () => {
     expect(
       readFileSync(join(dir, "logs", "codex-session-start.log"), "utf8"),
     ).toContain("exit=null");
+  });
+
+  it("runs the wrapper from a minimal shell and keeps the payload", () => {
+    const dir = mkdtempSync(join(tmpdir(), "aechat-plugin-"));
+    const capture = join(dir, "capture");
+    const input = join(dir, "stdin");
+    const fake = fakeBinary(
+      dir,
+      `printf '%s' "$*" > '${capture}'\ncat > '${input}'`,
+    );
+    const payload = JSON.stringify({ session_id: thread, cwd: "/tmp/project" });
+
+    const result = spawnSync("/bin/sh", [wrapper], {
+      input: payload,
+      encoding: "utf8",
+      env: { ...process.env, AECHAT_BIN: fake, AECHAT_HOME: dir },
+    });
+
+    expect(result.status).toBe(0);
+    expect(readFileSync(input, "utf8")).toBe(payload);
+    expect(readFileSync(capture, "utf8")).toContain("--stdin-session");
+  });
+
+  it("logs and exits 0 when node is not on PATH", () => {
+    const dir = mkdtempSync(join(tmpdir(), "aechat-plugin-"));
+    const result = spawnSync("/bin/sh", [wrapper], {
+      input: JSON.stringify({ session_id: thread, cwd: "/tmp/project" }),
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        HOME: dir,
+        PATH: "/usr/bin:/bin",
+        AECHAT_HOME: dir,
+      },
+    });
+
+    expect(result.status).toBe(0);
+    expect(
+      readFileSync(join(dir, "logs", "codex-session-start.log"), "utf8"),
+    ).toContain("node not found");
   });
 });

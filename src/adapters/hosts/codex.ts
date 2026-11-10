@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
@@ -397,10 +397,40 @@ export interface CodexPluginResult {
 
 const CODEX_MARKETPLACE = "aechat-local";
 
-function alreadyAdded(result: { stdout?: string; stderr: string }): boolean {
-  return /already|exists|duplicate/i.test(
-    `${result.stdout ?? ""}${result.stderr}`,
-  );
+function jsonObject(
+  stdout: string | undefined,
+): Record<string, unknown> | undefined {
+  if (stdout === undefined || stdout.trim() === "") {
+    return undefined;
+  }
+  try {
+    const parsed: unknown = JSON.parse(stdout);
+    return typeof parsed === "object" && parsed !== null
+      ? (parsed as Record<string, unknown>)
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function samePath(a: string, b: string): boolean {
+  try {
+    return realpathSync(a) === realpathSync(b);
+  } catch {
+    return false;
+  }
+}
+
+function bundledPluginVersion(pluginRoot: string): string | undefined {
+  try {
+    const manifest = jsonObject(
+      readFileSync(join(pluginRoot, ".claude-plugin", "plugin.json"), "utf8"),
+    );
+    const version = manifest?.["version"];
+    return typeof version === "string" ? version : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 /**
@@ -440,26 +470,60 @@ export async function installCodexPlugin(
   const runner = options.runner ?? runnerWithEnv(options.env ?? process.env);
   const added = await runner(
     executable,
-    ["plugin", "marketplace", "add", options.pluginRoot],
+    ["plugin", "marketplace", "add", options.pluginRoot, "--json"],
     60_000,
   );
-  if (added.exitCode !== 0 && !alreadyAdded(added)) {
+  if (added.exitCode !== 0) {
+    const detail = `${added.stderr}${added.stdout ?? ""}`.trim();
     return {
       ...base,
       action: "failed",
-      error: `could not add the Codex marketplace: ${added.stderr.trim()}`,
+      error: /different source/i.test(detail)
+        ? `marketplace ${CODEX_MARKETPLACE} points at another source; ` +
+          `run \`codex plugin marketplace remove ${CODEX_MARKETPLACE}\` and retry`
+        : `could not add the Codex marketplace: ${detail}`,
     };
   }
+  const addedRoot = jsonObject(added.stdout)?.["installedRoot"];
+  if (
+    typeof addedRoot === "string" &&
+    !samePath(addedRoot, options.pluginRoot)
+  ) {
+    return {
+      ...base,
+      action: "failed",
+      error:
+        `marketplace ${CODEX_MARKETPLACE} resolves to ${addedRoot}, ` +
+        `expected ${options.pluginRoot}; remove it and retry`,
+    };
+  }
+
   const installed = await runner(
     executable,
-    ["plugin", "add", `aechat-codex@${CODEX_MARKETPLACE}`],
+    ["plugin", "add", `aechat-codex@${CODEX_MARKETPLACE}`, "--json"],
     60_000,
   );
-  if (installed.exitCode !== 0 && !alreadyAdded(installed)) {
+  if (installed.exitCode !== 0) {
     return {
       ...base,
       action: "failed",
       error: `could not install the Codex plugin: ${installed.stderr.trim()}`,
+    };
+  }
+  const installedJson = jsonObject(installed.stdout);
+  const installedVersion = installedJson?.["version"];
+  const bundled = bundledPluginVersion(options.pluginRoot);
+  if (
+    typeof installedVersion === "string" &&
+    bundled !== undefined &&
+    installedVersion !== bundled
+  ) {
+    return {
+      ...base,
+      action: "failed",
+      error:
+        `Codex installed plugin ${installedVersion}, but AeChat bundles ` +
+        `${bundled}; remove marketplace ${CODEX_MARKETPLACE} and retry`,
     };
   }
   return { ...base, action: "installed" };

@@ -18,6 +18,35 @@ import { setupCommand } from "../../src/cli/commands/setup.js";
 import { main } from "../../src/cli/main.js";
 
 const repo = fileURLToPath(new URL("../..", import.meta.url));
+const pluginRoot = join(repo, "plugins", "aechat-codex");
+const pluginVersion = (
+  JSON.parse(
+    readFileSync(join(pluginRoot, ".claude-plugin", "plugin.json"), "utf8"),
+  ) as { version: string }
+).version;
+
+function fakeCodex(
+  root: string,
+  body: string,
+): { fake: string; capture: string } {
+  const capture = join(root, "codex-calls");
+  const fake = join(root, "codex");
+  writeFileSync(
+    fake,
+    `#!/bin/sh\nprintf '%s\\n' "$*" >> '${capture}'\n${body}\n`,
+  );
+  chmodSync(fake, 0o755);
+  return { fake, capture };
+}
+
+function pluginSuccessBody(): string {
+  return [
+    `case "$*" in`,
+    `  *"plugin marketplace add"*) printf '{"marketplaceName":"aechat-local","installedRoot":"${pluginRoot}","alreadyAdded":false}\\n' ;;`,
+    `  *"plugin add"*) printf '{"pluginId":"aechat-codex@aechat-local","version":"${pluginVersion}","installedPath":"/tmp/cache"}\\n' ;;`,
+    `esac`,
+  ].join("\n");
+}
 
 const keys = [
   "AECHAT_CODEX_BIN",
@@ -130,10 +159,7 @@ describe("init and setup", () => {
 
   it("installs the Codex plugin from the bundled copy", async () => {
     const root = tempRoot();
-    const capture = join(root, "codex-calls");
-    const fake = join(root, "codex");
-    writeFileSync(fake, `#!/bin/sh\nprintf '%s\\n' "$*" >> '${capture}'\n`);
-    chmodSync(fake, 0o755);
+    const { fake, capture } = fakeCodex(root, pluginSuccessBody());
     mkdirSync(join(root, "claude"), { recursive: true });
     mkdirSync(join(root, "codex-home"), { recursive: true });
     setEnv({
@@ -148,7 +174,6 @@ describe("init and setup", () => {
     const data = result.data as {
       plugin: { action: string; marketplace: string; path: string };
     };
-    const pluginRoot = join(repo, "plugins", "aechat-codex");
 
     expect(data.plugin).toMatchObject({
       action: "installed",
@@ -156,17 +181,84 @@ describe("init and setup", () => {
       path: pluginRoot,
     });
     expect(readFileSync(capture, "utf8")).toBe(
-      `plugin marketplace add ${pluginRoot}\n` +
-        "plugin add aechat-codex@aechat-local\n",
+      `plugin marketplace add ${pluginRoot} --json\n` +
+        "plugin add aechat-codex@aechat-local --json\n",
     );
+  });
+
+  it("fails instead of installing from a marketplace with another source", async () => {
+    const root = tempRoot();
+    const { fake, capture } = fakeCodex(
+      root,
+      `echo "marketplace 'aechat-local' is already added from a different source; remove it before adding this source" >&2\nexit 1`,
+    );
+    mkdirSync(join(root, "codex-home"), { recursive: true });
+    setEnv({
+      AECHAT_CODEX_BIN: fake,
+      AECHAT_HOME: join(root, "home"),
+      CODEX_HOME: join(root, "codex-home"),
+      PATH: "",
+    });
+
+    const result = await setupCommand(["codex", "--plugin", "--json"]);
+    const data = result.data as { plugin: { action: string; error: string } };
+
+    expect(data.plugin.action).toBe("failed");
+    expect(data.plugin.error).toContain("another source");
+    expect(readFileSync(capture, "utf8")).not.toContain("plugin add");
+  });
+
+  it("fails when Codex resolves the marketplace to a different root", async () => {
+    const root = tempRoot();
+    const { fake, capture } = fakeCodex(
+      root,
+      `printf '{"marketplaceName":"aechat-local","installedRoot":"/tmp/other","alreadyAdded":false}\\n'`,
+    );
+    mkdirSync(join(root, "codex-home"), { recursive: true });
+    setEnv({
+      AECHAT_CODEX_BIN: fake,
+      AECHAT_HOME: join(root, "home"),
+      CODEX_HOME: join(root, "codex-home"),
+      PATH: "",
+    });
+
+    const result = await setupCommand(["codex", "--plugin", "--json"]);
+    const data = result.data as { plugin: { action: string; error: string } };
+
+    expect(data.plugin.action).toBe("failed");
+    expect(data.plugin.error).toContain("/tmp/other");
+    expect(readFileSync(capture, "utf8")).not.toContain("plugin add");
+  });
+
+  it("fails when Codex installs a different version", async () => {
+    const root = tempRoot();
+    const { fake } = fakeCodex(
+      root,
+      [
+        `case "$*" in`,
+        `  *"marketplace add"*) printf '{"marketplaceName":"aechat-local","installedRoot":"${pluginRoot}","alreadyAdded":false}\\n' ;;`,
+        `  *"plugin add"*) printf '{"pluginId":"aechat-codex@aechat-local","version":"0.0.1","installedPath":"/tmp/cache"}\\n' ;;`,
+        `esac`,
+      ].join("\n"),
+    );
+    mkdirSync(join(root, "codex-home"), { recursive: true });
+    setEnv({
+      AECHAT_CODEX_BIN: fake,
+      AECHAT_HOME: join(root, "home"),
+      CODEX_HOME: join(root, "codex-home"),
+      PATH: "",
+    });
+
+    const result = await setupCommand(["codex", "--plugin", "--json"]);
+    const data = result.data as { plugin: { action: string; error: string } };
+
+    expect(data.plugin.action).toBe("failed");
+    expect(data.plugin.error).toContain("0.0.1");
   });
 
   it("does not call Codex for a plugin dry run", async () => {
     const root = tempRoot();
-    const capture = join(root, "codex-calls");
-    const fake = join(root, "codex");
-    writeFileSync(fake, `#!/bin/sh\nprintf '%s\\n' "$*" >> '${capture}'\n`);
-    chmodSync(fake, 0o755);
+    const { fake, capture } = fakeCodex(root, pluginSuccessBody());
     mkdirSync(join(root, "codex-home"), { recursive: true });
     setEnv({
       AECHAT_CODEX_BIN: fake,

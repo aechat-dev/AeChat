@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { attachCommand } from "../../src/cli/commands/attach.js";
+import { attachCommand, hookSessionId } from "../../src/cli/commands/attach.js";
 import type { CommandContext } from "../../src/cli/commands/context.js";
 import type {
   AttachResult,
@@ -172,5 +172,24 @@ describe("aechat attach", () => {
     await expect(
       attachCommand(["--client", "codex"], ctxWith(result({}))),
     ).rejects.toThrow("no host session id");
+  });
+});
+
+describe("hookSessionId", () => {
+  it("reads session_id from a Codex hook payload", () => {
+    expect(
+      hookSessionId(
+        JSON.stringify({
+          session_id: "01a1aeb5-55d4-79c3-bfa7-e1d96c4fd2e5",
+          cwd: "/tmp",
+        }),
+      ),
+    ).toBe("01a1aeb5-55d4-79c3-bfa7-e1d96c4fd2e5");
+  });
+
+  it("ignores malformed or empty payloads", () => {
+    expect(hookSessionId("not json")).toBeUndefined();
+    expect(hookSessionId("{}")).toBeUndefined();
+    expect(hookSessionId('{"session_id":""}')).toBeUndefined();
   });
 });

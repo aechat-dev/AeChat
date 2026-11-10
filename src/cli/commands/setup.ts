@@ -1,12 +1,13 @@
 import { fileURLToPath } from "node:url";
 
+import { installClaudeHook } from "../../adapters/hosts/claude-code.js";
 import {
   codexHooksPath,
   installCodexHooks,
   installCodexPlugin,
   removeAttachHook,
 } from "../../adapters/hosts/codex.js";
-import { hostById } from "../../adapters/hosts/registry.js";
+import { hostById, hostHookPath } from "../../adapters/hosts/registry.js";
 import { AechatError } from "../../core/errors.js";
 import {
   codexPluginRoot,
@@ -30,13 +31,13 @@ function cliEntry(): string {
   return fileURLToPath(new URL("../main.js", import.meta.url));
 }
 
-export function attachCommand(project: string): string {
+export function attachCommand(project: string, client = "codex"): string {
   // SessionStart runs with the host's non-interactive environment, which may
   // not resolve `aechat`; pin the current node binary and CLI path.
   return (
     `${shellQuote(process.execPath)} ${shellQuote(cliEntry())} attach ` +
-    `--client codex --project ${shellQuote(project)} --stdin-session --json ` +
-    ">/dev/null 2>&1 || true"
+    `--client ${client} --project ${shellQuote(project)} --stdin-session ` +
+    "--json >/dev/null 2>&1 || true"
   );
 }
 
@@ -54,10 +55,15 @@ export async function setupCommand(
     );
   }
   const args = parseArgs(rest);
-  if (args.flags.has("hooks") && hostArg !== "codex") {
+  if (
+    args.flags.has("hooks") &&
+    hostArg !== "codex" &&
+    hostArg !== "claude-code"
+  ) {
     throw new AechatError(
       "invalid_input",
-      `--hooks is not supported for ${hostArg}; only codex has an agmsg hook installer`,
+      `--hooks is not supported for ${hostArg}; ` +
+        "only codex and claude-code have a SessionStart hook installer",
     );
   }
   if (args.flags.has("plugin") && hostArg !== "codex") {
@@ -69,7 +75,7 @@ export async function setupCommand(
   const dryRun = args.flags.has("dry-run");
   const project = args.values.get("project") ?? process.cwd();
   const result = installHostSkill({ host: hostArg, dryRun });
-  const hooks =
+  const codexHooks =
     hostArg === "codex" && args.flags.has("hooks")
       ? await installCodexHooks({
           project,
@@ -77,6 +83,19 @@ export async function setupCommand(
           attachCommand: attachCommand(project),
         })
       : undefined;
+  const claudeSettings =
+    hostArg === "claude-code" ? hostHookPath("claude-code") : undefined;
+  const claudeHook =
+    hostArg === "claude-code" &&
+    args.flags.has("hooks") &&
+    claudeSettings !== undefined
+      ? installClaudeHook({
+          settingsPath: claudeSettings,
+          command: attachCommand(project, "claude-code"),
+          dryRun,
+        })
+      : undefined;
+  const hooks = codexHooks ?? claudeHook;
   const plugin =
     hostArg === "codex" && args.flags.has("plugin")
       ? await installCodexPlugin({ pluginRoot: codexPluginRoot(), dryRun })
@@ -107,15 +126,20 @@ export async function setupCommand(
     return { data };
   }
   const lines = [`${result.host} skill: ${result.action} -> ${result.path}`];
-  if (hooks !== undefined) {
+  if (codexHooks !== undefined) {
     lines.push(
-      `codex delivery: ${hooks.action} (${hooks.mode} -> ${hooks.path})`,
+      `codex delivery: ${codexHooks.action} (${codexHooks.mode} -> ${codexHooks.path})`,
     );
     lines.push(
-      hooks.attachHook === "installed"
+      codexHooks.attachHook === "installed"
         ? `codex attach hook: installed (review it in Codex Settings > Hooks; ` +
             "untrusted hooks are skipped on restart)"
-        : `codex attach hook: ${hooks.attachHook}`,
+        : `codex attach hook: ${codexHooks.attachHook}`,
+    );
+  }
+  if (claudeHook !== undefined) {
+    lines.push(
+      `claude-code attach hook: ${claudeHook.action} -> ${claudeHook.path}`,
     );
   }
   if (plugin !== undefined) {

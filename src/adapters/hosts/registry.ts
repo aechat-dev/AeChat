@@ -63,6 +63,17 @@ export function hostHookPaths(env: NodeJS.ProcessEnv = process.env): string[] {
   return HOSTS.map((host) => join(hostConfigDir(host, env), host.hookFile));
 }
 
+/** The hook/settings file for one host, resolved per environment. */
+export function hostHookPath(
+  hostId: string,
+  env: NodeJS.ProcessEnv = process.env,
+): string | undefined {
+  const host = hostById(hostId);
+  return host === undefined
+    ? undefined
+    : join(hostConfigDir(host, env), host.hookFile);
+}
+
 /** The host session id used for actas claims; the shared override wins. */
 export function hostSessionId(
   host: HostDescriptor,

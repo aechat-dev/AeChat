@@ -185,6 +185,19 @@ instead of creating a duplicate:
 aechat attach --client claude-code --project "$PWD"
 ```
 
+To make a restarted Claude Code conversation reattach without invoking the
+skill, install the user-level SessionStart hook once:
+
+```bash
+aechat setup claude-code --hooks
+```
+
+It adds AeChat's entry to `$CLAUDE_CONFIG_DIR/settings.json` (default
+`~/.claude/settings.json`) and preserves other settings and hooks. Claude Code
+runs it on startup, resume and clear with the host `session_id` on stdin, and
+`attach --stdin-session` reuses the conversation's session. Re-run the command
+after upgrading AeChat to refresh the pinned CLI path.
+
 To choose the display name explicitly, or to register without a host session
 id, use `register`:
 

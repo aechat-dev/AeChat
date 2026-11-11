@@ -146,9 +146,10 @@ AeChat `SessionStart` entry by hand.
 `aechat setup codex --hooks --project "$PWD"` still installs the same hook as a
 project-level `.codex/hooks.json` entry when plugins are not an option. That
 copy is trusted per project, so it does not scale across many projects. The
-plugin hook was observed executing on Codex desktop restart on 2026-11-10
-(`codex-session-start.log` `exit=0`); a restart is still unproven until the log
-shows the attach. `attach` is idempotent and safe to run manually.
+plugin hook was observed attaching on Codex desktop restart and resume on
+2026-11-10 (`codex-session-start.log` `exit=0`); see
+[compatibility.md](compatibility.md). `attach` is idempotent and safe to run
+manually.
 
 The command prefers `agmsgd`, which queues notices into the Codex app-server;
 no shell shim is needed. agmsg still installs the project's `SessionStart` hook
@@ -340,9 +341,10 @@ not selected by `/releases/latest`.
   local and owner-only, but it is not encrypted.
 - `resume --force` is unsafe by design: it is accepted only when the old
   binding liveness cannot be proven, and it is audited.
-- conversation ID capture from host hooks is not implemented; v1 reports
-  `bound_scope=host_role` and `whoami --conversation` is only usable for rows
-  that already carry a conversation ID.
+- Host-hook attach stores the host session id as `conversation_id`, so
+  `whoami --conversation` works for rows created or attached by a hook. v1
+  still reports `bound_scope=host_role`; it does not claim conversation-level
+  transport binding.
 - `aechat probe --session "<session_id>"` records one adapter observation and
   returns a normalized observation (`observed_level`, plus null
   `busy_receive`/`idle_wakeup` when unproven). `list --json` is the normalized view: its

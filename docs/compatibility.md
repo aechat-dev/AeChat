@@ -60,8 +60,9 @@ the message is durable and pull-only.
 - This proves hook execution and payload `session_id`/`cwd` capture in a real
   new host process. Resume reuse and message delivery to that hook-created
   session were not exercised and remain unverified.
-- The installed command ends with `>/dev/null 2>&1 || true`, so a failing
-  attach cannot block host startup or print into the conversation.
+- The installed command ends with `>/dev/null 2>&1 || true`, so it cannot fail
+  or print into the conversation; a slow attach can still delay startup until
+  the hook timeout.
 
 ### 2026-11-10 — Codex plugin SessionStart attach and post-restart delivery
 

@@ -23,6 +23,39 @@ export function hookSessionId(raw: string): string | undefined {
   }
 }
 
+/** The host working directory reported in the hook payload, when absolute. */
+export function hookCwd(raw: string): string | undefined {
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (typeof parsed !== "object" || parsed === null) {
+      return undefined;
+    }
+    const cwd = (parsed as { cwd?: unknown }).cwd;
+    return typeof cwd === "string" && cwd.startsWith("/") ? cwd : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * The project for attach. An explicit --project wins; a hook payload's cwd is
+ * next, so one user-level hook follows each conversation's directory instead
+ * of the directory setup was run from.
+ */
+export function attachProject(input: {
+  explicit?: string;
+  stdin: boolean;
+  raw?: string;
+  fallback?: string;
+}): string {
+  return (
+    input.explicit ??
+    (input.stdin ? hookCwd(input.raw ?? "") : undefined) ??
+    input.fallback ??
+    process.cwd()
+  );
+}
+
 /**
  * The attach conversation id: an explicit hook payload beats the environment,
  * so a stale AGMSG_SESSION_ID cannot redirect a session start. Without stdin
@@ -101,17 +134,33 @@ export async function attachCommand(
       `attach requires a declared host client, received: ${client}`,
     );
   }
-  const conversationId = attachConversationId({
-    host,
-    stdin: args.flags.has("stdin-session"),
-  });
+  const stdin = args.flags.has("stdin-session");
+  let raw: string | undefined;
+  const readStdin = (): string => {
+    if (raw === undefined) {
+      try {
+        raw = readFileSync(0, "utf8");
+      } catch {
+        raw = "";
+      }
+    }
+    return raw;
+  };
+  const conversationId = attachConversationId({ host, stdin, readStdin });
   if (conversationId === undefined) {
     throw new AechatError(
       "invalid_input",
       `no host session id (${host.sessionEnv} or hook stdin) available`,
     );
   }
-  const project = args.values.get("project") ?? process.cwd();
+  // A user-level hook applies to every project; prefer the directory the host
+  // reports for this conversation over wherever setup happened to run.
+  const explicit = args.values.get("project");
+  const project = attachProject({
+    ...(explicit === undefined ? {} : { explicit }),
+    stdin,
+    ...(stdin ? { raw: readStdin() } : {}),
+  });
   const name = args.values.get("name");
   const result = await withAttachLock(conversationId, () =>
     ctx.service.attach({

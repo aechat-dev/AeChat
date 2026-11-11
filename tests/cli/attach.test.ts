@@ -7,6 +7,7 @@ import { hostById } from "../../src/adapters/hosts/registry.js";
 import {
   attachCommand,
   attachConversationId,
+  attachProject,
   hookSessionId,
 } from "../../src/cli/commands/attach.js";
 import type { CommandContext } from "../../src/cli/commands/context.js";
@@ -251,5 +252,37 @@ describe("attachConversationId", () => {
         env: { CODEX_THREAD_ID: "thread-1" },
       }),
     ).toBe("thread-1");
+  });
+});
+
+describe("attachProject", () => {
+  it("uses the hook payload cwd, not the directory setup ran in", () => {
+    expect(
+      attachProject({
+        stdin: true,
+        raw: JSON.stringify({ session_id: "s", cwd: "/project-b" }),
+        fallback: "/project-a",
+      }),
+    ).toBe("/project-b");
+  });
+
+  it("keeps an explicit --project", () => {
+    expect(
+      attachProject({
+        explicit: "/explicit",
+        stdin: true,
+        raw: JSON.stringify({ cwd: "/payload" }),
+      }),
+    ).toBe("/explicit");
+  });
+
+  it("falls back when the payload has no absolute cwd", () => {
+    expect(
+      attachProject({
+        stdin: true,
+        raw: JSON.stringify({ cwd: "relative/path" }),
+        fallback: "/fallback",
+      }),
+    ).toBe("/fallback");
   });
 });

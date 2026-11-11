@@ -145,10 +145,60 @@ describe("init and setup", () => {
     });
   });
 
-  it("rejects --hooks for hosts without an agmsg hook installer", async () => {
-    await expect(
-      setupCommand(["claude-code", "--hooks", "--json"]),
-    ).rejects.toThrow("only codex has an agmsg hook installer");
+  it("installs a Claude Code SessionStart attach hook", async () => {
+    const root = tempRoot();
+    const claude = join(root, "claude");
+    mkdirSync(claude, { recursive: true });
+    writeFileSync(
+      join(claude, "settings.json"),
+      JSON.stringify({ model: "opus", hooks: { PreToolUse: [] } }),
+    );
+    setEnv({
+      AECHAT_HOME: join(root, "home"),
+      CLAUDE_CONFIG_DIR: claude,
+      CODEX_HOME: join(root, "codex"),
+      PATH: "",
+    });
+
+    const result = await setupCommand([
+      "claude-code",
+      "--hooks",
+      "--project",
+      join(root, "project"),
+      "--json",
+    ]);
+    const data = result.data as {
+      hooks: { action: string; path: string };
+    };
+    expect(data.hooks.action).toBe("installed");
+
+    const settings = JSON.parse(
+      readFileSync(join(claude, "settings.json"), "utf8"),
+    ) as {
+      model: string;
+      hooks: { SessionStart: Array<{ hooks: Array<{ command: string }> }> };
+    };
+    expect(settings.model).toBe("opus");
+    expect(settings.hooks.SessionStart[0]?.hooks[0]?.command).toContain(
+      "attach --client claude-code",
+    );
+    expect(settings.hooks.SessionStart[0]?.hooks[0]?.command).toContain(
+      "--stdin-session",
+    );
+    expect(settings.hooks.SessionStart[0]?.hooks[0]?.command).not.toContain(
+      "--project",
+    );
+
+    const again = await setupCommand([
+      "claude-code",
+      "--hooks",
+      "--project",
+      join(root, "project"),
+      "--json",
+    ]);
+    expect((again.data as { hooks: { action: string } }).hooks.action).toBe(
+      "up-to-date",
+    );
   });
 
   it("rejects --plugin for hosts without a plugin package", async () => {

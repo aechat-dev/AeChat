@@ -42,10 +42,27 @@ the message is durable and pull-only.
 | Message body injected as a user turn | ◐ `aechat watch` JSONL events | ✅ 2026-11-09 `codex queue` direct injection | See the 2026-11-09 direct-injection evidence |
 | Busy receive (`busy_receive`) | ? | ? | Phase 0 saw injection, no reply |
 | Idle wakeup (`idle_wakeup`) | ◐ agmsg Monitor only, 2026-11-06 | ? | Not managed by AeChat; re-arm untested |
-| Resume / rebind across host restarts | ? | ◐ 2026-11-10 plugin SessionStart hook runs attach | See the 2026-11-10 evidence |
-| Conversation-level binding | ✗ v1 reports `host_role` | ◐ attach stores the hook `session_id` | See the 2026-11-10 evidence |
+| Resume / rebind across host restarts | ◐ 2026-11-11 user-level hook attaches a fresh process; resume reuse untested | ◐ 2026-11-10 plugin SessionStart hook runs attach | See the 2026-11-10 and 2026-11-11 evidence |
+| Conversation-level binding | ◐ attach stores the hook `session_id` | ◐ attach stores the hook `session_id` | See the 2026-11-10 and 2026-11-11 evidence |
 
 ## Evidence log
+
+### 2026-11-11 — Claude Code user-level SessionStart attach
+
+- Host: Claude Code 2.1.322, macOS, agmsg 1.7.1. `aechat setup claude-code
+  --hooks` added one `SessionStart` entry to `~/.claude/settings.json` and
+  preserved the existing settings.
+- A fresh `claude -p` process started in a temporary directory ran the hook:
+  `aechat attach --client claude-code --stdin-session` registered session
+  `01a1c857-…` with `conversation_id=2660bd81-…` (the host session id from the
+  payload), `project` equal to that process's cwd, and `bound_scope=host_role`.
+  The session was left after the check.
+- This proves hook execution and payload `session_id`/`cwd` capture in a real
+  new host process. Resume reuse and message delivery to that hook-created
+  session were not exercised and remain unverified.
+- The installed command ends with `>/dev/null 2>&1 || true`, so it cannot fail
+  or print into the conversation; a slow attach can still delay startup until
+  the hook timeout.
 
 ### 2026-11-10 — Codex plugin SessionStart attach and post-restart delivery
 
